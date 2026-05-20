@@ -1,0 +1,27 @@
+<?php
+
+namespace App\Http\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class StoreOrderRequest extends FormRequest
+{
+    /**
+     * Determine if the user is authorized to make this request.
+     */
+    public function authorize() { return true; }
+    public function rules() {
+        return [
+            'client_id' => [
+                'required',
+                \Illuminate\Validation\Rule::exists('clients', 'id')->where('tenant_id', auth()->user()->tenant_id)
+            ],
+            'amount_paid' => 'required|numeric|min:0',
+            'items' => 'required|array|min:1',
+            'items.*.type' => 'required|in:panel,canto,service,custom_labor',
+            'items.*.id' => 'required',
+            'items.*.quantity' => 'required|numeric|min:0.1',
+            'items.*.unit_price' => 'required|numeric|min:0'
+        ];
+    }
+}

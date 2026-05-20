@@ -1,0 +1,62 @@
+<?php
+
+namespace App\Http\Middleware;
+
+use Illuminate\Http\Request;
+use Inertia\Middleware;
+use App\Models\Setting;
+
+class HandleInertiaRequests extends Middleware
+{
+    /**
+     * The root template that's loaded on the first page visit.
+     *
+     * @see https://inertiajs.com/server-side-setup#root-template
+     * @var string
+     */
+    protected $rootView = 'app';
+
+    /**
+     * Determines the current asset version.
+     *
+     * @see https://inertiajs.com/asset-versioning
+     * @param  \Illuminate\Http\Request  $request
+     * @return string|null
+     */
+    public function version(Request $request): ?string
+    {
+        return parent::version($request);
+    }
+
+    /**
+     * Defines the props that are shared by default.
+     *
+     * @see https://inertiajs.com/shared-data
+     * @param  \Illuminate\Http\Request  $request
+     * @return array
+     */
+    public function share(Request $request): array
+    {
+        // Per-tenant Setting record (scoped via BelongsToTenant trait).
+        $settings = $request->user() ? Setting::first() : null;
+
+        $logoUrl = $settings && $settings->company_logo
+            ? asset('storage/' . ltrim($settings->company_logo, '/'))
+            : null;
+
+        return array_merge(parent::share($request), [
+            'auth' => [
+                'user' => $request->user() ? $request->user()->only('id', 'name', 'role', 'tenant_id') : null,
+            ],
+            'settings' => $settings ?: ['company_name' => 'TAAOUATI DESIGN'],
+            'tenant' => $request->user() && $request->user()->tenant ? [
+                'name' => $request->user()->tenant->name,
+                'logo_url' => $logoUrl,
+            ] : null,
+            'flash' => [
+                'message' => fn () => $request->session()->get('message'),
+                'error' => fn () => $request->session()->get('error'),
+            ],
+        ]);
+    }
+}
