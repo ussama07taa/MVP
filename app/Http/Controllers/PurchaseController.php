@@ -385,12 +385,35 @@ class PurchaseController extends Controller
     public function paySupplier(Request $request, $id) {
         $request->validate([
             'amount' => 'required|numeric|min:0.1',
-            'payment_method' => 'required|string'
+            'payment_method' => 'required|string',
+            'purchase_id' => 'nullable|exists:purchases,id'
         ]);
 
         return DB::transaction(function() use ($request, $id) {
             $supplier = Supplier::withoutGlobalScopes()->lockForUpdate()->findOrFail($id);
             $amountToDistribute = $request->amount;
+
+            if ($request->filled('purchase_id')) {
+                $purch = Purchase::withoutGlobalScopes()->where('supplier_id', $id)->findOrFail($request->purchase_id);
+                $reste = $purch->total_amount - $purch->amount_paid;
+                
+                if ($amountToDistribute > $reste + 0.01) {
+                    return response()->json(['error' => 'Le montant dépasse le reste à payer de cette facture.'], 400);
+                }
+
+                SupplierPayment::create([
+                    'tenant_id' => $supplier->tenant_id,
+                    'supplier_id' => $supplier->id,
+                    'purchase_id' => $purch->id,
+                    'amount' => $amountToDistribute,
+                    'payment_method' => $request->payment_method
+                ]);
+
+                $purch->increment('amount_paid', $amountToDistribute);
+                $supplier->decrement('total_debt', $amountToDistribute);
+
+                return response()->json(['success' => true]);
+            }
 
             if ($amountToDistribute > $supplier->total_debt + 0.01) {
                 return response()->json(['error' => 'Le montant dépasse la dette du fournisseur.'], 400);
