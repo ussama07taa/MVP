@@ -864,7 +864,7 @@ const submitAdjustment = async () => {
     try {
         await axios.post('/api/admin/inventory/adjust', {
             item_id: adjustForm.value.item_id,
-            item_type: 'canto',
+            item_type: 'StockCanto',
             quantity: adjustForm.value.quantity,
             reason: adjustForm.value.reason,
             notes: adjustForm.value.notes
