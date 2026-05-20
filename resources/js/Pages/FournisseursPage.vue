@@ -200,33 +200,72 @@
                     
                     <!-- LEFT: Factures d'Achat (Dettes) -->
                     <div>
-                        <div class="flex items-center space-x-2 mb-4">
-                            <div class="w-8 h-8 rounded-lg bg-red-100 text-red-500 flex items-center justify-center">
-                                <FileTextIcon class="w-4 h-4" />
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-8 h-8 rounded-lg bg-red-100 text-red-500 flex items-center justify-center">
+                                    <FileTextIcon class="w-4 h-4" />
+                                </div>
+                                <h3 class="text-sm font-black text-slate-700 uppercase tracking-wider">Factures d'Achat</h3>
                             </div>
-                            <h3 class="text-sm font-black text-slate-700 uppercase tracking-wider">Factures d'Achat</h3>
+                            <div class="relative w-48">
+                                <SearchIcon class="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input v-model="searchInvoiceQuery" type="text" placeholder="Chercher facture..." class="pl-8 pr-3 py-1.5 border-slate-200 rounded-lg text-[10px] w-full focus:ring-brand-500">
+                            </div>
                         </div>
                         
                         <div class="space-y-3">
                             <!-- Loop Invoices -->
-                            <div v-for="invoice in purchaseHistory" :key="invoice.id" 
-                                 class="flex items-center justify-between p-4 rounded-xl border border-slate-100 hover:border-slate-300 hover:bg-slate-50 transition-colors group cursor-pointer">
-                                <div class="flex items-center space-x-4">
-                                    <div class="w-10 h-10 rounded-lg bg-slate-100 text-slate-400 flex items-center justify-center group-hover:text-brand-500 transition-colors">
-                                        <FileTextIcon class="w-5 h-5" />
+                            <div v-for="invoice in filteredPurchaseHistory" :key="invoice.id" 
+                                 class="border border-slate-100 rounded-xl overflow-hidden hover:border-slate-300 transition-colors bg-white">
+                                <div @click="toggleInvoice(invoice.id)" class="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors group cursor-pointer select-none">
+                                    <div class="flex items-center space-x-4">
+                                        <div class="w-10 h-10 rounded-lg bg-slate-100 text-slate-400 flex items-center justify-center group-hover:text-brand-500 transition-colors">
+                                            <FileTextIcon class="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <p class="text-xs font-bold text-slate-800 uppercase">{{ invoice.reference_invoice || 'SANS RÉF' }}</p>
+                                            <p class="text-[10px] text-slate-400 font-medium">{{ new Date(invoice.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) }}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p class="text-xs font-bold text-slate-800 uppercase">{{ invoice.reference_invoice || 'SANS RÉF' }}</p>
-                                        <p class="text-[10px] text-slate-400 font-medium">{{ new Date(invoice.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) }}</p>
+                                    <div class="flex items-center space-x-4">
+                                        <div class="text-right">
+                                            <p class="text-sm font-black text-slate-700">{{ invoice.net_amount || invoice.total_price || invoice.amount_paid }} DH</p>
+                                            <p class="text-[10px] font-bold text-slate-400">Montant Net</p>
+                                        </div>
+                                        <ChevronDownIcon :class="expandedInvoices.includes(invoice.id) ? 'rotate-180' : ''" class="w-5 h-5 text-slate-400 transition-transform duration-300" />
                                     </div>
                                 </div>
-                                <div class="text-right">
-                                    <p class="text-sm font-black text-slate-700">{{ invoice.net_amount }} DH</p>
-                                    <p class="text-[10px] font-bold text-slate-400">Montant Net</p>
+                                
+                                <!-- EXPANDED DETAILS -->
+                                <div v-show="expandedInvoices.includes(invoice.id)" class="bg-slate-50 border-t border-slate-100 p-4">
+                                    <h4 class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Détails des articles</h4>
+                                    <div class="overflow-x-auto rounded-lg border border-slate-200">
+                                        <table class="min-w-full divide-y divide-slate-200">
+                                            <thead class="bg-slate-100">
+                                                <tr>
+                                                    <th class="px-3 py-2 text-left text-[9px] font-black text-slate-500 uppercase">Article</th>
+                                                    <th class="px-3 py-2 text-center text-[9px] font-black text-slate-500 uppercase">Qté</th>
+                                                    <th class="px-3 py-2 text-right text-[9px] font-black text-slate-500 uppercase">Prix U.</th>
+                                                    <th class="px-3 py-2 text-right text-[9px] font-black text-slate-500 uppercase">Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-slate-100 bg-white">
+                                                <tr v-for="item in invoice.items" :key="item.id" class="hover:bg-slate-50">
+                                                    <td class="px-3 py-2 text-[10px] font-bold text-slate-700 max-w-[120px] truncate" :title="item.item_name">{{ item.item_name }}</td>
+                                                    <td class="px-3 py-2 text-[10px] font-medium text-slate-600 text-center">{{ item.quantity }}</td>
+                                                    <td class="px-3 py-2 text-[10px] font-medium text-slate-600 text-right">{{ parseFloat(item.unit_price).toFixed(2) }} DH</td>
+                                                    <td class="px-3 py-2 text-[10px] font-black text-slate-800 text-right">{{ parseFloat(item.total_price || item.net_total_price || (item.quantity * item.unit_price)).toFixed(2) }} DH</td>
+                                                </tr>
+                                                <tr v-if="!invoice.items || invoice.items.length === 0">
+                                                    <td colspan="4" class="px-3 py-4 text-center text-[10px] text-slate-400 font-bold">Aucun article enregistré.</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
-                            <div v-if="!purchaseHistory || purchaseHistory.length === 0" class="p-6 text-center border border-dashed border-slate-200 rounded-xl">
-                                <p class="text-xs text-slate-400 font-bold">Aucune facture d'achat.</p>
+                            <div v-if="!filteredPurchaseHistory || filteredPurchaseHistory.length === 0" class="p-6 text-center border border-dashed border-slate-200 rounded-xl">
+                                <p class="text-xs text-slate-400 font-bold">Aucune facture trouvée.</p>
                             </div>
                         </div>
                     </div>
@@ -301,6 +340,7 @@ import { Dialog, DialogPanel, TransitionChild, TransitionRoot } from '@headlessu
 
 const suppliers = ref([]);
 const searchQuery = ref('');
+const searchInvoiceQuery = ref('');
 const isPaymentModalOpen = ref(false);
 const isHistoryModalOpen = ref(false);
 const isLoading = ref(false);
@@ -327,6 +367,16 @@ const filteredSuppliers = computed(() => {
   if (!searchQuery.value) return suppliers.value;
   const q = searchQuery.value.toLowerCase();
   return suppliers.value.filter(s => s.name.toLowerCase().includes(q));
+});
+
+const filteredPurchaseHistory = computed(() => {
+  if (!searchInvoiceQuery.value) return purchaseHistory.value;
+  const q = searchInvoiceQuery.value.toLowerCase();
+  return purchaseHistory.value.filter(inv => {
+    const refMatch = inv.reference_invoice && inv.reference_invoice.toLowerCase().includes(q);
+    const itemMatch = inv.items && inv.items.some(item => item.item_name && item.item_name.toLowerCase().includes(q));
+    return refMatch || itemMatch;
+  });
 });
 
 const totalDebtGlobal = computed(() => {
