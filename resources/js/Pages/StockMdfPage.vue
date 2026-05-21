@@ -204,6 +204,11 @@
                   <p class="text-[9px] text-slate-400 font-bold px-1 italic">Le reste sera ajouté à la dette du fournisseur.</p>
                </div>
                <div class="space-y-2">
+                  <label class="text-[10px] font-black text-blue-600 uppercase tracking-widest">Référence Facture (N°)</label>
+                  <input v-model="form.reference_invoice" type="text" placeholder="Ex: FAC-2026-001" class="w-full bg-blue-50 border-blue-100 rounded-2xl p-4 font-black text-blue-700 focus:ring-2 focus:ring-blue-500">
+                  <p class="text-[9px] text-slate-400 font-bold px-1 italic">Laissez vide pour une référence auto.</p>
+               </div>
+               <div class="space-y-2">
                   <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Photo de la Facture (Optionnel)</label>
                   <input type="file" @change="handleFileUpload" accept="image/*,.pdf" class="block w-full text-[10px] text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-[10px] file:font-black file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100 border border-slate-100 rounded-2xl p-3 bg-white">
                </div>
@@ -652,7 +657,7 @@ const form = ref({
   existing_id: null,
   type: 'MDF', finish_type: '', color_code: '', color_name: '', provider_catalog: '', 
   size_x: 2800, size_y: 2100, thickness: 18, quantity: 10, unit_cost: 400, sell: 550,
-  supplier_id: null, amount_paid: 0
+  supplier_id: null, amount_paid: 0, reference_invoice: ''
 });
 
 // Computed: Live Search
@@ -714,7 +719,7 @@ const resetForm = () => {
     existing_id: null,
     type: 'MDF', finish_type: '', color_code: '', color_name: '', provider_catalog: '', 
     size_x: 2800, size_y: 2100, thickness: 18, quantity: 10, unit_cost: 400, sell: 550,
-    supplier_id: null, amount_paid: 0
+    supplier_id: null, amount_paid: 0, reference_invoice: ''
   };
   invoiceFile.value = null;
 };
@@ -800,7 +805,7 @@ const saveMdf = async () => {
 
       const formData = new FormData();
       formData.append('supplier_id', form.value.supplier_id);
-      formData.append('reference_invoice', 'ENTRÉE-STOCK-RAPIDE-' + Date.now());
+      formData.append('reference_invoice', form.value.reference_invoice || ('ENTRÉE-STOCK-RAPIDE-' + Date.now()));
       formData.append('total_amount', calculatedTotal);
       formData.append('amount_paid', form.value.amount_paid || 0);
       formData.append('payment_method', 'cash');

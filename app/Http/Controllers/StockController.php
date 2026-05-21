@@ -111,6 +111,7 @@ class StockController extends Controller
                 'purchase_line_id' => $validated['purchase_line_id'] ?? null,
                 'quantity_adjusted' => -$validated['quantity'],
                 'reason' => $validated['reason'],
+                'notes' => $validated['notes'] ?? null,
                 'user_id' => auth()->id()
             ]);
 
@@ -137,6 +138,21 @@ class StockController extends Controller
 
             return response()->json(['success' => true, 'message' => 'Stock ajusté avec succès.']);
         });
+    }
+
+    public function adjustmentHistory()
+    {
+        return \App\Models\InventoryAdjustment::withoutGlobalScopes()
+            ->with('user')
+            ->latest()
+            ->get()
+            ->map(function ($adj) {
+                // Manually load item without global scopes to ensure it's found
+                $itemModel = $adj->item_type;
+                $item = $itemModel::withoutGlobalScopes()->find($adj->item_id);
+                $adj->item_details = $item;
+                return $adj;
+            });
     }
 
     public function importInitialStock(Request $request, $type = 'panel')

@@ -236,6 +236,7 @@
                                     <div class="flex items-center space-x-4">
                                         <div class="text-right">
                                             <p class="text-sm font-black text-slate-700">{{ invoice.net_amount || invoice.total_price || invoice.amount_paid }} DH</p>
+                                            <p class="text-[9px] font-bold text-slate-400 uppercase">Montant Net</p>
                                             <p v-if="invoice.total_amount - invoice.amount_paid > 0" class="text-[10px] font-bold text-rose-500">Reste: {{ parseFloat(invoice.total_amount - invoice.amount_paid).toFixed(2) }} DH</p>
                                             <p v-else class="text-[10px] font-bold text-emerald-500">Réglée</p>
                                         </div>

@@ -216,6 +216,11 @@
                   <input v-model="form.amount_paid" type="number" placeholder="Ex: 200" class="w-full bg-slate-50 border-slate-200 rounded-2xl p-4 font-black text-slate-700 focus:ring-2 focus:ring-brand-500 text-sm">
                   </div>
                   <div class="space-y-2">
+                  <label class="text-[10px] font-black text-rose-600 uppercase tracking-widest">Référence Facture (N°)</label>
+                  <input v-model="form.reference_invoice" type="text" placeholder="Ex: FAC-2026-001" class="w-full bg-rose-50 border-rose-100 rounded-2xl p-4 font-black text-rose-700 focus:ring-2 focus:ring-rose-500 text-sm">
+                  <p class="text-[9px] text-rose-400 font-bold px-1 italic mt-2">Laissez vide pour une référence auto.</p>
+                  </div>
+                  <div class="space-y-2">
                   <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Photo de la Facture (Optionnel)</label>
                   <input type="file" @change="handleFileUpload" accept="image/*,.pdf" class="block w-full text-[10px] text-slate-500 file:mr-4 file:py-3 file:px-4 file:rounded-xl file:border-0 file:text-[10px] file:font-black file:bg-slate-200 file:text-slate-700 hover:file:bg-slate-300 border border-slate-100 rounded-2xl p-3 bg-white">
                   </div>
@@ -643,7 +648,7 @@ const form = ref({
     existing_id: null,
     name: '', color_code: '', color_name: '', finish_type: '', provider_catalog: '', 
     rolls: 1, meters_per_roll: 150, 
-    unit_cost_m: 3.5, sell_price_m: 6, supplier_id: null, amount_paid: 0 
+    unit_cost_m: 3.5, sell_price_m: 6, supplier_id: null, amount_paid: 0, reference_invoice: ''
 });
 
 // Auto-calculate Total Meters
@@ -699,7 +704,7 @@ const saveNewSupplier = async () => {
 };
 
 const toggleAddForm = () => { if (showAddForm.value && editingId.value) { editingId.value = null; resetForm(); } showAddForm.value = !showAddForm.value; };
-const resetForm = () => { form.value = { existing_id: null, name: '', color_code: '', color_name: '', finish_type: '', provider_catalog: '', rolls: 1, meters_per_roll: 150, unit_cost_m: 3.5, sell_price_m: 6, supplier_id: null, amount_paid: 0 }; invoiceFile.value = null; };
+const resetForm = () => { form.value = { existing_id: null, name: '', color_code: '', color_name: '', finish_type: '', provider_catalog: '', rolls: 1, meters_per_roll: 150, unit_cost_m: 3.5, sell_price_m: 6, supplier_id: null, amount_paid: 0, reference_invoice: '' }; invoiceFile.value = null; };
 const handleExistingSelection = (event) => {
   const id = event.target.value;
   if (!id) {
@@ -773,7 +778,7 @@ const saveCanto = async () => {
 
       const formData = new FormData();
       formData.append('supplier_id', form.value.supplier_id);
-      formData.append('reference_invoice', 'ENTRÉE-STOCK-RAPIDE-CANTO-' + Date.now());
+      formData.append('reference_invoice', form.value.reference_invoice || ('ENTRÉE-STOCK-RAPIDE-CANTO-' + Date.now()));
       formData.append('total_amount', calculatedTotal);
       formData.append('amount_paid', form.value.amount_paid || 0);
       formData.append('payment_method', 'cash');
