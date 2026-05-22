@@ -96,19 +96,15 @@
                 </div>
 
                 <!-- EXPENSES BREAKDOWN -->
-                <div v-if="stats.salary_expenses > 0 || stats.purchase_expenses > 0" class="mt-6 pt-5 border-t border-slate-700/50 space-y-2">
+                <div v-if="stats.total_expenses > 0 || stats.customer_returns > 0" class="mt-6 pt-5 border-t border-slate-700/50 space-y-2">
                   <div class="flex justify-between items-center group/line">
                      <span class="text-xs font-bold text-slate-400 uppercase tracking-wider group-hover/line:text-slate-300 transition-colors">Marge brute</span>
                      <span class="text-sm text-slate-200 font-black">{{ Number(stats.gross_profit).toFixed(2) }} DH</span>
                   </div>
                   <div class="flex justify-between items-center group/line">
-                     <span class="text-xs font-bold text-slate-400 uppercase tracking-wider group-hover/line:text-slate-300 transition-colors">Salaires & OPEX</span>
-                     <span class="text-sm text-rose-400 font-black">-{{ Number(stats.salary_expenses).toFixed(2) }} DH</span>
+                     <span class="text-xs font-bold text-slate-400 uppercase tracking-wider group-hover/line:text-slate-300 transition-colors">Charges d'exploitation (OPEX)</span>
+                     <span class="text-sm text-rose-400 font-black">-{{ Number(stats.total_expenses).toFixed(2) }} DH</span>
                   </div>
-                   <div class="flex justify-between items-center group/line">
-                      <span class="text-xs font-bold text-slate-400 uppercase tracking-wider group-hover/line:text-slate-300 transition-colors">Achats Nets (Avoirs Déduits)</span>
-                      <span class="text-sm text-amber-400 font-black">-{{ Number(stats.purchase_expenses).toFixed(2) }} DH</span>
-                   </div>
                    <div v-if="stats.customer_returns > 0" class="flex justify-between items-center group/line">
                       <span class="text-xs font-bold text-slate-400 uppercase tracking-wider group-hover/line:text-slate-300 transition-colors">Retours Clients (Remboursements)</span>
                       <span class="text-sm text-rose-300 font-black">-{{ Number(stats.customer_returns).toFixed(2) }} DH</span>
