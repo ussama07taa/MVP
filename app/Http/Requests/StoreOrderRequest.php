@@ -22,6 +22,12 @@ class StoreOrderRequest extends FormRequest
             'items.*.id' => 'required',
             'items.*.quantity' => 'required|numeric|min:0.1',
             'items.*.unit_price' => 'required|numeric|min:0',
+            'items.*.name' => 'nullable|string|max:255',
+            'items.*.with_pose' => 'nullable|boolean',
+            'items.*.custom_pose_price' => 'nullable|numeric|min:0',
+            'items.*.with_canto_service' => 'nullable|boolean',
+            'items.*.custom_canto_service_price' => 'nullable|numeric|min:0',
+            'items.*.base_canto_price' => 'nullable|numeric|min:0',
             'send_to_workshop' => 'nullable|boolean',
             'workshop_notes' => 'nullable|string|max:1000'
         ];
