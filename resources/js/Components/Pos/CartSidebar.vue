@@ -121,6 +121,22 @@
         </div>
       </div>
 
+      <!-- Workshop Toggle -->
+      <div class="mb-4 bg-slate-900 p-4 rounded-2xl border border-slate-800">
+        <label class="flex items-center justify-between cursor-pointer select-none">
+          <div class="flex items-center gap-2">
+            <HammerIcon class="w-4 h-4 text-brand-400" />
+            <span class="text-xs font-black text-slate-300 uppercase tracking-widest">Envoyer à l'Atelier</span>
+          </div>
+          <input type="checkbox" v-model="sendToWorkshop" class="w-5 h-5 text-brand-500 border-slate-600 bg-slate-800 rounded focus:ring-brand-500 cursor-pointer">
+        </label>
+        <Transition name="slide">
+          <div v-if="sendToWorkshop" class="mt-3">
+            <input type="text" v-model="workshopNotes" class="w-full px-3 py-2.5 bg-black border border-slate-800 rounded-xl text-sm font-bold text-white placeholder-slate-700 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all" placeholder="Notes pour l'atelier (optionnel)...">
+          </div>
+        </Transition>
+      </div>
+
       <button @click="submitOrder" :disabled="cartStore.cart.length === 0 || !cartStore.selectedClient || isProcessing" 
         class="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-black py-4 rounded-2xl shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 hover:-translate-y-0.5 focus:ring-4 focus:ring-emerald-500/20 transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:translate-y-0 flex justify-center items-center text-lg tracking-wide relative transform active:scale-[0.99]">
         <template v-if="isProcessing">
@@ -152,7 +168,7 @@ import { router } from '@inertiajs/vue3';
 import { useCartStore } from '@/stores/cart';
 import { usePrint } from '@/composables/usePrint';
 import InvoiceTemplate from '@/Components/Print/InvoiceTemplate.vue';
-import { PlusCircleIcon, UserIcon, ShoppingCartIcon, Trash2Icon, CheckCircleIcon, Loader2Icon } from 'lucide-vue-next';
+import { PlusCircleIcon, UserIcon, ShoppingCartIcon, Trash2Icon, CheckCircleIcon, Loader2Icon, HammerIcon } from 'lucide-vue-next';
 
 const props = defineProps({
   clients: Array
@@ -164,6 +180,8 @@ const cartStore = useCartStore();
 const { printOrder } = usePrint();
 const isProcessing = ref(false);
 const lastOrder = ref(null);
+const sendToWorkshop = ref(true);
+const workshopNotes = ref('');
 
 const formatItemLabel = (name) => {
   if (!name) return '';
@@ -182,9 +200,13 @@ const submitOrder = async () => {
 
   isProcessing.value = true;
   
+  const hasServices = cartStore.cart.some(i => i.type === 'service' || i.type === 'custom_labor' || i.with_canto_service);
+
   const payload = { 
     client_id: cartStore.selectedClient, 
     amount_paid: cartStore.amountPaid || 0, 
+    send_to_workshop: sendToWorkshop.value && hasServices,
+    workshop_notes: workshopNotes.value || '',
     items: cartStore.cart.map(i => ({ 
       type: i.type, 
       id: i.id, 
@@ -213,6 +235,7 @@ const submitOrder = async () => {
         printOrder();
         alert('Facture validée avec succès !');
         cartStore.clearCart();
+        workshopNotes.value = '';
         emit('orderSubmitted');
       });
     },

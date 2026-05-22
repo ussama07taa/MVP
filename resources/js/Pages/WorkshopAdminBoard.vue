@@ -204,10 +204,24 @@
           </div>
 
           <form @submit.prevent="submitJob" class="p-10 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
-            <div class="space-y-3">
+            <div class="space-y-3 relative">
               <label class="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Client *</label>
-              <input type="text" v-model="form.client_name" required placeholder="Nom du client..."
-                class="w-full p-5 bg-white/50 border border-slate-200 rounded-3xl font-bold text-lg focus:ring-8 focus:ring-brand-500/10 focus:border-brand-500 transition-all shadow-inner">
+              <div class="relative">
+                <UserIcon class="w-5 h-5 absolute left-5 top-1/2 transform -translate-y-1/2 text-slate-400" />
+                <input type="text" v-model="clientSearch" @input="onClientInput" @focus="showClientDropdown = true" @blur="setTimeout(() => showClientDropdown = false, 200)" required placeholder="Chercher ou taper le nom..."
+                  class="w-full pl-14 pr-5 py-5 bg-white/50 border border-slate-200 rounded-3xl font-bold text-lg focus:ring-8 focus:ring-brand-500/10 focus:border-brand-500 transition-all shadow-inner">
+              </div>
+              <!-- Autocomplete Dropdown -->
+              <div v-if="showClientDropdown && filteredClients.length > 0" class="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto">
+                <button v-for="c in filteredClients" :key="c.id" type="button" @mousedown.prevent="selectClient(c)"
+                  class="w-full px-5 py-4 flex items-center justify-between hover:bg-brand-50 transition-colors text-left border-b border-slate-50 last:border-b-0">
+                  <div>
+                    <span class="font-black text-slate-900 text-sm">{{ c.name }}</span>
+                    <span v-if="c.phone" class="ml-2 text-xs text-slate-400 font-bold">{{ c.phone }}</span>
+                  </div>
+                  <span v-if="c.total_credit > 0" class="text-[10px] font-black text-rose-500 bg-rose-50 px-2 py-1 rounded-lg">{{ c.total_credit }} DH</span>
+                </button>
+              </div>
             </div>
 
             <!-- Dynamic Services with Quantities -->
@@ -512,6 +526,41 @@ const customQty = ref(1);
 const defaultQty = ref(1);
 let pollInterval = null;
 
+// Client autocomplete
+const allClients = ref([]);
+const clientSearch = ref('');
+const showClientDropdown = ref(false);
+
+const filteredClients = computed(() => {
+  if (!clientSearch.value.trim()) return [];
+  const q = clientSearch.value.toLowerCase().trim();
+  return allClients.value.filter(c => 
+    c.name.toLowerCase().includes(q) || (c.phone && c.phone.includes(q))
+  ).slice(0, 8);
+});
+
+const selectClient = (client) => {
+  form.value.client_name = client.name;
+  form.value.client_phone = client.phone || '';
+  clientSearch.value = client.name;
+  showClientDropdown.value = false;
+};
+
+const onClientInput = () => {
+  form.value.client_name = clientSearch.value;
+  form.value.client_phone = '';
+  showClientDropdown.value = true;
+};
+
+const fetchClients = async () => {
+  try {
+    const res = await axios.get('/api/admin/clients');
+    allClients.value = res.data;
+  } catch (e) {
+    console.error('Failed to load clients', e);
+  }
+};
+
 // Tabbed queue system
 const activeTab = ref('active');
 
@@ -623,6 +672,7 @@ const printOrderInvoice = (order) => {
 
 const form = ref({
   client_name: '',
+  client_phone: '',
   services: [],
   notes: ''
 });
@@ -667,7 +717,8 @@ const submitJob = async () => {
   try {
     await axios.post('/api/admin/workshop-queue', form.value);
     showAddModal.value = false;
-    form.value = { client_name: '', services: [], notes: '' };
+    form.value = { client_name: '', client_phone: '', services: [], notes: '' };
+    clientSearch.value = '';
     fetchQueue();
   } catch (error) {
     alert(error.response?.data?.error || 'Erreur lors de l\'ajout.');
@@ -760,6 +811,7 @@ const stopPolling = () => {
 
 onMounted(() => {
   fetchQueue();
+  fetchClients();
   startPolling();
   document.addEventListener('visibilitychange', handleVisibilityChange);
 });
