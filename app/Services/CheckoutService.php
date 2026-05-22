@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\{Order, Client, Service};
+use App\Models\{Order, Client, Service, WorkshopQueue, WorkshopQueueService};
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 
@@ -66,7 +66,12 @@ class CheckoutService
                 );
             }
 
-            // 4. CLEANUP
+            // 4. WORKSHOP QUEUE (if requested and order has services)
+            if (!empty($data['send_to_workshop'])) {
+                $this->createWorkshopEntry($order, $processedItems, $tenantId, $data);
+            }
+
+            // 5. CLEANUP
             Cache::forget("tenant.{$tenantId}.panels");
             Cache::forget("tenant.{$tenantId}.cantos");
 
@@ -181,5 +186,39 @@ class CheckoutService
             'total_line_sell' => $pItem['line_sell'],
             'total_line_cost' => $pItem['line_cost']
         ]);
+    }
+
+    protected function createWorkshopEntry(Order $order, array $processedItems, int $tenantId, array $data): void
+    {
+        $serviceLines = collect($processedItems)->filter(function ($item) {
+            return $item['type'] === Service::class;
+        });
+
+        if ($serviceLines->isEmpty()) {
+            return;
+        }
+
+        $client = Client::find($order->client_id);
+
+        $queue = WorkshopQueue::create([
+            'tenant_id'    => $tenantId,
+            'queue_number' => WorkshopQueue::generateNumber($tenantId),
+            'client_name'  => $client->name ?? 'Client',
+            'client_phone' => $client->phone ?? null,
+            'notes'        => trim(($data['workshop_notes'] ?? '') . ' | Facture #' . $order->id),
+            'status'       => 'waiting',
+        ]);
+
+        foreach ($serviceLines as $line) {
+            WorkshopQueueService::create([
+                'queue_id'       => $queue->id,
+                'label'          => $line['label'] ?? 'Service',
+                'material_type'  => null,
+                'material_color' => null,
+                'quantity'       => $line['quantity'],
+                'unit'           => 'u',
+                'is_done'        => false,
+            ]);
+        }
     }
 }

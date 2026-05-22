@@ -21,7 +21,9 @@ class StoreOrderRequest extends FormRequest
             'items.*.type' => 'required|in:panel,canto,service,custom_labor',
             'items.*.id' => 'required',
             'items.*.quantity' => 'required|numeric|min:0.1',
-            'items.*.unit_price' => 'required|numeric|min:0'
+            'items.*.unit_price' => 'required|numeric|min:0',
+            'send_to_workshop' => 'nullable|boolean',
+            'workshop_notes' => 'nullable|string|max:1000'
         ];
     }
 }

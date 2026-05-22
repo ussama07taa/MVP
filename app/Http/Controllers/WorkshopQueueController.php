@@ -9,7 +9,7 @@ use App\Models\{WorkshopQueue, WorkshopQueueService};
 class WorkshopQueueController extends Controller
 {
     /**
-     * Full queue list for admin (today's jobs).
+     * Full queue list for admin: all pending/active jobs + today's delivered.
      */
     public function index()
     {
@@ -28,9 +28,13 @@ class WorkshopQueueController extends Controller
 
     private function buildQueueData(int $tenantId, bool $includeDelivered, bool $includeHidden): array
     {
+        // Show ALL non-delivered jobs (regardless of date) + delivered jobs from today only
         $query = WorkshopQueue::where('tenant_id', $tenantId)
-            ->whereDate('created_at', today())
             ->with(['services' => fn($q) => $q->with('doneByUser:id,name')])
+            ->where(function ($q) {
+                $q->where('status', '!=', 'delivered')
+                  ->orWhereDate('delivered_at', today());
+            })
             ->orderBy('id');
 
         if (!$includeDelivered) {
@@ -67,7 +71,8 @@ class WorkshopQueueController extends Controller
                 'services_total'    => $total,
                 'services_done'     => $done,
                 'all_done'          => $total > 0 && $done === $total,
-                'waiting_since'     => $q->created_at->format('H:i'),
+                'created_date'      => $q->created_at->format('d/m'),
+                'waiting_since'     => $q->created_at->isToday() ? $q->created_at->format('H:i') : $q->created_at->format('d/m H:i'),
                 'waiting_minutes'   => (int) $q->created_at->diffInMinutes(now()),
                 'started_at'        => $q->started_at?->format('H:i'),
                 'done_at_time'      => $q->done_at?->format('H:i'),
