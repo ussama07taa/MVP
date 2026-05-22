@@ -80,13 +80,25 @@ class FinancialStatsService
         $cashOut = (float)$otherExpenses + (float)$monthlyWages + (float)$purchasesPaid;
         $netCashFlow = (float)$totalCollected - $cashOut;
 
-        $grossMargin = (float)$revenue - (float)$cogs;
+        // 7. Customer Returns (Order Refunds)
+        $customerReturns = (float) DB::table('order_returns')
+            ->where('tenant_id', $tenantId)
+            ->whereMonth('created_at', $month)
+            ->whereYear('created_at', $year)
+            ->sum('total_refunded');
+
+        // Net Revenue = Gross Revenue - Customer Returns
+        $netRevenue = (float)$revenue - $customerReturns;
+
+        $grossMargin = $netRevenue - (float)$cogs;
         $netProfit = $grossMargin - $opex;
-        $marginPercentage = $revenue > 0 ? ($netProfit / $revenue) * 100 : 0;
+        $marginPercentage = $netRevenue > 0 ? ($netProfit / $netRevenue) * 100 : 0;
 
         return [
             'month_name' => $dateObj->translatedFormat('F Y'),
-            'revenue' => (float)$revenue,
+            'revenue' => (float)$netRevenue,
+            'gross_revenue' => (float)$revenue,
+            'customer_returns' => $customerReturns,
             'order_count' => $orderCount,
             'avg_order_value' => round($averageOrderValue, 2),
             'cogs' => (float)$cogs,

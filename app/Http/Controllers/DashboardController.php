@@ -43,24 +43,24 @@ class DashboardController extends Controller {
         $totalUnpaidCredit = Client::withoutGlobalScopes()->sum('total_credit');
 
         // === OPERATING EXPENSES (Ce mois) ===
-        // 1. Salaries & OPEX
-        $salaryExpensesThisMonth = \App\Models\Expense::withoutGlobalScopes()->where('expense_date', '>=', $startOfMonth)
+        // 1. All operating expenses (salaries, rent, utilities, etc.)
+        $totalExpensesThisMonth = \App\Models\Expense::withoutGlobalScopes()->where('expense_date', '>=', $startOfMonth)
             ->sum('amount');
         
-        // 2. Consumables Purchased (Gross Purchases)
+        // 2. Gross Purchases (for display only — NOT subtracted from profit, since
+        //    material costs are already accounted for in COGS via total_cost_price)
         $grossPurchasesThisMonth = \App\Models\Purchase::withoutGlobalScopes()->where('created_at', '>=', $startOfMonth)->sum('total_amount');
 
-        // 3. Purchase Returns (Subtraction)
-        $totalReturnsThisMonth = \App\Models\PurchaseReturn::withoutGlobalScopes()->where('created_at', '>=', $startOfMonth)->sum('refund_amount');
+        // 3. Purchase Returns / Supplier Refunds (for display)
+        $supplierReturnsThisMonth = \App\Models\PurchaseReturn::withoutGlobalScopes()->where('created_at', '>=', $startOfMonth)->sum('refund_amount');
 
-        // 4. Net Purchases (True COGS)
-        $netPurchasesThisMonth = $grossPurchasesThisMonth - $totalReturnsThisMonth;
-
-        // 5. Customer Returns (Order Refunds)
+        // 4. Customer Returns (Order Refunds)
         $customerReturnsThisMonth = OrderReturn::withoutGlobalScopes()->where('created_at', '>=', $startOfMonth)->sum('total_refunded');
 
-        // Net Profit = Gross Profit - Salaries - Net Purchases - Customer Returns
-        $netProfitThisMonth = $profitThisMonth - $salaryExpensesThisMonth - $netPurchasesThisMonth - $customerReturnsThisMonth;
+        // Net Profit = Gross Profit - Operating Expenses - Customer Returns
+        // NOTE: Purchases are NOT subtracted here because material costs are already
+        // included in total_cost_price (COGS) when each order is created.
+        $netProfitThisMonth = $profitThisMonth - $totalExpensesThisMonth - $customerReturnsThisMonth;
         $netMarginPercent = $revenueThisMonth > 0 ? ($netProfitThisMonth / $revenueThisMonth) * 100 : 0;
 
         // Global Atelier Stats
@@ -109,10 +109,9 @@ class DashboardController extends Controller {
                 'materials_revenue_today' => round($materialsRevenueThisMonth, 2),
                 'profit_today'            => round($netProfitThisMonth, 2), 
                 'gross_profit'            => round($profitThisMonth, 2),
-                'salary_expenses'         => round($salaryExpensesThisMonth, 2),
-                'purchase_expenses'       => round($netPurchasesThisMonth, 2),
+                'total_expenses'          => round($totalExpensesThisMonth, 2),
                 'gross_purchases'         => round($grossPurchasesThisMonth, 2),
-                'total_returns'           => round($totalReturnsThisMonth, 2), // Supplier
+                'supplier_returns'        => round($supplierReturnsThisMonth, 2),
                 'customer_returns'        => round($customerReturnsThisMonth, 2),
                 'margin_percent'          => round($netMarginPercent, 1),
                 'revenue_growth'          => round($growthPercent, 1),
