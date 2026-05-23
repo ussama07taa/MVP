@@ -1,7 +1,7 @@
 <?php
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\{OrderController, DashboardController, StockController, ExpenseController, PurchaseController, FinancialReportController, SettingsController, ClientController, InvoiceController, EmployeeController, WorkshopQueueController, WorkshopStatsController};
+use App\Http\Controllers\{OrderController, DashboardController, StockController, ExpenseController, PurchaseController, FinancialReportController, SettingsController, ClientController, InvoiceController, EmployeeController, WorkshopQueueController, WorkshopStatsController, BackupController};
 use App\Models\{User, Client, Order, StockPanel, StockCanto, Service, Payment, Tenant, Consumable, Employee, Supplier, Purchase};
 use Illuminate\Support\Facades\{Auth, DB, Cache};
 
@@ -44,6 +44,14 @@ Route::middleware(['auth', 'identify.tenant', 'throttle:100,1'])->group(function
         Route::delete('/admin/workshop-queue/{id}',            [WorkshopQueueController::class, 'destroy']);
         Route::get('/admin/statistics/financial', [FinancialReportController::class, 'index']);
         Route::get('/admin/statistics/workshop', [WorkshopStatsController::class, 'index']);
+
+        // Backup management
+        Route::get('/admin/backups', [BackupController::class, 'index']);
+        Route::post('/admin/backups/run-db', [BackupController::class, 'runDbOnly']);
+        Route::post('/admin/backups/run-full', [BackupController::class, 'runFull']);
+        Route::get('/admin/backups/download', [BackupController::class, 'download']);
+        Route::delete('/admin/backups', [BackupController::class, 'destroy']);
+        Route::post('/admin/backups/clean', [BackupController::class, 'clean']);
         Route::get('/admin/stat', [FinancialReportController::class, 'index']); // Alias for the frontend
         Route::get('/admin/activity-logs', [ActivityLogController::class, 'index']);
         Route::apiResource('/admin/users', UserController::class);
