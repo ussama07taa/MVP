@@ -3,10 +3,10 @@
     <div class="flex justify-between items-start border-b-2 border-slate-200 pb-5 mb-8">
       <div>
         <h1 class="text-3xl font-black text-slate-900 tracking-tighter uppercase">
-          {{ tenant?.name || 'TAAOUATI DESIGN' }}
+          {{ companyName }}
         </h1>
         <p class="text-[11px] text-slate-500 mt-1 font-black uppercase tracking-widest">
-          Menuiserie & Agencement - Since 1987
+          {{ companySubtitle }}
         </p>
       </div>
       <div class="text-right">
@@ -62,7 +62,7 @@
     <div class="mt-16 text-center border-t border-slate-100 pt-8">
       <p class="text-xs font-bold text-slate-400 leading-relaxed uppercase tracking-wider">
         Merci pour votre confiance ! <br>
-        {{ tenant?.name || 'Menuiserie Taaouati' }} - Contact: +212 666-035411 / +212 610-182585
+        {{ companyName }}{{ companyPhone ? ' - Contact: ' + companyPhone : '' }}
       </p>
     </div>
   </div>
@@ -82,6 +82,10 @@ const props = defineProps({
 
 const page = usePage();
 const tenant = computed(() => page.props.tenant);
+const settings = computed(() => window.appSettings || page.props.settings || {});
+const companyName = computed(() => settings.value.company_name || tenant.value?.name || 'Mon Entreprise');
+const companyPhone = computed(() => settings.value.company_phone || '');
+const companySubtitle = computed(() => settings.value.company_address ? settings.value.company_address.split('\n')[0] : '');
 
 const formatItemName = (name) => {
   if (!name) return '';

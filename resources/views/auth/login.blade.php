@@ -92,7 +92,7 @@
         
         <!-- Footer -->
         <div class="mt-8 text-center text-xs text-slate-400 font-medium">
-            &copy; 2026 Menuiserie Taaouati ERP. Tous droits réservés.
+            &copy; {{ date('Y') }} {{ \App\Models\Setting::first()?->company_name ?? 'Mon Entreprise' }} ERP. Tous droits réservés.
         </div>
     </div>
 </body>

@@ -62,8 +62,8 @@ class SettingsController extends Controller
 
         $settings = new Setting();
         $settings->tenant_id = $tenantId;
-        $settings->company_name = 'TAAOUATI DESIGN';
-        $settings->company_phone = '+212 666-035411 / +212 610-182585';
+        $settings->company_name = 'Mon Entreprise';
+        $settings->company_phone = '';
         $settings->invoice_footer_text = 'Merci pour votre confiance !';
         $settings->save();
 

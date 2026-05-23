@@ -104,7 +104,7 @@
             <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Nom Complet</label>
             <input v-model="form.name" type="text" required
               class="w-full bg-slate-50 border-none rounded-xl px-4 py-3 font-bold text-slate-700 focus:ring-2 focus:ring-indigo-600 transition-all placeholder:text-slate-300 placeholder:font-medium"
-              placeholder="Ex: Brahim Taaouati" />
+              placeholder="Ex: Nom Complet" />
           </div>
 
           <!-- Email -->

@@ -26,8 +26,8 @@
               </div>
             </div>
             <div>
-              <h2 class="text-2xl font-black tracking-tighter text-white leading-none">Taaouati</h2>
-              <p class="text-[9px] font-black text-brand-500 uppercase tracking-[0.3em] mt-1">SaaS ERP PRO</p>
+              <h2 class="text-2xl font-black tracking-tighter text-white leading-none">{{ companyShortName }}</h2>
+              <p class="text-[9px] font-black text-brand-500 uppercase tracking-[0.3em] mt-1">ERP PRO</p>
             </div>
           </div>
           <!-- Close button on mobile -->
@@ -308,6 +308,10 @@ const closeMobileOnNav = (e) => {
 
 const authUser = computed(() => page.props.auth.user || { name: 'Utilisateur', role: 'cashier' });
 const userRole = computed(() => authUser.value.role);
+const companyShortName = computed(() => {
+  const s = window.appSettings || {};
+  return s.company_name || 'Mon Entreprise';
+});
 
 // Notifications logic (Fetch low stock etc)
 const fetchNotifications = async () => {
