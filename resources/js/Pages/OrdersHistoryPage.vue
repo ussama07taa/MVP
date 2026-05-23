@@ -706,8 +706,8 @@ const printInvoice = (order) => {
   const dateStr = formatDate(order.created_at);
   const remaining = (Number(order.total_sell_price) - Number(order.amount_paid)).toFixed(2);
   const settings = window.appSettings || {};
-  const companyName = settings.company_name || 'TAAOUATI DESIGN';
-  const companyPhone = settings.company_phone || '+212 666-035411 / +212 610-182585';
+  const companyName = settings.company_name || 'Mon Entreprise';
+  const companyPhone = settings.company_phone || '';
   const footerText = settings.invoice_footer_text || 'Merci pour votre confiance !';
   const rcIceHtml = (settings.company_rc || settings.company_ice) ? `<p style="font-size: 10px; color: #64748b; margin-top: 5px; font-weight: bold;">${settings.company_ice ? 'ICE: ' + settings.company_ice : ''} ${settings.company_rc ? 'RC: ' + settings.company_rc : ''}</p>` : '';
   const logoHtml = settings.company_logo ? `<img src="/storage/${settings.company_logo}" style="height: 80px; width: 80px; object-fit: contain;">` : '';

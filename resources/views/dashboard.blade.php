@@ -11,7 +11,7 @@
     <script>
         // Use optional chaining/null checks for safety
         window.authUser = {!! json_encode(auth()->user()) !!} || null;
-        window.appSettings = {!! json_encode(\App\Models\Setting::first() ?? ['company_name' => 'TAAOUATI DESIGN', 'company_phone' => '+212 666-035411 / +212 610-182585', 'invoice_footer_text' => 'Merci pour votre confiance !']) !!};
+        window.appSettings = {!! json_encode(\App\Models\Setting::first() ?? ['company_name' => 'Mon Entreprise', 'company_phone' => '', 'invoice_footer_text' => 'Merci pour votre confiance !']) !!};
         window.csrfToken = '{{ csrf_token() }}';
     </script>
 </head>

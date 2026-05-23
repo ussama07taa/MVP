@@ -20,7 +20,7 @@
               <span class="text-[10px] font-black text-brand-700 uppercase tracking-widest">En ligne & Synchronisé</span>
             </div>
             <h1 class="text-4xl lg:text-5xl font-black text-slate-900 tracking-tight leading-none">
-              Taaouati <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-indigo-600">Design</span>
+              {{ dashboardTitle }} <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-indigo-600">ERP</span>
             </h1>
             <p class="text-slate-500 font-bold mt-2 text-sm max-w-lg">Tableau de bord de direction • Résumé analytique de l'atelier.</p>
           </div>
@@ -353,6 +353,7 @@ const props = defineProps({
   alerts: Object
 });
 
+const dashboardTitle = computed(() => (window.appSettings || {}).company_name || 'Mon Entreprise');
 const todayDate = computed(() => {
   return new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
 });

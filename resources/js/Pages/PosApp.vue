@@ -16,7 +16,7 @@
               Point de Vente 
               <span class="ml-2.5 px-2 py-0.5 bg-brand-50 border border-brand-100/50 text-[10px] font-black text-brand-600 rounded-md uppercase tracking-wider">Live</span>
             </h1>
-            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Menuiserie Taaouati</p>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">{{ companyName }}</p>
           </div>
         </div>
 
@@ -111,6 +111,7 @@ const cartStore = useCartStore();
 const toast = useToast();
 const page = usePage();
 const authUser = computed(() => page.props.auth.user);
+const companyName = computed(() => (window.appSettings || {}).company_name || 'Mon Entreprise');
 const logout = () => router.post('/logout');
 
 const props = defineProps({

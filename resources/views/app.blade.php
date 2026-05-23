@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TAAOUATI DESIGN - ERP</title>
+    <title>{{ \App\Models\Setting::first()?->company_name ?? 'Mon Entreprise' }} - ERP</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">

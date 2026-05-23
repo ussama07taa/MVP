@@ -48,7 +48,7 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user() ? $request->user()->only('id', 'name', 'role', 'tenant_id') : null,
             ],
-            'settings' => $settings ?: ['company_name' => 'TAAOUATI DESIGN'],
+            'settings' => $settings ?: ['company_name' => 'Mon Entreprise'],
             'tenant' => $request->user() && $request->user()->tenant ? [
                 'name' => $request->user()->tenant->name,
                 'logo_url' => $logoUrl,
