@@ -50,6 +50,7 @@ Route::middleware(['auth'])->group(function () {
                     'invoices'          => 'InvoicesPage',
                     'orders'            => 'OrdersHistoryPage',
                     'workshop-queue'    => 'WorkshopAdminBoard',
+                    'workshop-stats'    => 'WorkshopStatsPage',
                     'atelier'           => 'WorkshopMobileExecution',
                 ];
 

@@ -1,7 +1,7 @@
 <?php
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\{OrderController, DashboardController, StockController, ExpenseController, PurchaseController, FinancialReportController, SettingsController, ClientController, InvoiceController, EmployeeController, WorkshopQueueController};
+use App\Http\Controllers\{OrderController, DashboardController, StockController, ExpenseController, PurchaseController, FinancialReportController, SettingsController, ClientController, InvoiceController, EmployeeController, WorkshopQueueController, WorkshopStatsController};
 use App\Models\{User, Client, Order, StockPanel, StockCanto, Service, Payment, Tenant, Consumable, Employee, Supplier, Purchase};
 use Illuminate\Support\Facades\{Auth, DB, Cache};
 
@@ -43,6 +43,7 @@ Route::middleware(['auth', 'identify.tenant', 'throttle:100,1'])->group(function
         Route::post('/admin/workshop-queue/{id}/undeliver',    [WorkshopQueueController::class, 'undeliver']);
         Route::delete('/admin/workshop-queue/{id}',            [WorkshopQueueController::class, 'destroy']);
         Route::get('/admin/statistics/financial', [FinancialReportController::class, 'index']);
+        Route::get('/admin/statistics/workshop', [WorkshopStatsController::class, 'index']);
         Route::get('/admin/stat', [FinancialReportController::class, 'index']); // Alias for the frontend
         Route::get('/admin/activity-logs', [ActivityLogController::class, 'index']);
         Route::apiResource('/admin/users', UserController::class);
