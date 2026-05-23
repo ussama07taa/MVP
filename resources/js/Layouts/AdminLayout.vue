@@ -68,6 +68,9 @@
             <Link href="/admin/atelier" class="nav-link" :class="{ 'nav-link-active': $page.url === '/admin/atelier' }">
               <UserCheckIcon class="w-5 h-5 mr-3 text-emerald-400" /> Atelier (Mobile)
             </Link>
+            <Link href="/admin/workshop-stats" class="nav-link" :class="{ 'nav-link-active': $page.url === '/admin/workshop-stats' }">
+              <BarChart3Icon class="w-5 h-5 mr-3 text-amber-400" /> Stats Atelier
+            </Link>
 
             <template v-if="userRole === 'admin'">
               <div class="pt-4 pb-2 px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Inventaire & Achats</div>
@@ -241,7 +244,7 @@ import {
   LayoutGridIcon, FileTextIcon, PlusCircleIcon, LayersIcon, 
   UsersIcon, SettingsIcon, BellIcon, HardHatIcon, TruckIcon, ReceiptIcon,
   PieChartIcon, SlidersIcon, ChevronDownIcon, ActivityIcon, ShieldIcon,
-  MenuIcon, XIcon, LogOutIcon, ChevronRightIcon, ClipboardListIcon, UserCheckIcon
+  MenuIcon, XIcon, LogOutIcon, ChevronRightIcon, ClipboardListIcon, UserCheckIcon, BarChart3Icon
 } from 'lucide-vue-next';
 
 const page = usePage();
@@ -289,6 +292,7 @@ const pageName = computed(() => {
     '/admin/system-logs': 'Audit & Activités',
     '/admin/users': 'Utilisateurs & Accès',
     '/admin/workshop-queue': 'Tableau de l\'Atelier',
+    '/admin/workshop-stats': 'Stats Atelier',
     '/admin/atelier': 'Atelier Mobile'
   };
   return mappings[page.url] || 'Administration';
