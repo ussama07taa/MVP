@@ -3,6 +3,7 @@ import { createApp, h } from 'vue';
 import { createInertiaApp, Link, Head } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import AdminLayout from './Layouts/AdminLayout.vue';
+import ToastNotification from './Components/ToastNotification.vue';
 
 import { createPinia } from 'pinia';
 import piniaPluginPersistedstate from 'pinia-plugin-persistedstate';
@@ -25,12 +26,13 @@ if (appElement) {
     },
     setup({ el, App, props, plugin }) {
       window.authUser = props.initialPage.props.auth?.user;
-      createApp({ render: () => h(App, props) })
-        .use(plugin)
-        .use(pinia)
-        .component('Link', Link)
-        .component('Head', Head)
-        .mount(el);
+      const app = createApp({ render: () => h(App, props) });
+      app.use(plugin);
+      app.use(pinia);
+      app.component('Link', Link);
+      app.component('Head', Head);
+      app.component('ToastNotification', ToastNotification);
+      app.mount(el);
     },
     progress: {
       color: '#4B5563',

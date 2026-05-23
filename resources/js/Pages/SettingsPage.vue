@@ -80,6 +80,8 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
+import { useToast } from '@/composables/useToast';
+const toast = useToast();
 
 const form = ref({
     company_name: '',
@@ -142,11 +144,11 @@ const saveSettings = async () => {
         // server-stored path so future refreshes show it).
         await loadSettings();
         logoFile.value = null;
-        alert('Paramètres enregistrés avec succès.');
+        toast.success('Paramètres enregistrés avec succès.');
     } catch (e) {
         const msg = e?.response?.data?.message
             || (e?.response?.data?.errors ? Object.values(e.response.data.errors).flat().join('\n') : 'Erreur de sauvegarde.');
-        alert(msg);
+        toast.error(msg);
     } finally {
         saving.value = false;
     }

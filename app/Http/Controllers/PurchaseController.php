@@ -15,7 +15,7 @@ class PurchaseController extends Controller
         $this->stockService = $stockService;
     }
 
-    public function store(Request $request) {
+    public function store(\App\Http\Requests\StorePurchaseRequest $request) {
         try {
             DB::beginTransaction();
             

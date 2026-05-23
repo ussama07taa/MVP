@@ -127,6 +127,8 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
+import { useToast } from '@/composables/useToast';
+const toast = useToast();
 import { 
   CalculatorIcon, CalendarIcon, RotateCwIcon, 
   CheckCircleIcon, UsersIcon 
@@ -176,10 +178,10 @@ const closePayroll = async () => {
             start_date: startDate.value,
             end_date: endDate.value
         });
-        alert('Paie clôturée avec succès !');
+        toast.success('Paie clôturée avec succès !');
         loadPayroll(); // Refresh
     } catch (error) {
-        alert('Erreur lors de la clôture de la paie');
+        toast.error('Erreur lors de la clôture de la paie');
     } finally {
         isLoading.value = false;
     }

@@ -1,4 +1,5 @@
 <template>
+  <ToastNotification />
   <div class="h-screen flex bg-slate-50 font-sans overflow-hidden selection:bg-brand-500 selection:text-white">
     
     <!-- LEFT PANEL: Products (Scrollable with premium dynamic backdrop) -->
@@ -99,6 +100,7 @@ import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
 import { usePage, router, Link } from '@inertiajs/vue3';
 import { useCartStore } from '@/stores/cart';
+import { useToast } from '@/composables/useToast';
 import { LayoutDashboardIcon, SearchIcon, XIcon, Loader2Icon } from 'lucide-vue-next';
 
 // Components
@@ -106,6 +108,7 @@ import ProductGrid from '@/Components/Pos/ProductGrid.vue';
 import CartSidebar from '@/Components/Pos/CartSidebar.vue';
 
 const cartStore = useCartStore();
+const toast = useToast();
 const page = usePage();
 const authUser = computed(() => page.props.auth.user);
 const logout = () => router.post('/logout');
@@ -158,7 +161,7 @@ const saveNewClient = async () => {
         });
     } catch (error) {
         console.error('Erreur ajout client:', error);
-        alert('Erreur lors de l\'ajout du client.');
+        toast.error('Erreur lors de l\'ajout du client.');
     } finally {
         isSubmittingClient.value = false;
     }

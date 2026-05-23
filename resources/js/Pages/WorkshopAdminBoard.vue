@@ -508,6 +508,8 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
+import { useToast } from '@/composables/useToast';
+const toast = useToast();
 import { 
   PlusIcon, RefreshCwIcon, Trash2Icon, ClockIcon, 
   CheckCircleIcon, XIcon, Loader2Icon, ActivityIcon,
@@ -712,7 +714,7 @@ const addCustomService = () => {
 };
 
 const submitJob = async () => {
-  if (form.value.services.length === 0) return alert('Veuillez ajouter au moins une tâche.');
+  if (form.value.services.length === 0) return toast.warning('Veuillez ajouter au moins une tâche.');
   isSubmitting.value = true;
   try {
     await axios.post('/api/admin/workshop-queue', form.value);
@@ -721,7 +723,7 @@ const submitJob = async () => {
     clientSearch.value = '';
     fetchQueue();
   } catch (error) {
-    alert(error.response?.data?.error || 'Erreur lors de l\'ajout.');
+    toast.error(error.response?.data?.error || 'Erreur lors de l\'ajout.');
   } finally {
     isSubmitting.value = false;
   }
@@ -733,7 +735,7 @@ const deliverJob = async (job) => {
     await axios.post(`/api/admin/workshop-queue/${job.id}/deliver`);
     fetchQueue();
   } catch (error) {
-    alert('Erreur lors de la livraison.');
+    toast.error('Erreur lors de la livraison.');
   }
 };
 
@@ -743,7 +745,7 @@ const undeliverJob = async (job) => {
     await axios.post(`/api/admin/workshop-queue/${job.id}/undeliver`);
     fetchQueue();
   } catch (error) {
-    alert('Erreur lors de l\'annulation de la livraison.');
+    toast.error('Erreur lors de l\'annulation de la livraison.');
   }
 };
 
@@ -753,7 +755,7 @@ const deleteJob = async (job) => {
     await axios.delete(`/api/admin/workshop-queue/${job.id}`);
     fetchQueue();
   } catch (error) {
-    alert('Erreur lors de la suppression.');
+    toast.error('Erreur lors de la suppression.');
   }
 };
 

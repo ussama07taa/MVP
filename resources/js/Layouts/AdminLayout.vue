@@ -1,4 +1,5 @@
 <template>
+  <ToastNotification />
   <div class="flex h-screen bg-surface font-sans overflow-hidden">
 
     <!-- ===== MOBILE OVERLAY ===== -->
