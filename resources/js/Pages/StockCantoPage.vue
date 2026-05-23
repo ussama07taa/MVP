@@ -601,6 +601,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
+import { useToast } from '@/composables/useToast';
+const toast = useToast();
 import { Dialog, DialogPanel, DialogTitle, TransitionRoot, TransitionChild } from '@headlessui/vue';
 import { 
   PaletteIcon, RotateCwIcon, SearchIcon, PlusCircleIcon, 
@@ -697,7 +699,7 @@ const saveNewSupplier = async () => {
     showSupplierModal.value = false;
     newSupplier.value = { name: '', phone: '' };
   } catch (e) {
-    alert('Erreur lors de la création du fournisseur');
+    toast.error('Erreur lors de la création du fournisseur');
   } finally {
     isSavingSupplier.value = false;
   }
@@ -732,7 +734,7 @@ const saveCanto = async () => {
   const calculatedTotal = parseFloat(globalCost.value);
 
   if (!form.value.supplier_id || calculatedTotal <= 0) {
-    return alert('Fournisseur et Prix Achat sont obligatoires !');
+    return toast.warning('Fournisseur et Prix Achat sont obligatoires !');
   }
 
   try {
@@ -791,13 +793,13 @@ const saveCanto = async () => {
       await axios.post('/api/admin/purchases', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      alert('Stock enregistré ET Facture Fournisseur générée !');
+      toast.success('Stock enregistré ET Facture Fournisseur générée !');
     }
     
     showAddForm.value = false; resetForm(); editingId.value = null; loadCantos();
   } catch(e) { 
     console.error(e);
-    alert('Erreur lors de l\'enregistrement'); 
+    toast.error('Erreur lors de l\'enregistrement'); 
   }
 };
 
@@ -833,7 +835,7 @@ const executeDelete = async () => {
     loadCantos(); 
     deleteModalOpen.value = false;
     itemToDelete.value = null;
-  } catch(e) { alert('Erreur'); }
+  } catch(e) { toast.error('Erreur'); }
 };
 
 const getHexColor = (code) => {
@@ -874,12 +876,12 @@ const submitAdjustment = async () => {
             reason: adjustForm.value.reason,
             notes: adjustForm.value.notes
         });
-        alert('Stock ajusté avec succès !');
+        toast.success('Stock ajusté avec succès !');
         closeAdjustmentModal();
         loadCantos();
     } catch (e) {
         console.error(e);
-        alert('Erreur lors de l\'ajustement du stock.');
+        toast.error('Erreur lors de l\'ajustement du stock.');
     }
 };
 
@@ -917,7 +919,7 @@ const exportData = async (type) => {
         }, 200);
     } catch (e) {
         console.error('Export Error:', e);
-        alert('Erreur lors du téléchargement de l\'export');
+        toast.error('Erreur lors du téléchargement de l\'export');
     }
 };
 
@@ -939,7 +941,7 @@ const downloadStockTemplate = async () => {
         window.URL.revokeObjectURL(url);
     } catch (e) {
         console.error(e);
-        alert('Erreur lors du téléchargement du modèle.');
+        toast.error('Erreur lors du téléchargement du modèle.');
     }
 };
 
@@ -957,15 +959,15 @@ const handleImportFile = async (event) => {
         });
         
         if (res.data.success) {
-            alert(res.data.message || 'Stock initial importé avec succès !');
+            toast.success(res.data.message || 'Stock initial importé avec succès !');
             isImportModalOpen.value = false;
             loadCantos();
         } else {
-            alert(res.data.message || 'Erreur lors de l\'importation');
+            toast.error(res.data.message || 'Erreur lors de l\'importation');
         }
     } catch (e) {
         console.error(e);
-        alert('Erreur lors de l\'importation : ' + (e.response?.data?.message || e.message));
+        toast.error('Erreur lors de l\'importation : ' + (e.response?.data?.message || e.message));
     } finally {
         isLoading.value = false;
         if (event.target) event.target.value = ''; // Reset input

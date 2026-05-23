@@ -176,6 +176,8 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue';
 import axios from 'axios';
+import { useToast } from '@/composables/useToast';
+const toast = useToast();
 import { usePage, router, Link } from '@inertiajs/vue3';
 import { HardHatIcon, UserPlusIcon, SearchIcon, UsersIcon, BanknoteIcon, CheckCircle2Icon, PencilIcon, Trash2Icon, CalendarCheckIcon, HistoryIcon, RotateCwIcon } from 'lucide-vue-next';
 
@@ -248,7 +250,7 @@ const openAddForm = () => { form.value = { id: null, name: '', role: 'Menuisier'
 const editEmployee = (emp) => { form.value = { id: emp.id, name: emp.name, role: emp.role, phone: emp.phone, daily_salary: emp.daily_salary }; showForm.value = true; };
 
 const saveEmployee = async () => {
-  if (!form.value.name) { alert('Le nom est obligatoire.'); return; }
+  if (!form.value.name) { toast.warning('Le nom est obligatoire.'); return; }
   const p = { name: form.value.name, role: form.value.role, phone: form.value.phone, daily_salary: form.value.daily_salary };
   if (form.value.id) await axios.put(`/api/admin/employees/${form.value.id}`, p);
   else await axios.post('/api/admin/employees', p);
@@ -258,7 +260,7 @@ const saveEmployee = async () => {
 const deleteEmployee = async (emp) => {
   if (!confirm(`Supprimer ${emp.name} ? Son historique sera supprimé.`)) return;
   try { await axios.delete(`/api/admin/employees/${emp.id}`); loadEmployees(); }
-  catch(e) { alert(e.response?.data?.error || 'Erreur'); }
+  catch(e) { toast.error(e.response?.data?.error || 'Erreur'); }
 };
 
 const openAdvance = (emp) => { advanceEmp.value = emp; advanceAmt.value = ''; };
@@ -270,10 +272,10 @@ const submitAdvance = async () => {
 
 const payEmp = async (emp) => {
   const net = emp.net_to_pay || 0;
-  if (net <= 0) { alert('Rien à payer.'); return; }
+  if (net <= 0) { toast.warning('Rien à payer.'); return; }
   if (!confirm(`✅ Payer ${fmt(net)} DH à ${emp.name} ?`)) return;
   try { await axios.post(`/api/admin/employees/${emp.id}/pay`); showSuccess(`💰 ${emp.name} payé !`); loadEmployees(); }
-  catch(e) { alert(e.response?.data?.error || 'Erreur'); }
+  catch(e) { toast.error(e.response?.data?.error || 'Erreur'); }
 };
 
 const openPointageModal = () => { showPointage.value = true; loadAttendances(); };

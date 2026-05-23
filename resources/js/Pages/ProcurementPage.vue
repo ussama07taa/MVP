@@ -479,6 +479,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
+import { useToast } from '@/composables/useToast';
+const toast = useToast();
 import { 
   TruckIcon, PlusCircleIcon, PackagePlusIcon, Trash2Icon, SaveIcon, PlusIcon, 
   HistoryIcon, LayersIcon, PaletteIcon, FileTextIcon, ChevronDownIcon, CheckCircleIcon,
@@ -560,7 +562,7 @@ const showSupplierHistory = async () => {
         expandedInvoices.value.push(purchaseHistory.value[0].id);
     }
   } catch (e) {
-    alert('Impossible de charger l\'historique');
+    toast.error('Impossible de charger l\'historique');
   }
 };
 
@@ -580,7 +582,7 @@ const getItemColor = (cat) => {
 };
 
 const saveNewSupplier = async () => {
-  if(!newSupplier.value.name) return alert('Le nom est requis');
+  if(!newSupplier.value.name) return toast.warning('Le nom est requis');
   try {
     const res = await axios.post('/api/admin/suppliers', newSupplier.value);
     suppliers.value.push(res.data);
@@ -588,7 +590,7 @@ const saveNewSupplier = async () => {
     isSupplierModalOpen.value = false;
     newSupplier.value = { name: '', phone: '', total_debt: 0 };
   } catch (error) {
-    alert('Erreur lors de la création du fournisseur');
+    toast.error('Erreur lors de la création du fournisseur');
   }
 };
 
@@ -756,7 +758,7 @@ const submitPurchase = async () => {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
 
-    alert('Achat enregistré avec succès !');
+    toast.success('Achat enregistré avec succès !');
     cart.value = []; 
     form.value.amount_paid = null; 
     form.value.reference_invoice = ''; 
@@ -764,7 +766,7 @@ const submitPurchase = async () => {
     invoiceFile.value = null;
     fetchData();
   } catch(e) { 
-    alert('Erreur lors de l\'enregistrement.'); 
+    toast.error('Erreur lors de l\'enregistrement.'); 
   }
 };
 

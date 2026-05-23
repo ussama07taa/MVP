@@ -407,6 +407,8 @@ const startDate = ref('');
 const endDate = ref('');
 
 import axios from 'axios';
+import { useToast } from '@/composables/useToast';
+const toast = useToast();
 import { 
   HistoryIcon, RotateCwIcon, AlertCircleIcon, CalendarIcon, 
   FileTextIcon, TruckIcon, SearchIcon, ArrowLeftRightIcon, XIcon, CheckCircleIcon, Loader2Icon, ArrowRightIcon, BanIcon,
@@ -504,11 +506,11 @@ const submitReturn = async () => {
     isSubmittingReturn.value = true;
     try {
         const res = await axios.post(`/api/admin/purchases/${selectedPurchase.value.id}/return`, returnForm.value);
-        alert(res.data.message);
+        toast.success(res.data.message);
         closeReturnModal();
         loadPurchases();
     } catch (error) {
-        alert(error.response?.data?.error || 'Erreur lors du retour.');
+        toast.error(error.response?.data?.error || 'Erreur lors du retour.');
     } finally {
         isSubmittingReturn.value = false;
     }

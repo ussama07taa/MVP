@@ -500,6 +500,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
+import { useToast } from '@/composables/useToast';
+const toast = useToast();
 import { 
   FileTextIcon, FilterIcon, CheckCircleIcon, ClockIcon, 
   PrinterIcon, ReceiptIcon, SearchIcon, CreditCardIcon, CalendarIcon,
@@ -610,7 +612,7 @@ const addPayment = async () => {
   
   const reste = Number(selectedOrder.value.total_sell_price) - Number(selectedOrder.value.amount_paid);
   if (paymentAmount.value > (reste + 0.01)) {
-    alert('Erreur: Le montant (' + paymentAmount.value + ' DH) est supérieur au reste à payer (' + reste.toFixed(2) + ' DH).');
+    toast.error('Le montant (' + paymentAmount.value + ' DH) est supérieur au reste à payer (' + reste.toFixed(2) + ' DH).');
     return;
   }
 
@@ -625,9 +627,9 @@ const addPayment = async () => {
       selectedOrder.value = updatedOrder; // update modal instantly
     }
     paymentAmount.value = null;
-    alert('Paiement ajouté avec succès!');
+    toast.success('Paiement ajouté avec succès!');
   } catch(e) {
-    alert('Erreur lors de l\'ajout du paiement');
+    toast.error('Erreur lors de l\'ajout du paiement');
     console.error(e);
   }
 };
@@ -669,13 +671,13 @@ const processReturn = async () => {
     };
 
     const res = await axios.post(`/api/admin/orders/${returnForm.value.order_id}/return`, payload);
-    alert(res.data.message);
+    toast.success(res.data.message);
     
     isReturnModalOpen.value = false;
     closeModal();
     loadOrders(); // Refresh everything
   } catch (e) {
-    alert(e.response?.data?.error || 'Erreur lors du traitement du retour');
+    toast.error(e.response?.data?.error || 'Erreur lors du traitement du retour');
     console.error(e);
   } finally {
     isSubmittingReturn.value = false;
@@ -858,7 +860,7 @@ const exportData = async (type) => {
         }, 200);
     } catch (e) {
         console.error('Export Error:', e);
-        alert('Erreur lors du téléchargement de l\'export');
+        toast.error('Erreur lors du téléchargement de l\'export');
     }
 };
 

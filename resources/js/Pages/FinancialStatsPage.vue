@@ -392,6 +392,8 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
+import { useToast } from '@/composables/useToast';
+const toast = useToast();
 import { 
   PieChartIcon, RotateCwIcon, TrendingUpIcon, TruckIcon, 
   ReceiptIcon, CheckCircleIcon, CalendarIcon, ZapIcon,
@@ -544,7 +546,7 @@ const exportStats = async () => {
         window.URL.revokeObjectURL(url);
     } catch (e) {
         console.error(e);
-        alert('Erreur lors du téléchargement de l\'export');
+        toast.error('Erreur lors du téléchargement de l\'export');
     }
 };
 

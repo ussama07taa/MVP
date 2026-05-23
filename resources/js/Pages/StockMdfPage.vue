@@ -609,6 +609,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
+import { useToast } from '@/composables/useToast';
+const toast = useToast();
 import { Dialog, DialogPanel, DialogTitle, TransitionRoot, TransitionChild } from '@headlessui/vue';
 import { 
   LayersIcon, RotateCwIcon, SearchIcon, PlusCircleIcon, 
@@ -701,7 +703,7 @@ const saveNewSupplier = async () => {
     showSupplierModal.value = false;
     newSupplier.value = { name: '', phone: '' };
   } catch (e) {
-    alert('Erreur lors de la création du fournisseur');
+    toast.error('Erreur lors de la création du fournisseur');
   } finally {
     isSavingSupplier.value = false;
   }
@@ -753,7 +755,7 @@ const saveMdf = async () => {
   const calculatedTotal = form.value.quantity * form.value.unit_cost;
 
   if (!form.value.supplier_id || calculatedTotal <= 0) {
-    return alert('Fournisseur et Prix d\'Achat sont obligatoires pour la comptabilité !');
+    return toast.warning('Fournisseur et Prix d\'Achat sont obligatoires pour la comptabilité !');
   }
 
   try {
@@ -818,7 +820,7 @@ const saveMdf = async () => {
       await axios.post('/api/admin/purchases', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      alert('Stock enregistré ET Facture Fournisseur générée avec succès !');
+      toast.success('Stock enregistré ET Facture Fournisseur générée avec succès !');
     }
     
     showAddForm.value = false; 
@@ -826,7 +828,7 @@ const saveMdf = async () => {
     loadPanels();
   } catch(e) { 
     console.error(e);
-    alert('Erreur lors de l\'enregistrement. ' + (e.response?.data?.error || '')); 
+    toast.error('Erreur lors de l\'enregistrement. ' + (e.response?.data?.error || '')); 
   }
 };
 
@@ -863,7 +865,7 @@ const executeDelete = async () => {
     loadPanels(); 
     deleteModalOpen.value = false;
     itemToDelete.value = null;
-  } catch(e) { alert('Erreur lors de la suppression'); }
+  } catch(e) { toast.error('Erreur lors de la suppression'); }
 };
 
 const getHexColor = (code) => {
@@ -904,12 +906,12 @@ const submitAdjustment = async () => {
             reason: adjustForm.value.reason,
             notes: adjustForm.value.notes
         });
-        alert('Stock ajusté avec succès !');
+        toast.success('Stock ajusté avec succès !');
         closeAdjustmentModal();
         loadPanels();
     } catch (e) {
         console.error(e);
-        alert('Erreur lors de l\'ajustement du stock.');
+        toast.error('Erreur lors de l\'ajustement du stock.');
     }
 };
 
@@ -947,7 +949,7 @@ const exportData = async (type) => {
         }, 200);
     } catch (e) {
         console.error('Export Error:', e);
-        alert('Erreur lors du téléchargement de l\'export');
+        toast.error('Erreur lors du téléchargement de l\'export');
     }
 };
 
@@ -969,7 +971,7 @@ const downloadStockTemplate = async () => {
         window.URL.revokeObjectURL(url);
     } catch (e) {
         console.error(e);
-        alert('Erreur lors du téléchargement du modèle.');
+        toast.error('Erreur lors du téléchargement du modèle.');
     }
 };
 
@@ -987,15 +989,15 @@ const handleImportFile = async (event) => {
         });
         
         if (res.data.success) {
-            alert(res.data.message || 'Stock initial importé avec succès !');
+            toast.success(res.data.message || 'Stock initial importé avec succès !');
             isImportModalOpen.value = false;
             loadPanels();
         } else {
-            alert(res.data.message || 'Erreur lors de l\'importation');
+            toast.error(res.data.message || 'Erreur lors de l\'importation');
         }
     } catch (e) {
         console.error(e);
-        alert('Erreur lors de l\'importation : ' + (e.response?.data?.message || e.message));
+        toast.error('Erreur lors de l\'importation : ' + (e.response?.data?.message || e.message));
     } finally {
         isLoading.value = false;
         if (event.target) event.target.value = ''; // Reset input

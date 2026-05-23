@@ -422,6 +422,8 @@
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue';
 import axios from 'axios';
+import { useToast } from '@/composables/useToast';
+const toast = useToast();
 import { 
   ReceiptIcon, PlusIcon, PlusCircleIcon, Trash2Icon, XIcon, EyeIcon, PrinterIcon,
   TrendingDownIcon, TrendingUpIcon, WalletIcon, ActivityIcon, RotateCwIcon,
@@ -581,7 +583,7 @@ const loadExpenses = async () => {
 
 const saveExpense = async () => {
   if(!form.value.title || !form.value.amount || !form.value.category) {
-    return alert('Veuillez remplir le titre, la catégorie et le montant.');
+    return toast.warning('Veuillez remplir le titre, la catégorie et le montant.');
   }
   
   isSaving.value = true;
@@ -611,7 +613,7 @@ const saveExpense = async () => {
     form.value.attachment = null;
     await loadExpenses();
   } catch(e) { 
-    alert('Erreur lors de l\'enregistrement de la dépense.');
+    toast.error('Erreur lors de l\'enregistrement de la dépense.');
     console.error(e);
   } finally {
     isSaving.value = false;
@@ -652,7 +654,7 @@ const exportData = async (type) => {
         }, 200);
     } catch (e) {
         console.error('Export Error:', e);
-        alert('Erreur lors du téléchargement de l\'export');
+        toast.error('Erreur lors du téléchargement de l\'export');
     }
 };
 

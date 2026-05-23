@@ -197,6 +197,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
+import { useToast } from '@/composables/useToast';
+const toast = useToast();
 import { FileTextIcon, PlusIcon, XIcon, Trash2Icon, PrinterIcon, ArrowRightCircleIcon, Loader2Icon } from 'lucide-vue-next';
 
 const invoices = ref([]);
@@ -283,7 +285,7 @@ const openEditModal = (inv) => {
 };
 
 const saveInvoice = async () => {
-  if (!form.value.client_id || form.value.items.length === 0) { alert('Veuillez remplir le client et au moins un article.'); return; }
+  if (!form.value.client_id || form.value.items.length === 0) { toast.warning('Veuillez remplir le client et au moins un article.'); return; }
   isSaving.value = true;
   try {
     if (editingInvoice.value) {
@@ -294,20 +296,20 @@ const saveInvoice = async () => {
     showModal.value = false;
     await fetchData();
   } catch (e) {
-    alert(e.response?.data?.error || 'Erreur lors de la sauvegarde.');
+    toast.error(e.response?.data?.error || 'Erreur lors de la sauvegarde.');
   } finally { isSaving.value = false; }
 };
 
 const deleteInvoice = async (inv) => {
   if (!confirm(`Supprimer ${inv.invoice_number} ?`)) return;
   try { await axios.delete(`/api/admin/invoices/${inv.id}`); await fetchData(); }
-  catch (e) { alert(e.response?.data?.error || 'Erreur.'); }
+  catch (e) { toast.error(e.response?.data?.error || 'Erreur.'); }
 };
 
 const convertQuote = async (inv) => {
   if (!confirm(`Convertir le devis ${inv.invoice_number} en facture ?`)) return;
   try { await axios.post(`/api/admin/invoices/${inv.id}/convert`); await fetchData(); }
-  catch (e) { alert(e.response?.data?.error || 'Erreur.'); }
+  catch (e) { toast.error(e.response?.data?.error || 'Erreur.'); }
 };
 
 const printInvoice = (inv) => {

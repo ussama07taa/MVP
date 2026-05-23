@@ -167,6 +167,7 @@ import { ref, nextTick } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { useCartStore } from '@/stores/cart';
 import { usePrint } from '@/composables/usePrint';
+import { useToast } from '@/composables/useToast';
 import InvoiceTemplate from '@/Components/Print/InvoiceTemplate.vue';
 import { PlusCircleIcon, UserIcon, ShoppingCartIcon, Trash2Icon, CheckCircleIcon, Loader2Icon, HammerIcon } from 'lucide-vue-next';
 
@@ -178,6 +179,7 @@ const emit = defineEmits(['openClientModal', 'orderSubmitted']);
 
 const cartStore = useCartStore();
 const { printOrder } = usePrint();
+const toast = useToast();
 const isProcessing = ref(false);
 const lastOrder = ref(null);
 const sendToWorkshop = ref(true);
@@ -194,7 +196,7 @@ const submitOrder = async () => {
   if (isProcessing.value) return;
   
   if (Number(cartStore.amountPaid) > cartStore.cartTotal) {
-    alert('Erreur: Le montant payé ne peut pas être supérieur au total de la facture.');
+    toast.error('Le montant payé ne peut pas être supérieur au total de la facture.');
     return;
   }
 
@@ -233,14 +235,14 @@ const submitOrder = async () => {
 
       nextTick(() => {
         printOrder();
-        alert('Facture validée avec succès !');
+        toast.success('Facture validée avec succès !');
         cartStore.clearCart();
         workshopNotes.value = '';
         emit('orderSubmitted');
       });
     },
     onError: (errors) => {
-      alert('Erreur lors de la validation: ' + Object.values(errors).join(', '));
+      toast.error('Erreur: ' + Object.values(errors).join(', '));
     },
     onFinish: () => {
       isProcessing.value = false;

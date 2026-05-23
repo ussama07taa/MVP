@@ -164,6 +164,8 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue';
 import axios from 'axios';
+import { useToast } from '@/composables/useToast';
+const toast = useToast();
 import { 
   CalendarCheckIcon, CalendarIcon, RotateCwIcon, 
   CheckCheckIcon, SaveIcon, UserIcon, CheckCircle2Icon, 
@@ -237,9 +239,9 @@ const submitPointage = async () => {
         });
         // Reload from DB to show real wage_earned values
         await loadAttendances();
-        alert('Pointage enregistré avec succès !');
+        toast.success('Pointage enregistré avec succès !');
     } catch (error) {
-        alert('Erreur lors de l\'enregistrement');
+        toast.error('Erreur lors de l\'enregistrement');
     } finally {
         isSaving.value = false;
     }
@@ -254,7 +256,7 @@ const deleteAttendance = async (employeeId) => {
         attendancesForm[employeeId] = 'present';
         overtimeForm[employeeId] = 0;
     } catch (error) {
-        alert('Erreur lors de la suppression.');
+        toast.error('Erreur lors de la suppression.');
     }
 };
 

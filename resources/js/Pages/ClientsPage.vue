@@ -379,6 +379,8 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
+import { useToast } from '@/composables/useToast';
+const toast = useToast();
 import { 
   UsersIcon, UserPlusIcon, UserIcon, PhoneIcon, 
   PhoneCallIcon, AlertCircleIcon, CheckCircleIcon, UserSearchIcon,
@@ -485,7 +487,7 @@ const openClientDetails = async (cl) => {
     // Pre-fill form for edits
     form.value = { id: cl.id, name: cl.name, phone: cl.phone };
   } catch(e) {
-    alert("Erreur lors du chargement de l'historique du client.");
+    toast.error("Erreur lors du chargement de l'historique du client.");
   }
 };
 
@@ -499,7 +501,7 @@ const submitPayment = async () => {
 
   const reste = Number(orderToPay.value.total_sell_price) - Number(orderToPay.value.amount_paid);
   if (paymentAmount.value > (reste + 0.01)) {
-    alert('Erreur: Le montant (' + paymentAmount.value + ' DH) est supérieur au reste à payer sur cette facture (' + reste.toFixed(2) + ' DH).');
+    toast.error('Le montant (' + paymentAmount.value + ' DH) est supérieur au reste à payer (' + reste.toFixed(2) + ' DH).');
     return;
   }
 
@@ -507,7 +509,7 @@ const submitPayment = async () => {
     await axios.post(`/api/orders/${orderToPay.value.id}/pay`, {
       amount: parseFloat(paymentAmount.value)
     });
-    alert('Paiement encaissé avec succès!');
+    toast.success('Paiement encaissé avec succès!');
     
     // Refresh client history & global grid
     const clientIdToRefresh = orderToPay.value.client_id;
@@ -519,7 +521,7 @@ const submitPayment = async () => {
       await openClientDetails({ id: clientIdToRefresh });
     }
   } catch(e) {
-    alert("Erreur lors de l'encaissement.");
+    toast.error("Erreur lors de l'encaissement.");
   }
 };
 
@@ -533,7 +535,7 @@ const submitGlobalPayment = async () => {
 
   const totalCredit = Number(selectedClientDossier.value.client.total_credit);
   if (globalPaymentAmount.value > (totalCredit + 0.01)) {
-    alert('Erreur: Le montant (' + globalPaymentAmount.value + ' DH) est supérieur à la dette totale du client (' + totalCredit.toFixed(2) + ' DH).');
+    toast.error('Le montant (' + globalPaymentAmount.value + ' DH) est supérieur à la dette totale (' + totalCredit.toFixed(2) + ' DH).');
     return;
   }
 
@@ -541,7 +543,7 @@ const submitGlobalPayment = async () => {
     await axios.post(`/api/clients/${selectedClientDossier.value.client.id}/pay`, {
       amount: parseFloat(globalPaymentAmount.value)
     });
-    alert('Paiement global encaissé avec succès!');
+    toast.success('Paiement global encaissé avec succès!');
     
     const clientIdToRefresh = selectedClientDossier.value.client.id;
     showGlobalPayment.value = false;
@@ -550,7 +552,7 @@ const submitGlobalPayment = async () => {
     await loadClients();
     await openClientDetails({ id: clientIdToRefresh });
   } catch(e) {
-    alert("Erreur lors de l'encaissement global.");
+    toast.error("Erreur lors de l'encaissement global.");
   }
 };
 
@@ -625,7 +627,7 @@ const editClient = (cl) => {
 };
 const saveClient = async () => {
   if (!form.value.name || !form.value.phone) {
-    alert('Le nom et le numéro de téléphone sont obligatoires.');
+    toast.warning('Le nom et le numéro de téléphone sont obligatoires.');
     return;
   }
   
@@ -641,10 +643,10 @@ const saveClient = async () => {
          selectedClientDossier.value.client.name = form.value.name;
          selectedClientDossier.value.client.phone = form.value.phone;
       }
-      alert('Client mis à jour avec succès !');
+      toast.success('Client mis à jour avec succès !');
     } else {
       await axios.post('/api/clients', payload);
-      alert('Client créé avec succès !');
+      toast.success('Client créé avec succès !');
     }
     
     showAddForm.value = false;
@@ -653,7 +655,7 @@ const saveClient = async () => {
   } catch(e) { 
     console.error(e);
     const msg = e.response?.data?.message || 'Erreur lors de la sauvegarde du client.';
-    alert(msg);
+    toast.error(msg);
   }
 };
 
@@ -691,7 +693,7 @@ const exportData = async (type) => {
         }, 200);
     } catch (e) {
         console.error('Export Error:', e);
-        alert('Erreur lors du téléchargement de l\'export');
+        toast.error('Erreur lors du téléchargement de l\'export');
     }
 };
 

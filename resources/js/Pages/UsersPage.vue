@@ -174,6 +174,8 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
+import { useToast } from '@/composables/useToast';
+const toast = useToast();
 import { 
   ShieldIcon, PlusIcon, PenIcon, BanIcon, CheckCircleIcon, XIcon, LoaderIcon, UsersIcon
 } from 'lucide-vue-next';
@@ -201,7 +203,7 @@ const loadUsers = async () => {
     users.value = res.data;
   } catch (error) {
     console.error("Erreur lors du chargement des utilisateurs", error);
-    alert('Erreur de chargement.');
+    toast.error('Erreur de chargement.');
   } finally {
     isLoading.value = false;
   }
@@ -241,9 +243,9 @@ const saveUser = async () => {
   } catch (error) {
     console.error("Erreur d'enregistrement", error);
     if(error.response && error.response.data && error.response.data.message) {
-        alert(error.response.data.message);
+        toast.error(error.response.data.message);
     } else {
-        alert('Erreur lors de l\'enregistrement.');
+        toast.error('Erreur lors de l\'enregistrement.');
     }
   } finally {
     isSaving.value = false;
@@ -265,7 +267,7 @@ const toggleStatus = async (user) => {
     user.is_active = !user.is_active;
   } catch (error) {
     console.error("Erreur lors de la modification du statut", error);
-    alert('Erreur réseau.');
+    toast.error('Erreur réseau.');
   }
 };
 

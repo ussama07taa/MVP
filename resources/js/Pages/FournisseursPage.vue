@@ -340,6 +340,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
+import { useToast } from '@/composables/useToast';
+const toast = useToast();
 import { 
   UsersIcon, TruckIcon, TrendingDownIcon, SearchIcon, HistoryIcon, WalletIcon, 
   FileTextIcon, ChevronDownIcon, LayersIcon, PaletteIcon, CheckCircleIcon, TrendingUpIcon,
@@ -438,7 +440,7 @@ const viewHistory = async (supplier) => {
         expandedInvoices.value.push(purchaseHistory.value[0].id);
     }
   } catch (e) {
-    alert('Erreur');
+    toast.error('Erreur');
   }
 };
 
@@ -466,9 +468,9 @@ const submitPayment = async () => {
     if (isHistoryModalOpen.value) {
         await refreshHistory();
     }
-    alert('Paiement enregistré avec succès !');
+    toast.success('Paiement enregistré avec succès !');
   } catch (error) {
-    alert(error.response?.data?.error || 'Erreur');
+    toast.error(error.response?.data?.error || 'Erreur');
   }
 };
 

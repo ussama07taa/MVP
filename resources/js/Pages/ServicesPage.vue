@@ -142,6 +142,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
+import { useToast } from '@/composables/useToast';
+const toast = useToast();
 import { Dialog, DialogPanel, DialogTitle, TransitionRoot, TransitionChild } from '@headlessui/vue';
 import { SettingsIcon, ScissorsIcon, HammerIcon, PlusCircleIcon, Edit3Icon, Trash2Icon, SearchIcon, CheckCircleIcon, AlertTriangleIcon, PackageSearchIcon, RotateCwIcon } from 'lucide-vue-next';
 
@@ -188,7 +190,7 @@ const saveService = async () => {
     else await axios.post('/api/admin/services', form.value);
     
     showAddForm.value = false; resetForm(); editingId.value = null; loadServices();
-  } catch(e) { alert('Erreur'); }
+  } catch(e) { toast.error('Erreur'); }
 };
 
 const editService = (srv) => {
@@ -210,7 +212,7 @@ const executeDelete = async () => {
     loadServices(); 
     deleteModalOpen.value = false;
     itemToDelete.value = null;
-  } catch(e) { alert('Erreur'); }
+  } catch(e) { toast.error('Erreur'); }
 };
 
 const getCalculationLabel = (type) => {
