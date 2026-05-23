@@ -146,6 +146,9 @@
               <Link href="/admin/users" class="nav-link" :class="{ 'nav-link-active': $page.url === '/admin/users' }">
                 <ShieldIcon class="w-5 h-5 mr-3" /> Utilisateurs & Accès
               </Link>
+              <Link href="/admin/backups" class="nav-link" :class="{ 'nav-link-active': $page.url === '/admin/backups' }">
+                <DatabaseIcon class="w-5 h-5 mr-3 text-emerald-400" /> Sauvegardes
+              </Link>
             </template>
           </template>
         </nav>
@@ -244,7 +247,7 @@ import {
   LayoutGridIcon, FileTextIcon, PlusCircleIcon, LayersIcon, 
   UsersIcon, SettingsIcon, BellIcon, HardHatIcon, TruckIcon, ReceiptIcon,
   PieChartIcon, SlidersIcon, ChevronDownIcon, ActivityIcon, ShieldIcon,
-  MenuIcon, XIcon, LogOutIcon, ChevronRightIcon, ClipboardListIcon, UserCheckIcon, BarChart3Icon
+  MenuIcon, XIcon, LogOutIcon, ChevronRightIcon, ClipboardListIcon, UserCheckIcon, BarChart3Icon, DatabaseIcon
 } from 'lucide-vue-next';
 
 const page = usePage();
@@ -293,6 +296,7 @@ const pageName = computed(() => {
     '/admin/users': 'Utilisateurs & Accès',
     '/admin/workshop-queue': 'Tableau de l\'Atelier',
     '/admin/workshop-stats': 'Stats Atelier',
+    '/admin/backups': 'Sauvegardes',
     '/admin/atelier': 'Atelier Mobile'
   };
   return mappings[page.url] || 'Administration';

@@ -51,6 +51,7 @@ Route::middleware(['auth'])->group(function () {
                     'orders'            => 'OrdersHistoryPage',
                     'workshop-queue'    => 'WorkshopAdminBoard',
                     'workshop-stats'    => 'WorkshopStatsPage',
+                    'backups'           => 'BackupPage',
                     'atelier'           => 'WorkshopMobileExecution',
                 ];
 
