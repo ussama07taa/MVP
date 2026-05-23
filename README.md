@@ -1,66 +1,220 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Menuiserie ERP — Système de Gestion d'Atelier
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+ERP complet pour gérer un atelier de menuiserie : **Point de Vente (POS)**, **Gestion de Stock**, **File d'Attente Atelier**, **Facturation**, **Paie**, et **Statistiques Financières**.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Prérequis
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+Avant de commencer, vérifiez que vous avez installé :
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+| Outil | Version minimum | Vérifier avec |
+|-------|----------------|---------------|
+| **PHP** | 8.1+ | `php -v` |
+| **Composer** | 2.x | `composer -V` |
+| **Node.js** | 18+ | `node -v` |
+| **npm** | 9+ | `npm -v` |
+| **MySQL** | 8.0+ | `mysql --version` |
 
-## Learning Laravel
+### Installation des prérequis (Windows)
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+1. **PHP** : Téléchargez [XAMPP](https://www.apachefriends.org/) ou [Laragon](https://laragon.org/) (recommandé — Laragon inclut PHP + MySQL + Composer)
+2. **Composer** : [getcomposer.org](https://getcomposer.org/download/)
+3. **Node.js** : [nodejs.org](https://nodejs.org/) (version LTS)
+4. **MySQL** : Inclus dans XAMPP/Laragon, ou téléchargez [MySQL](https://dev.mysql.com/downloads/)
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+---
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Installation
 
-## Laravel Sponsors
+### Étape 1 : Cloner le projet
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+```bash
+git clone https://github.com/ussama07taa/MVP.git
+cd MVP
+```
 
-### Premium Partners
+### Étape 2 : Installer les dépendances PHP
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+```bash
+composer install
+```
 
-## Contributing
+### Étape 3 : Configurer l'environnement
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```bash
+cp .env.example .env
+php artisan key:generate
+```
 
-## Code of Conduct
+Ouvrez le fichier `.env` et modifiez les paramètres de la base de données :
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=menuiserie_erp
+DB_USERNAME=root
+DB_PASSWORD=votre_mot_de_passe
+```
 
-## Security Vulnerabilities
+### Étape 4 : Créer la base de données
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Ouvrez MySQL (phpMyAdmin, Laragon, ou terminal) et créez la base :
 
-## License
+```sql
+CREATE DATABASE menuiserie_erp CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### Étape 5 : Lancer les migrations + Seed
+
+```bash
+php artisan migrate --seed
+```
+
+Cela va créer toutes les tables et un compte administrateur par défaut :
+- **Email** : `admin@taaouati.com`
+- **Mot de passe** : `password`
+
+> ⚠️ **IMPORTANT** : Changez le mot de passe après la première connexion !
+
+### Étape 6 : Lier le stockage
+
+```bash
+php artisan storage:link
+```
+
+Cela crée un lien symbolique pour que les logos et fichiers uploadés soient accessibles.
+
+### Étape 7 : Installer les dépendances JavaScript + Build
+
+```bash
+npm install
+npm run build
+```
+
+### Étape 8 : Lancer le serveur
+
+```bash
+php artisan serve
+```
+
+Ouvrez votre navigateur sur **http://localhost:8000**
+
+---
+
+## Configuration de l'entreprise
+
+Après la première connexion :
+
+1. Allez dans **Paramètres** (icône engrenage dans le sidebar)
+2. Remplissez :
+   - **Nom de l'Atelier** (ex: "Mon Atelier Menuiserie")
+   - **Téléphone** (ex: "+212 6XX-XXXXXX")
+   - **Email**
+   - **Adresse**
+   - **I.C.E** et **R.C** (pour les factures)
+   - **Logo** (format JPG/PNG, max 2MB)
+   - **Texte bas de facture** (optionnel)
+3. Cliquez **Enregistrer**
+
+Ces informations apparaîtront automatiquement sur toutes les factures, le POS, et le dashboard.
+
+---
+
+## Utilisateurs et Rôles
+
+Le système a 3 rôles :
+
+| Rôle | Accès |
+|------|-------|
+| **admin** | Tout (Dashboard, POS, Stock, Clients, Factures, Paie, Paramètres, Utilisateurs) |
+| **cashier** | POS, Clients, Stock, Commandes, File d'Attente Atelier |
+| **worker** | Atelier Mobile uniquement (Khedma Diyali) |
+
+Pour créer de nouveaux utilisateurs : **Utilisateurs** → **Nouvel Utilisateur**
+
+---
+
+## Fonctionnalités principales
+
+| Module | Description |
+|--------|-------------|
+| **Point de Vente (POS)** | Vente de panneaux MDF/LATI, bandchant, services (découpe, collage chant) |
+| **Gestion de Stock** | Stock panneaux + bandchant avec CUMP (coût moyen pondéré) |
+| **Achats (Procurement)** | Gestion des achats fournisseurs avec mise à jour automatique du stock |
+| **File d'Attente Atelier** | Queue pour les travaux de l'atelier avec vue mobile pour les ouvriers |
+| **Clients** | Gestion clients avec suivi de crédit et historique des commandes |
+| **Facturation** | Factures et devis avec impression |
+| **Paie** | Pointage, avances, et calcul automatique des salaires |
+| **Statistiques** | Dashboard + rapports financiers (Revenue, COGS, Marge, OPEX, Profit Net) |
+| **Dépenses** | Suivi des charges d'exploitation |
+
+---
+
+## Mode développement
+
+Si vous voulez modifier le code frontend (Vue.js), utilisez le mode dev avec hot-reload :
+
+```bash
+# Terminal 1 : Backend
+php artisan serve
+
+# Terminal 2 : Frontend (hot-reload)
+npm run dev
+```
+
+Les changements Vue.js seront visibles en temps réel sans avoir à faire `npm run build`.
+
+---
+
+## Résolution de problèmes
+
+### Les images/logo ne s'affichent pas
+```bash
+php artisan storage:link
+```
+
+### Erreur "Vite manifest not found"
+```bash
+npm install
+npm run build
+```
+
+### Erreur de connexion à la base de données
+Vérifiez les paramètres dans `.env` :
+- `DB_DATABASE` correspond au nom de votre base
+- `DB_USERNAME` et `DB_PASSWORD` sont corrects
+- MySQL est en cours d'exécution
+
+### Page blanche après mise à jour
+```bash
+php artisan cache:clear
+php artisan config:clear
+php artisan view:clear
+npm run build
+```
+
+---
+
+## Mise à jour du projet
+
+```bash
+git pull origin main
+composer install
+php artisan migrate
+npm install
+npm run build
+php artisan cache:clear
+```
+
+---
+
+## Stack technique
+
+- **Backend** : Laravel 10, PHP 8.1+
+- **Frontend** : Vue.js 3, Inertia.js v2, Tailwind CSS 4
+- **Base de données** : MySQL 8
+- **Build** : Vite 8
+- **Icons** : Lucide Vue Next
+- **Charts** : Chart.js + vue-chartjs
