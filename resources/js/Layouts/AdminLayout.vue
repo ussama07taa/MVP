@@ -140,6 +140,9 @@
               <Link href="/admin/statistiques" class="nav-link" :class="{ 'nav-link-active': $page.url === '/admin/statistiques' }">
                 <PieChartIcon class="w-5 h-5 mr-3" /> Statistiques & Arbah
               </Link>
+              <Link href="/admin/reports" class="nav-link" :class="{ 'nav-link-active': $page.url === '/admin/reports' }">
+                <FileTextIcon class="w-5 h-5 mr-3 text-violet-400" /> Rapports PDF
+              </Link>
               <Link href="/admin/system-logs" class="nav-link" :class="{ 'nav-link-active': $page.url === '/admin/system-logs' }">
                 <ActivityIcon class="w-5 h-5 mr-3" /> Audit & Activités
               </Link>
