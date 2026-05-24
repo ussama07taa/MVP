@@ -267,6 +267,8 @@ Route::middleware(['auth', 'identify.tenant', 'throttle:100,1'])->group(function
         Route::put('/admin/invoices/{id}', [InvoiceController::class, 'update']);
         Route::patch('/admin/invoices/{id}/status', [InvoiceController::class, 'updateStatus']);
         Route::post('/admin/invoices/{id}/convert', [InvoiceController::class, 'convertToInvoice']);
+        Route::post('/admin/invoices/{id}/duplicate', [InvoiceController::class, 'duplicate']);
+        Route::get('/admin/invoices-summary', [InvoiceController::class, 'summary']);
         Route::delete('/admin/invoices/{id}', [InvoiceController::class, 'destroy']);
     });
 });

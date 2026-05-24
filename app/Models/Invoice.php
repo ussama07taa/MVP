@@ -18,12 +18,24 @@ class Invoice extends Model
     protected $casts = [
         'issue_date' => 'date',
         'due_date' => 'date',
+        'expiry_date' => 'date',
         'subtotal' => 'decimal:2',
         'tax_rate' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'total' => 'decimal:2',
         'amount_paid' => 'decimal:2',
     ];
+
+    /**
+     * Check if a quote has expired.
+     */
+    public function isExpired(): bool
+    {
+        if ($this->type !== 'quote') return false;
+        if (!$this->expiry_date) return false;
+        if (in_array($this->status, ['accepted', 'paid', 'cancelled', 'refused'])) return false;
+        return $this->expiry_date->isPast();
+    }
 
     public function getActivitylogOptions(): LogOptions
     {

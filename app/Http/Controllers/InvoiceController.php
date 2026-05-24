@@ -40,13 +40,22 @@ class InvoiceController extends Controller
         }
 
         $invoices = $query->get()->map(function ($inv) {
+            // Auto-detect expired quotes
+            $status = $inv->status;
+            if ($inv->isExpired() && !in_array($status, ['accepted', 'refused', 'cancelled', 'expired'])) {
+                $status = 'expired';
+            }
+
             return [
                 'id' => $inv->id,
                 'invoice_number' => $inv->invoice_number,
                 'type' => $inv->type,
-                'status' => $inv->status,
+                'status' => $status,
                 'issue_date' => $inv->issue_date->format('Y-m-d'),
                 'due_date' => $inv->due_date?->format('Y-m-d'),
+                'validity_days' => $inv->validity_days,
+                'expiry_date' => $inv->expiry_date?->format('Y-m-d'),
+                'is_expired' => $inv->isExpired(),
                 'client' => $inv->client,
                 'user_name' => $inv->user?->name ?? 'Système',
                 'subtotal' => (float) $inv->subtotal,
@@ -102,6 +111,7 @@ class InvoiceController extends Controller
             'type' => 'required|in:invoice,quote',
             'issue_date' => 'required|date',
             'due_date' => 'nullable|date|after_or_equal:issue_date',
+            'validity_days' => 'nullable|integer|min:1|max:365',
             'tax_rate' => 'nullable|numeric|min:0|max:100',
             'notes' => 'nullable|string|max:2000',
             'items' => 'required|array|min:1',
@@ -117,6 +127,8 @@ class InvoiceController extends Controller
 
             $tenantId = auth()->user()->tenant_id;
             $taxRate = (float) ($request->tax_rate ?? 0);
+            $validityDays = $request->type === 'quote' ? ($request->validity_days ?? 15) : null;
+            $expiryDate = $validityDays ? \Carbon\Carbon::parse($request->issue_date)->addDays($validityDays)->format('Y-m-d') : null;
 
             // Calculate totals
             $subtotal = 0;
@@ -138,6 +150,8 @@ class InvoiceController extends Controller
                 'status' => 'draft',
                 'issue_date' => $request->issue_date,
                 'due_date' => $request->due_date,
+                'validity_days' => $validityDays,
+                'expiry_date' => $expiryDate,
                 'subtotal' => $subtotal,
                 'tax_rate' => $taxRate,
                 'tax_amount' => $taxAmount,
@@ -187,9 +201,10 @@ class InvoiceController extends Controller
         $request->validate([
             'client_id' => 'required|exists:clients,id',
             'type' => 'required|in:invoice,quote',
-            'status' => 'nullable|in:draft,sent,paid,partial,cancelled',
+            'status' => 'nullable|in:draft,sent,paid,partial,cancelled,accepted,refused,expired',
             'issue_date' => 'required|date',
             'due_date' => 'nullable|date|after_or_equal:issue_date',
+            'validity_days' => 'nullable|integer|min:1|max:365',
             'tax_rate' => 'nullable|numeric|min:0|max:100',
             'notes' => 'nullable|string|max:2000',
             'items' => 'required|array|min:1',
@@ -206,6 +221,8 @@ class InvoiceController extends Controller
             $invoice = Invoice::withoutGlobalScopes()->findOrFail($id);
             $tenantId = auth()->user()->tenant_id;
             $taxRate = (float) ($request->tax_rate ?? 0);
+            $validityDays = $request->type === 'quote' ? ($request->validity_days ?? $invoice->validity_days ?? 15) : null;
+            $expiryDate = $validityDays ? \Carbon\Carbon::parse($request->issue_date)->addDays($validityDays)->format('Y-m-d') : null;
 
             // Recalculate totals
             $subtotal = 0;
@@ -221,6 +238,8 @@ class InvoiceController extends Controller
                 'status' => $request->status ?? $invoice->status,
                 'issue_date' => $request->issue_date,
                 'due_date' => $request->due_date,
+                'validity_days' => $validityDays,
+                'expiry_date' => $expiryDate,
                 'subtotal' => $subtotal,
                 'tax_rate' => $taxRate,
                 'tax_amount' => $taxAmount,
@@ -267,7 +286,7 @@ class InvoiceController extends Controller
     public function updateStatus(Request $request, $id)
     {
         $request->validate([
-            'status' => 'required|in:draft,sent,paid,partial,cancelled',
+            'status' => 'required|in:draft,sent,paid,partial,cancelled,accepted,refused,expired',
         ]);
 
         $invoice = Invoice::findOrFail($id);
@@ -339,5 +358,96 @@ class InvoiceController extends Controller
         $number = Invoice::generateNumber($tenantId, $type);
 
         return response()->json(['next_number' => $number]);
+    }
+
+    /**
+     * Duplicate an invoice/quote with new number.
+     */
+    public function duplicate($id)
+    {
+        $original = Invoice::withoutGlobalScopes()->with('items')->findOrFail($id);
+        $tenantId = auth()->user()->tenant_id;
+
+        DB::beginTransaction();
+        try {
+            $newNumber = Invoice::generateNumber($tenantId, $original->type);
+            $validityDays = $original->type === 'quote' ? ($original->validity_days ?? 15) : null;
+            $issueDate = now()->format('Y-m-d');
+            $expiryDate = $validityDays ? now()->addDays($validityDays)->format('Y-m-d') : null;
+
+            $copy = Invoice::create([
+                'tenant_id' => $tenantId,
+                'client_id' => $original->client_id,
+                'user_id' => auth()->id(),
+                'invoice_number' => $newNumber,
+                'type' => $original->type,
+                'status' => 'draft',
+                'issue_date' => $issueDate,
+                'due_date' => $original->due_date,
+                'validity_days' => $validityDays,
+                'expiry_date' => $expiryDate,
+                'subtotal' => $original->subtotal,
+                'tax_rate' => $original->tax_rate,
+                'tax_amount' => $original->tax_amount,
+                'total' => $original->total,
+                'amount_paid' => 0,
+                'notes' => $original->notes,
+            ]);
+
+            foreach ($original->items as $item) {
+                InvoiceItem::create([
+                    'tenant_id' => $tenantId,
+                    'invoice_id' => $copy->id,
+                    'description' => $item->description,
+                    'category' => $item->category,
+                    'quantity' => $item->quantity,
+                    'unit' => $item->unit,
+                    'unit_price' => $item->unit_price,
+                    'total' => $item->total,
+                    'sort_order' => $item->sort_order,
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Document dupliqué : {$newNumber}",
+                'invoice_id' => $copy->id,
+                'invoice_number' => $newNumber,
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => $e->getMessage()], 400);
+        }
+    }
+
+    /**
+     * Get summary counts for dashboard.
+     */
+    public function summary()
+    {
+        $pendingQuotes = Invoice::withoutGlobalScopes()
+            ->where('type', 'quote')
+            ->whereIn('status', ['draft', 'sent'])
+            ->count();
+
+        $expiredQuotes = Invoice::withoutGlobalScopes()
+            ->where('type', 'quote')
+            ->whereIn('status', ['draft', 'sent'])
+            ->whereNotNull('expiry_date')
+            ->whereDate('expiry_date', '<', today())
+            ->count();
+
+        $unpaidInvoices = Invoice::withoutGlobalScopes()
+            ->where('type', 'invoice')
+            ->whereIn('status', ['draft', 'sent', 'partial'])
+            ->count();
+
+        return response()->json([
+            'pending_quotes' => $pendingQuotes,
+            'expired_quotes' => $expiredQuotes,
+            'unpaid_invoices' => $unpaidInvoices,
+        ]);
     }
 }
