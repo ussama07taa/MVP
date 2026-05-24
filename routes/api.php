@@ -1,7 +1,7 @@
 <?php
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\{OrderController, DashboardController, StockController, ExpenseController, PurchaseController, FinancialReportController, SettingsController, ClientController, InvoiceController, EmployeeController, WorkshopQueueController, WorkshopStatsController, BackupController};
+use App\Http\Controllers\{OrderController, DashboardController, StockController, ExpenseController, PurchaseController, FinancialReportController, SettingsController, ClientController, InvoiceController, EmployeeController, WorkshopQueueController, WorkshopStatsController, BackupController, ReportController};
 use App\Models\{User, Client, Order, StockPanel, StockCanto, Service, Payment, Tenant, Consumable, Employee, Supplier, Purchase};
 use Illuminate\Support\Facades\{Auth, DB, Cache};
 
@@ -258,6 +258,10 @@ Route::middleware(['auth', 'identify.tenant', 'throttle:100,1'])->group(function
         Route::get('/admin/payroll/weekly', [\App\Http\Controllers\EmployeePayrollController::class, 'index']);
         Route::post('/admin/payroll/close', [\App\Http\Controllers\EmployeePayrollController::class, 'close']);
         Route::get('/admin/employees/{id}/history', [\App\Http\Controllers\EmployeePayrollController::class, 'employeeHistory']);
+
+        // Report Routes
+        Route::get('/admin/reports/generate', [ReportController::class, 'generate']);
+        Route::get('/admin/reports/preview', [ReportController::class, 'preview']);
 
         // Invoice & Quote Routes
         Route::get('/admin/invoices', [InvoiceController::class, 'index']);
