@@ -87,6 +87,42 @@ class FinancialStatsService
             ->whereYear('created_at', $year)
             ->sum('total_refunded');
 
+        // 8. Invoice Revenue (validated invoices from module Factures)
+        $invoiceRevenue = (float) DB::table('invoices')
+            ->where('tenant_id', $tenantId)
+            ->where('type', 'invoice')
+            ->whereNotNull('validated_at')
+            ->whereMonth('validated_at', $month)
+            ->whereYear('validated_at', $year)
+            ->whereNull('deleted_at')
+            ->sum('total');
+
+        $invoiceCollected = (float) DB::table('invoices')
+            ->where('tenant_id', $tenantId)
+            ->where('type', 'invoice')
+            ->whereNotNull('validated_at')
+            ->whereMonth('validated_at', $month)
+            ->whereYear('validated_at', $year)
+            ->whereNull('deleted_at')
+            ->sum('amount_paid');
+
+        $invoiceCost = (float) DB::table('invoice_items')
+            ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
+            ->where('invoices.tenant_id', $tenantId)
+            ->where('invoices.type', 'invoice')
+            ->whereNotNull('invoices.validated_at')
+            ->whereMonth('invoices.validated_at', $month)
+            ->whereYear('invoices.validated_at', $year)
+            ->whereNull('invoices.deleted_at')
+            ->selectRaw('SUM(invoice_items.unit_cost * invoice_items.quantity) as total_cost')
+            ->value('total_cost') ?? 0;
+
+        // Combined revenue (POS orders + validated invoices)
+        $revenue = (float)$revenue + $invoiceRevenue;
+        $totalCollected = $totalCollected + $invoiceCollected;
+        $cogs = (float)$cogs + $invoiceCost;
+        $unpaidRevenue = (float)$revenue - $totalCollected;
+
         // Net Revenue = Gross Revenue - Customer Returns
         $netRevenue = (float)$revenue - $customerReturns;
 

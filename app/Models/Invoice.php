@@ -19,6 +19,8 @@ class Invoice extends Model
         'issue_date' => 'date',
         'due_date' => 'date',
         'expiry_date' => 'date',
+        'validated_at' => 'datetime',
+        'stock_deducted' => 'boolean',
         'subtotal' => 'decimal:2',
         'tax_rate' => 'decimal:2',
         'tax_amount' => 'decimal:2',
