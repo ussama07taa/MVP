@@ -4,7 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Models\{Invoice, InvoiceItem, Client};
+use App\Models\{Invoice, InvoiceItem, Client, StockPanel, StockCanto, Service};
+use App\Services\{StockService, ClientLedgerService};
 
 class InvoiceController extends Controller
 {
@@ -56,6 +57,8 @@ class InvoiceController extends Controller
                 'validity_days' => $inv->validity_days,
                 'expiry_date' => $inv->expiry_date?->format('Y-m-d'),
                 'is_expired' => $inv->isExpired(),
+                'validated_at' => $inv->validated_at?->toDateTimeString(),
+                'stock_deducted' => (bool) $inv->stock_deducted,
                 'client' => $inv->client,
                 'user_name' => $inv->user?->name ?? 'Système',
                 'subtotal' => (float) $inv->subtotal,
@@ -120,6 +123,8 @@ class InvoiceController extends Controller
             'items.*.quantity' => 'required|numeric|min:0.01',
             'items.*.unit' => 'nullable|string|max:20',
             'items.*.unit_price' => 'required|numeric|min:0',
+            'items.*.item_type' => 'nullable|in:stock_panel,stock_canto,service',
+            'items.*.item_id' => 'nullable|integer',
         ]);
 
         try {
@@ -163,6 +168,7 @@ class InvoiceController extends Controller
             // Create line items
             foreach ($request->items as $index => $item) {
                 $lineTotal = round((float) $item['quantity'] * (float) $item['unit_price'], 2);
+                $unitCost = $this->resolveUnitCost($item);
 
                 InvoiceItem::create([
                     'tenant_id' => $tenantId,
@@ -172,8 +178,11 @@ class InvoiceController extends Controller
                     'quantity' => $item['quantity'],
                     'unit' => $item['unit'] ?? 'unité',
                     'unit_price' => $item['unit_price'],
+                    'unit_cost' => $unitCost,
                     'total' => $lineTotal,
                     'sort_order' => $index,
+                    'item_type' => $item['item_type'] ?? null,
+                    'item_id' => $item['item_id'] ?? null,
                 ]);
             }
 
@@ -213,6 +222,8 @@ class InvoiceController extends Controller
             'items.*.quantity' => 'required|numeric|min:0.01',
             'items.*.unit' => 'nullable|string|max:20',
             'items.*.unit_price' => 'required|numeric|min:0',
+            'items.*.item_type' => 'nullable|in:stock_panel,stock_canto,service',
+            'items.*.item_id' => 'nullable|integer',
         ]);
 
         try {
@@ -252,6 +263,7 @@ class InvoiceController extends Controller
 
             foreach ($request->items as $index => $item) {
                 $lineTotal = round((float) $item['quantity'] * (float) $item['unit_price'], 2);
+                $unitCost = $this->resolveUnitCost($item);
 
                 InvoiceItem::create([
                     'tenant_id' => $tenantId,
@@ -261,8 +273,11 @@ class InvoiceController extends Controller
                     'quantity' => $item['quantity'],
                     'unit' => $item['unit'] ?? 'unité',
                     'unit_price' => $item['unit_price'],
+                    'unit_cost' => $unitCost,
                     'total' => $lineTotal,
                     'sort_order' => $index,
+                    'item_type' => $item['item_type'] ?? null,
+                    'item_id' => $item['item_id'] ?? null,
                 ]);
             }
 
@@ -403,8 +418,11 @@ class InvoiceController extends Controller
                     'quantity' => $item->quantity,
                     'unit' => $item->unit,
                     'unit_price' => $item->unit_price,
+                    'unit_cost' => $item->unit_cost ?? 0,
                     'total' => $item->total,
                     'sort_order' => $item->sort_order,
+                    'item_type' => $item->item_type,
+                    'item_id' => $item->item_id,
                 ]);
             }
 
@@ -449,5 +467,205 @@ class InvoiceController extends Controller
             'expired_quotes' => $expiredQuotes,
             'unpaid_invoices' => $unpaidInvoices,
         ]);
+    }
+
+    /**
+     * Validate an invoice: deduct stock + add debt to client.
+     */
+    public function validateInvoice($id)
+    {
+        $invoice = Invoice::withoutGlobalScopes()->with('items')->findOrFail($id);
+
+        if ($invoice->type !== 'invoice') {
+            return response()->json(['error' => 'Seules les factures peuvent être validées. Convertissez d\'abord le devis.'], 422);
+        }
+
+        if ($invoice->validated_at) {
+            return response()->json(['error' => 'Cette facture est déjà validée.'], 422);
+        }
+
+        if ($invoice->status === 'cancelled') {
+            return response()->json(['error' => 'Impossible de valider une facture annulée.'], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            $stockService = app(StockService::class);
+            $ledgerService = app(ClientLedgerService::class);
+
+            // Deduct stock for linked items
+            foreach ($invoice->items as $item) {
+                if (!$item->item_type || !$item->item_id) continue;
+
+                if ($item->item_type === 'stock_panel') {
+                    $stockService->deductPanel($item->item_id, (float) $item->quantity);
+                } elseif ($item->item_type === 'stock_canto') {
+                    $stockService->deductCanto($item->item_id, (float) $item->quantity);
+                }
+            }
+
+            // Add debt to client
+            $ledgerService->adjustCreditForOrder($invoice->client_id, (float) $invoice->total);
+
+            // Mark as validated
+            $invoice->update([
+                'validated_at' => now(),
+                'stock_deducted' => true,
+                'status' => 'sent',
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Facture {$invoice->invoice_number} validée ! Stock déduit et dette ajoutée au client.",
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Invoice Validation Error: ' . $e->getMessage());
+            return response()->json(['error' => $e->getMessage()], 400);
+        }
+    }
+
+    /**
+     * Record a payment on an invoice.
+     */
+    public function payInvoice(Request $request, $id)
+    {
+        $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->findOrFail($id);
+
+        if ($invoice->type !== 'invoice') {
+            return response()->json(['error' => 'Les paiements ne s\'appliquent qu\'aux factures.'], 422);
+        }
+
+        if (!$invoice->validated_at) {
+            return response()->json(['error' => 'Veuillez valider la facture avant d\'enregistrer un paiement.'], 422);
+        }
+
+        $remaining = (float) $invoice->total - (float) $invoice->amount_paid;
+        $amount = (float) $request->amount;
+
+        if ($amount > ($remaining + 0.01)) {
+            return response()->json(['error' => "Le montant ({$amount} DH) dépasse le reste à payer ({$remaining} DH)."], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            $ledgerService = app(ClientLedgerService::class);
+
+            // Record payment (reduces client debt)
+            $ledgerService->recordPayment(
+                $invoice->client_id,
+                $amount,
+                'reglement',
+                null,
+                "Paiement facture {$invoice->invoice_number}"
+            );
+
+            // Update invoice amount_paid
+            $newPaid = (float) $invoice->amount_paid + $amount;
+            $newStatus = $newPaid >= (float) $invoice->total ? 'paid' : 'partial';
+
+            $invoice->update([
+                'amount_paid' => $newPaid,
+                'status' => $newStatus,
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Paiement de {$amount} DH enregistré sur {$invoice->invoice_number}.",
+                'new_status' => $newStatus,
+                'amount_paid' => $newPaid,
+                'remaining' => (float) $invoice->total - $newPaid,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => $e->getMessage()], 400);
+        }
+    }
+
+    /**
+     * Get available stock items for the invoice item selector.
+     */
+    public function stockItems()
+    {
+        $panels = StockPanel::withoutGlobalScopes()
+            ->select('id', 'type', 'finish_type', 'color_code', 'color_name', 'size_x', 'size_y', 'thickness', 'quantity', 'base_price_sell', 'cost_price')
+            ->where('quantity', '>', 0)
+            ->get()
+            ->map(fn($p) => [
+                'item_type' => 'stock_panel',
+                'item_id' => $p->id,
+                'category' => $p->type === 'LATI' ? 'lati' : 'mdf',
+                'description' => "{$p->type} {$p->color_name} {$p->size_x}x{$p->size_y} ép.{$p->thickness}mm" . ($p->finish_type ? " [{$p->finish_type}]" : ''),
+                'unit' => 'unité',
+                'unit_price' => (float) $p->base_price_sell,
+                'unit_cost' => (float) $p->cost_price,
+                'available' => (float) $p->quantity,
+            ]);
+
+        $cantos = StockCanto::withoutGlobalScopes()
+            ->select('id', 'name', 'color_code', 'color_name', 'finish_type', 'width_mm', 'thickness_mm', 'total_length_remaining', 'base_price_sell_per_m', 'cost_price_per_m')
+            ->where('total_length_remaining', '>', 0)
+            ->get()
+            ->map(fn($c) => [
+                'item_type' => 'stock_canto',
+                'item_id' => $c->id,
+                'category' => 'canto',
+                'description' => "Chant {$c->color_name} {$c->width_mm}mm" . ($c->finish_type ? " [{$c->finish_type}]" : ''),
+                'unit' => 'm',
+                'unit_price' => (float) $c->base_price_sell_per_m,
+                'unit_cost' => (float) $c->cost_price_per_m,
+                'available' => (float) $c->total_length_remaining,
+            ]);
+
+        $services = Service::withoutGlobalScopes()
+            ->select('id', 'name', 'unit_price', 'calculation_type')
+            ->get()
+            ->map(fn($s) => [
+                'item_type' => 'service',
+                'item_id' => $s->id,
+                'category' => 'service',
+                'description' => $s->name,
+                'unit' => $s->calculation_type === 'per_meter' ? 'm' : 'unité',
+                'unit_price' => (float) $s->unit_price,
+                'unit_cost' => 0,
+                'available' => null,
+            ]);
+
+        return response()->json([
+            'panels' => $panels,
+            'cantos' => $cantos,
+            'services' => $services,
+        ]);
+    }
+
+    /**
+     * Resolve unit cost for an item based on its type.
+     */
+    private function resolveUnitCost(array $item): float
+    {
+        $type = $item['item_type'] ?? null;
+        $id = $item['item_id'] ?? null;
+
+        if (!$type || !$id) return 0;
+
+        if ($type === 'stock_panel') {
+            $panel = StockPanel::find($id);
+            return $panel ? (float) $panel->cost_price : 0;
+        }
+
+        if ($type === 'stock_canto') {
+            $canto = StockCanto::find($id);
+            return $canto ? (float) $canto->cost_price_per_m : 0;
+        }
+
+        return 0;
     }
 }
