@@ -24,6 +24,9 @@ class StoreClientRequest extends FormRequest
         return [
             'name' => 'required|string|max:255',
             'phone' => 'nullable|string|max:50',
+            'address' => 'nullable|string|max:500',
+            'city' => 'nullable|string|max:100',
+            'notes' => 'nullable|string|max:2000',
         ];
     }
 }
