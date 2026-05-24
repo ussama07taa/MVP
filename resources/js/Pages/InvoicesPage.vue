@@ -7,10 +7,46 @@
         <h1 class="text-3xl font-black text-slate-900 tracking-tight">Factures & Devis</h1>
         <p class="text-sm font-bold text-slate-400 mt-1">Gestion complète de la facturation</p>
       </div>
-      <button @click="openCreateModal('invoice')" class="group bg-gradient-to-r from-brand-600 to-indigo-600 text-white px-6 py-3 rounded-2xl font-black shadow-lg shadow-brand-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center text-sm">
-        <PlusIcon class="w-5 h-5 mr-2 group-hover:rotate-90 transition-transform duration-300" /> Nouvelle Facture
-      </button>
+      <div class="flex items-center gap-3">
+        <button @click="openCreateModal('quote')" class="group bg-gradient-to-r from-amber-500 to-orange-500 text-white px-5 py-3 rounded-2xl font-black shadow-lg shadow-amber-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center text-sm">
+          <FileTextIcon class="w-5 h-5 mr-2 group-hover:rotate-12 transition-transform duration-300" /> Nouveau Devis
+        </button>
+        <button @click="openCreateModal('invoice')" class="group bg-gradient-to-r from-brand-600 to-indigo-600 text-white px-5 py-3 rounded-2xl font-black shadow-lg shadow-brand-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center text-sm">
+          <PlusIcon class="w-5 h-5 mr-2 group-hover:rotate-90 transition-transform duration-300" /> Nouvelle Facture
+        </button>
+      </div>
     </header>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <div class="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 flex items-center gap-4">
+        <div class="w-11 h-11 bg-amber-50 rounded-xl flex items-center justify-center border border-amber-100">
+          <ClockIcon class="w-5 h-5 text-amber-600" />
+        </div>
+        <div>
+          <p class="text-2xl font-black text-slate-900">{{ summary.pending_quotes }}</p>
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Devis en attente</p>
+        </div>
+      </div>
+      <div class="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 flex items-center gap-4">
+        <div class="w-11 h-11 bg-rose-50 rounded-xl flex items-center justify-center border border-rose-100">
+          <AlertTriangleIcon class="w-5 h-5 text-rose-500" />
+        </div>
+        <div>
+          <p class="text-2xl font-black text-slate-900">{{ summary.expired_quotes }}</p>
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Devis expirés</p>
+        </div>
+      </div>
+      <div class="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 flex items-center gap-4">
+        <div class="w-11 h-11 bg-blue-50 rounded-xl flex items-center justify-center border border-blue-100">
+          <BanknoteIcon class="w-5 h-5 text-blue-600" />
+        </div>
+        <div>
+          <p class="text-2xl font-black text-slate-900">{{ summary.unpaid_invoices }}</p>
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Factures impayées</p>
+        </div>
+      </div>
+    </div>
 
     <!-- Filters -->
     <div class="flex flex-wrap gap-3 mb-6">
@@ -51,7 +87,12 @@
                 <span class="font-black text-slate-900 text-sm">{{ inv.invoice_number }}</span>
                 <span :class="statusClasses(inv.status)" class="px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border">{{ statusLabel(inv.status) }}</span>
               </div>
-              <p class="text-xs font-bold text-slate-400 mt-0.5">{{ inv.client?.name || 'Client inconnu' }} • {{ formatDate(inv.issue_date) }}</p>
+              <p class="text-xs font-bold text-slate-400 mt-0.5">
+                {{ inv.client?.name || 'Client inconnu' }} • {{ formatDate(inv.issue_date) }}
+                <span v-if="inv.type === 'quote' && inv.expiry_date" class="ml-2" :class="inv.is_expired ? 'text-rose-500' : 'text-slate-400'">
+                  (expire {{ formatDate(inv.expiry_date) }})
+                </span>
+              </p>
             </div>
           </div>
           <div class="flex items-center gap-6">
@@ -61,9 +102,23 @@
               <div v-if="inv.remaining > 0" class="text-[10px] font-black text-rose-500">Reste: {{ (inv.remaining || 0).toFixed(2) }} DH</div>
             </div>
             <div class="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button v-if="inv.type === 'quote'" @click.stop="convertQuote(inv)" title="Convertir en Facture"
+              <!-- Quote-specific actions -->
+              <button v-if="inv.type === 'quote' && !['accepted','refused','cancelled','expired'].includes(inv.status)" @click.stop="updateQuoteStatus(inv, 'accepted')" title="Accepter"
+                class="w-8 h-8 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center transition-colors">
+                <CheckCircleIcon class="w-4 h-4" />
+              </button>
+              <button v-if="inv.type === 'quote' && !['accepted','refused','cancelled','expired'].includes(inv.status)" @click.stop="updateQuoteStatus(inv, 'refused')" title="Refuser"
+                class="w-8 h-8 bg-rose-50 hover:bg-rose-100 text-rose-500 rounded-lg flex items-center justify-center transition-colors">
+                <XCircleIcon class="w-4 h-4" />
+              </button>
+              <button v-if="inv.type === 'quote' && inv.status === 'accepted'" @click.stop="convertQuote(inv)" title="Convertir en Facture"
                 class="w-8 h-8 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center transition-colors">
                 <ArrowRightCircleIcon class="w-4 h-4" />
+              </button>
+              <!-- Common actions -->
+              <button @click.stop="duplicateInvoice(inv)" title="Dupliquer"
+                class="w-8 h-8 bg-indigo-50 hover:bg-indigo-100 text-indigo-500 rounded-lg flex items-center justify-center transition-colors">
+                <CopyIcon class="w-4 h-4" />
               </button>
               <button @click.stop="printInvoice(inv)" title="Imprimer"
                 class="w-8 h-8 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-lg flex items-center justify-center transition-colors">
@@ -113,8 +168,8 @@
             </div>
           </div>
 
-          <!-- Dates + Tax Row -->
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <!-- Dates + Tax + Validity Row -->
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div class="space-y-2">
               <label class="text-xs font-black text-slate-500 uppercase tracking-widest">Date d'émission *</label>
               <input type="date" v-model="form.issue_date" class="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-700 focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500">
@@ -126,6 +181,10 @@
             <div class="space-y-2">
               <label class="text-xs font-black text-slate-500 uppercase tracking-widest">TVA %</label>
               <input type="number" v-model="form.tax_rate" min="0" max="100" step="0.01" class="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-700 focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500" placeholder="0">
+            </div>
+            <div v-if="form.type === 'quote'" class="space-y-2">
+              <label class="text-xs font-black text-slate-500 uppercase tracking-widest">Validité (jours)</label>
+              <input type="number" v-model="form.validity_days" min="1" max="365" class="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-700 focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500" placeholder="15">
             </div>
           </div>
 
@@ -199,7 +258,7 @@ import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
 import { useToast } from '@/composables/useToast';
 const toast = useToast();
-import { FileTextIcon, PlusIcon, XIcon, Trash2Icon, PrinterIcon, ArrowRightCircleIcon, Loader2Icon } from 'lucide-vue-next';
+import { FileTextIcon, PlusIcon, XIcon, Trash2Icon, PrinterIcon, ArrowRightCircleIcon, Loader2Icon, CheckCircleIcon, XCircleIcon, CopyIcon, ClockIcon, AlertTriangleIcon, BanknoteIcon } from 'lucide-vue-next';
 
 const invoices = ref([]);
 const clients = ref([]);
@@ -208,13 +267,16 @@ const showModal = ref(false);
 const isSaving = ref(false);
 const editingInvoice = ref(null);
 const activeFilter = ref('all');
+const summary = ref({ pending_quotes: 0, expired_quotes: 0, unpaid_invoices: 0 });
 
 const filters = [
   { label: 'Tous', value: 'all' },
   { label: 'Factures', value: 'invoice' },
   { label: 'Devis', value: 'quote' },
   { label: 'Brouillons', value: 'draft' },
+  { label: 'Acceptés', value: 'accepted' },
   { label: 'Payées', value: 'paid' },
+  { label: 'Expirés', value: 'expired' },
 ];
 
 const categories = [
@@ -222,7 +284,7 @@ const categories = [
   { label: 'LATI', value: 'lati' },
   { label: 'Bandchant', value: 'canto' },
   { label: 'Quincaillerie', value: 'hardware' },
-  { label: 'Main d\'œuvre', value: 'labor' },
+  { label: 'Main d\'oeuvre', value: 'labor' },
   { label: 'Service', value: 'service' },
   { label: 'Autre', value: 'other' },
 ];
@@ -231,7 +293,7 @@ const defaultItem = () => ({ description: '', category: 'other', quantity: 1, un
 
 const form = ref({
   type: 'invoice', client_id: '', issue_date: new Date().toISOString().split('T')[0],
-  due_date: '', tax_rate: 0, notes: '', invoice_number: '', items: [defaultItem()],
+  due_date: '', tax_rate: 0, validity_days: 15, notes: '', invoice_number: '', items: [defaultItem()],
 });
 
 const filteredInvoices = computed(() => {
@@ -248,13 +310,16 @@ const computedTotal = computed(() => computedSubtotal.value + computedTax.value)
 const addItem = () => form.value.items.push(defaultItem());
 const removeItem = (idx) => { if (form.value.items.length > 1) form.value.items.splice(idx, 1); };
 
-const statusLabel = (s) => ({ draft: 'Brouillon', sent: 'Envoyé', paid: 'Payée', partial: 'Partielle', cancelled: 'Annulée' }[s] || s);
+const statusLabel = (s) => ({ draft: 'Brouillon', sent: 'Envoyé', paid: 'Payée', partial: 'Partielle', cancelled: 'Annulée', accepted: 'Accepté', refused: 'Refusé', expired: 'Expiré' }[s] || s);
 const statusClasses = (s) => ({
   draft: 'bg-slate-50 text-slate-500 border-slate-200',
   sent: 'bg-blue-50 text-blue-600 border-blue-100',
   paid: 'bg-emerald-50 text-emerald-600 border-emerald-100',
   partial: 'bg-amber-50 text-amber-600 border-amber-100',
-  cancelled: 'bg-rose-50 text-rose-600 border-rose-100',
+  cancelled: 'bg-slate-50 text-slate-400 border-slate-200',
+  accepted: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  refused: 'bg-rose-50 text-rose-600 border-rose-100',
+  expired: 'bg-red-50 text-red-600 border-red-200',
 }[s] || 'bg-slate-50 text-slate-500 border-slate-200');
 
 const formatDate = (d) => d ? new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(d)) : '';
@@ -262,15 +327,20 @@ const formatDate = (d) => d ? new Intl.DateTimeFormat('fr-FR', { day: '2-digit',
 const fetchData = async () => {
   isLoading.value = true;
   try {
-    const [resInv, resCl] = await Promise.all([axios.get('/api/admin/invoices'), axios.get('/api/admin/clients')]);
+    const [resInv, resCl, resSum] = await Promise.all([
+      axios.get('/api/admin/invoices'),
+      axios.get('/api/admin/clients'),
+      axios.get('/api/admin/invoices-summary'),
+    ]);
     invoices.value = resInv.data;
     clients.value = resCl.data;
+    summary.value = resSum.data;
   } catch (e) { console.error('Fetch error', e); } finally { isLoading.value = false; }
 };
 
 const openCreateModal = (type = 'invoice') => {
   editingInvoice.value = null;
-  form.value = { type, client_id: '', issue_date: new Date().toISOString().split('T')[0], due_date: '', tax_rate: 0, notes: '', invoice_number: '', items: [defaultItem()] };
+  form.value = { type, client_id: '', issue_date: new Date().toISOString().split('T')[0], due_date: '', tax_rate: 0, validity_days: 15, notes: '', invoice_number: '', items: [defaultItem()] };
   showModal.value = true;
 };
 
@@ -278,7 +348,7 @@ const openEditModal = (inv) => {
   editingInvoice.value = inv;
   form.value = {
     type: inv.type, client_id: inv.client?.id || '', issue_date: inv.issue_date, due_date: inv.due_date || '',
-    tax_rate: inv.tax_rate, notes: inv.notes || '', invoice_number: inv.invoice_number,
+    tax_rate: inv.tax_rate, validity_days: inv.validity_days || 15, notes: inv.notes || '', invoice_number: inv.invoice_number,
     items: inv.items.map(i => ({ description: i.description, category: i.category, quantity: Number(i.quantity), unit: i.unit, unit_price: Number(i.unit_price) })),
   };
   showModal.value = true;
@@ -293,6 +363,7 @@ const saveInvoice = async () => {
     } else {
       await axios.post('/api/admin/invoices', form.value);
     }
+    toast.success(editingInvoice.value ? 'Document mis à jour !' : 'Document créé !');
     showModal.value = false;
     await fetchData();
   } catch (e) {
@@ -302,14 +373,32 @@ const saveInvoice = async () => {
 
 const deleteInvoice = async (inv) => {
   if (!confirm(`Supprimer ${inv.invoice_number} ?`)) return;
-  try { await axios.delete(`/api/admin/invoices/${inv.id}`); await fetchData(); }
+  try { await axios.delete(`/api/admin/invoices/${inv.id}`); toast.success('Document supprimé.'); await fetchData(); }
   catch (e) { toast.error(e.response?.data?.error || 'Erreur.'); }
 };
 
 const convertQuote = async (inv) => {
   if (!confirm(`Convertir le devis ${inv.invoice_number} en facture ?`)) return;
-  try { await axios.post(`/api/admin/invoices/${inv.id}/convert`); await fetchData(); }
+  try { await axios.post(`/api/admin/invoices/${inv.id}/convert`); toast.success('Devis converti en facture !'); await fetchData(); }
   catch (e) { toast.error(e.response?.data?.error || 'Erreur.'); }
+};
+
+const updateQuoteStatus = async (inv, status) => {
+  const labels = { accepted: 'accepter', refused: 'refuser' };
+  if (!confirm(`Voulez-vous ${labels[status]} le devis ${inv.invoice_number} ?`)) return;
+  try {
+    await axios.patch(`/api/admin/invoices/${inv.id}/status`, { status });
+    toast.success(`Devis ${status === 'accepted' ? 'accepté' : 'refusé'} !`);
+    await fetchData();
+  } catch (e) { toast.error(e.response?.data?.error || 'Erreur.'); }
+};
+
+const duplicateInvoice = async (inv) => {
+  try {
+    const res = await axios.post(`/api/admin/invoices/${inv.id}/duplicate`);
+    toast.success(res.data.message || 'Document dupliqué !');
+    await fetchData();
+  } catch (e) { toast.error(e.response?.data?.error || 'Erreur lors de la duplication.'); }
 };
 
 const printInvoice = (inv) => {
@@ -324,8 +413,10 @@ const printInvoice = (inv) => {
   const rcIceHtml = (settings.company_rc || settings.company_ice) ? `<p style="font-size:10px;color:#64748b;margin-top:5px;font-weight:bold">${settings.company_ice ? 'ICE: ' + settings.company_ice : ''} ${settings.company_rc ? 'RC: ' + settings.company_rc : ''}</p>` : '';
   const logoHtml = settings.company_logo ? `<img src="/storage/${settings.company_logo}" style="height:80px;width:80px;object-fit:contain">` : '';
 
+  const validityHtml = inv.type === 'quote' && inv.expiry_date ? `<p style="font-size:11px;color:#64748b;font-weight:600;margin-top:10px">Validité : ${inv.validity_days || 15} jours (expire le ${formatDate(inv.expiry_date)})</p>` : '';
+
   const w = window.open('', '', 'height=800,width=800');
-  w.document.write('<html><head><title>' + inv.invoice_number + '</title><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet"><style>body{font-family:\'Inter\',sans-serif;color:#1e293b;padding:40px;max-width:800px;margin:0 auto}h1{font-size:28px;font-weight:800;margin:0}.header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #e2e8f0;padding-bottom:20px;margin-bottom:30px}.inv-num{font-size:14px;font-weight:800;color:#0f172a}.client-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:30px}table{width:100%;border-collapse:collapse;margin-bottom:30px}th{text-align:left;padding:12px 16px;font-size:11px;font-weight:800;text-transform:uppercase;color:#94a3b8;border-bottom:2px solid #e2e8f0}td{padding:16px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:600;color:#475569}.text-right{text-align:right}.totals{width:320px;margin-left:auto;background:#f8fafc;border-radius:12px;padding:20px;border:1px solid #e2e8f0}.total-line{display:flex;justify-content:space-between;margin-bottom:12px;font-size:14px;font-weight:600;color:#64748b}.total-final{display:flex;justify-content:space-between;margin-top:15px;padding-top:15px;border-top:2px dashed #cbd5e1;font-size:20px;font-weight:800;color:#0f172a}.footer{margin-top:50px;text-align:center;font-size:12px;color:#94a3b8;font-weight:600;padding-top:20px;border-top:1px solid #f1f5f9}@media print{body{padding:0}@page{margin:1cm}}</style></head><body><div class="header"><div style="display:flex;align-items:center;gap:20px">' + logoHtml + '<div><h1>' + companyName + '</h1>' + rcIceHtml + '</div></div><div style="text-align:right"><h2 style="font-size:28px;font-weight:800;text-transform:uppercase;color:#cbd5e1;margin:0">' + (inv.type === 'quote' ? 'Devis' : 'Facture') + '</h2><p class="inv-num">N° ' + inv.invoice_number + '</p><p style="font-size:12px;font-weight:600;color:#64748b;margin-top:5px">' + dateStr + '</p></div></div><div class="client-box"><p style="font-size:11px;font-weight:800;text-transform:uppercase;color:#94a3b8;margin:0 0 5px">Facturé à</p><p style="font-size:18px;font-weight:800;color:#0f172a;margin:0">' + clientName + '</p></div><table><thead><tr><th>Désignation</th><th class="text-right">Qté</th><th class="text-right">P.U</th><th class="text-right">Total</th></tr></thead><tbody>' + linesHtml + '</tbody></table><div class="totals"><div class="total-line"><span>Sous-total</span><span>' + Number(inv.subtotal).toFixed(2) + ' DH</span></div><div class="total-line"><span>TVA (' + inv.tax_rate + '%)</span><span>' + Number(inv.tax_amount).toFixed(2) + ' DH</span></div><div class="total-final"><span>Total TTC</span><span>' + Number(inv.total).toFixed(2) + ' DH</span></div></div><div class="footer">' + footerText + '<br>' + companyName + (companyPhone ? ' - Contact: ' + companyPhone : '') + '</div></body></html>');
+  w.document.write('<html><head><title>' + inv.invoice_number + '</title><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet"><style>body{font-family:\'Inter\',sans-serif;color:#1e293b;padding:40px;max-width:800px;margin:0 auto}h1{font-size:28px;font-weight:800;margin:0}.header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #e2e8f0;padding-bottom:20px;margin-bottom:30px}.inv-num{font-size:14px;font-weight:800;color:#0f172a}.client-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:30px}table{width:100%;border-collapse:collapse;margin-bottom:30px}th{text-align:left;padding:12px 16px;font-size:11px;font-weight:800;text-transform:uppercase;color:#94a3b8;border-bottom:2px solid #e2e8f0}td{padding:16px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:600;color:#475569}.text-right{text-align:right}.totals{width:320px;margin-left:auto;background:#f8fafc;border-radius:12px;padding:20px;border:1px solid #e2e8f0}.total-line{display:flex;justify-content:space-between;margin-bottom:12px;font-size:14px;font-weight:600;color:#64748b}.total-final{display:flex;justify-content:space-between;margin-top:15px;padding-top:15px;border-top:2px dashed #cbd5e1;font-size:20px;font-weight:800;color:#0f172a}.footer{margin-top:50px;text-align:center;font-size:12px;color:#94a3b8;font-weight:600;padding-top:20px;border-top:1px solid #f1f5f9}@media print{body{padding:0}@page{margin:1cm}}</style></head><body><div class="header"><div style="display:flex;align-items:center;gap:20px">' + logoHtml + '<div><h1>' + companyName + '</h1>' + rcIceHtml + '</div></div><div style="text-align:right"><h2 style="font-size:28px;font-weight:800;text-transform:uppercase;color:#cbd5e1;margin:0">' + (inv.type === 'quote' ? 'Devis' : 'Facture') + '</h2><p class="inv-num">N° ' + inv.invoice_number + '</p><p style="font-size:12px;font-weight:600;color:#64748b;margin-top:5px">' + dateStr + '</p></div></div><div class="client-box"><p style="font-size:10px;font-weight:800;color:#94a3b8;text-transform:uppercase;margin:0 0 8px">Client</p><p style="font-size:16px;font-weight:800;margin:0">' + clientName + '</p>' + (inv.client?.phone ? '<p style="font-size:12px;color:#64748b;margin:4px 0 0">' + inv.client.phone + '</p>' : '') + '</div>' + validityHtml + '<table><thead><tr><th>Désignation</th><th class="text-right">Qté</th><th class="text-right">Prix U.</th><th class="text-right">Total</th></tr></thead><tbody>' + linesHtml + '</tbody></table><div class="totals"><div class="total-line"><span>Sous-total</span><span>' + Number(inv.subtotal).toFixed(2) + ' DH</span></div>' + (Number(inv.tax_rate) > 0 ? '<div class="total-line"><span>TVA (' + inv.tax_rate + '%)</span><span>' + Number(inv.tax_amount).toFixed(2) + ' DH</span></div>' : '') + '<div class="total-final"><span>Total TTC</span><span>' + Number(inv.total).toFixed(2) + ' DH</span></div></div><div class="footer">' + (companyPhone ? '<p>' + companyPhone + '</p>' : '') + '<p>' + footerText + '</p></div></body></html>');
   w.document.close();
   w.focus();
   setTimeout(() => { w.print(); }, 500);
