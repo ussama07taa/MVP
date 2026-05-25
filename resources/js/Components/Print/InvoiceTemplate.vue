@@ -66,7 +66,7 @@
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-50">
-          <tr v-for="(item, index) in items" :key="index" class="break-inside-avoid">
+          <tr v-for="(item, index) in groupedItems" :key="index" class="break-inside-avoid">
             <td class="py-3 px-2 text-[10px] font-bold text-slate-300">0{{ index + 1 }}</td>
             <td class="py-3 px-2">
               <p class="text-[11px] font-black text-slate-800 leading-tight">{{ formatItemName(item.name || item.label) }}</p>
@@ -76,7 +76,7 @@
               <span class="text-[10px] font-black text-slate-900 leading-none">x{{ item.quantity }}</span>
             </td>
             <td class="py-3 px-2 text-right text-[10px] font-bold text-slate-500">{{ Number(item.unit_price || item.unit_sell_price).toFixed(2) }}</td>
-            <td class="py-3 px-2 text-right text-[11px] font-black text-slate-900">{{ Number(item.total_price || item.total_line_sell || (item.quantity * (item.unit_price || item.unit_sell_price))).toFixed(2) }} DH</td>
+            <td class="py-3 px-2 text-right text-[11px] font-black text-slate-900">{{ Number(item.total_price || item.total_line_sell).toFixed(2) }} DH</td>
           </tr>
         </tbody>
       </table>
@@ -168,8 +168,49 @@ const formatItemName = (name) => {
   if (!name) return '';
   return name
     .replace(/Pose Canto\s*\(?Sel3a\s*(?:d|y|n)?\s*Client\)?/gi, 'Pose de Chant (Fourniture Client)')
-    .replace(/Sel3a\s*(?:d|y|n)?\s*Client/gi, 'Fourniture Client');
+    .replace(/Sel3a\s*(?:d|y|n)?\s*Client/gi, 'Fourniture Client')
+    .replace(/Fourniture:\s*/gi, '')
+    .replace(/Collage Chant:\s*/gi, '');
 };
+
+const groupedItems = computed(() => {
+  if (!props.items) return [];
+  
+  const groups = {};
+  
+  props.items.forEach(item => {
+    // Determine the "base" name by stripping prefixes
+    const rawName = item.name || item.label || '';
+    const baseName = rawName
+      .replace(/Fourniture:\s*/gi, '')
+      .replace(/Collage Chant:\s*/gi, '')
+      .trim();
+    
+    // We group by baseName AND quantity to ensure we don't accidentally group different orders of the same product
+    // though usually in an invoice they are distinct.
+    const key = `${baseName}_${item.quantity}`;
+    
+    if (!groups[key]) {
+      groups[key] = {
+        ...item,
+        name: baseName, // Use the clean name
+        total_price: Number(item.total_price || item.total_line_sell || (item.quantity * (item.unit_price || item.unit_sell_price))),
+        is_grouped: false
+      };
+    } else {
+      groups[key].total_price += Number(item.total_price || item.total_line_sell || (item.quantity * (item.unit_price || item.unit_sell_price)));
+      groups[key].is_grouped = true;
+    }
+  });
+  
+  return Object.values(groups).map(item => {
+    // Recalculate unit price for grouped items
+    if (item.is_grouped) {
+      item.unit_price = item.total_price / item.quantity;
+    }
+    return item;
+  });
+});
 
 const formattedDate = computed(() => {
   const date = props.order.created_at || props.order.issue_date || new Date();
