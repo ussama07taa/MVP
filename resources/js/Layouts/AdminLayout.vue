@@ -1,6 +1,7 @@
 <template>
   <ToastNotification />
-  <div class="flex h-screen bg-surface font-sans overflow-hidden">
+  <InvoiceTemplate v-if="printData" v-bind="printData" />
+  <div class="flex h-screen bg-surface font-sans overflow-hidden shadow-none print:hidden">
 
     <!-- ===== MOBILE OVERLAY ===== -->
     <transition name="fade">
@@ -243,9 +244,23 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 import { usePage, router } from '@inertiajs/vue3';
+import InvoiceTemplate from '@/Components/Print/InvoiceTemplate.vue';
+
+const printData = ref(null);
+
+const handleGlobalPrint = (event) => {
+  printData.value = event.detail;
+  setTimeout(() => {
+    window.print();
+    // Clear after print to stop it showing on screen
+    setTimeout(() => {
+      printData.value = null;
+    }, 500);
+  }, 300);
+};
 import { 
   LayoutGridIcon, FileTextIcon, PlusCircleIcon, LayersIcon, 
   UsersIcon, SettingsIcon, BellIcon, HardHatIcon, TruckIcon, ReceiptIcon,
@@ -320,7 +335,7 @@ const closeMobileOnNav = (e) => {
 const authUser = computed(() => page.props.auth.user || { name: 'Utilisateur', role: 'cashier' });
 const userRole = computed(() => authUser.value.role);
 const companyShortName = computed(() => {
-  const s = window.appSettings || {};
+  const s = page.props.settings || {};
   return s.company_name || 'Mon Entreprise';
 });
 
@@ -354,6 +369,11 @@ onMounted(() => {
   if (userRole.value === 'admin' || userRole.value === 'cashier') {
     fetchNotifications();
   }
+  window.addEventListener('global-print', handleGlobalPrint);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('global-print', handleGlobalPrint);
 });
 </script>
 

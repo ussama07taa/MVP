@@ -92,9 +92,9 @@
         
         <!-- Footer -->
         <div class="mt-8 text-center text-xs text-slate-400 font-medium">
-            &copy; 2026 Menuiserie Taaouati ERP. Tous droits réservés.
+            &copy; <?php echo e(date('Y')); ?> <?php echo e(\App\Models\Setting::first()?->company_name ?? 'Mon Entreprise'); ?> ERP. Tous droits réservés.
         </div>
     </div>
 </body>
 </html>
-<?php /**PATH C:\Users\Taaouati\Documents\SAS_Menu-gitmain\SAS_Menu-main\resources\views/auth/login.blade.php ENDPATH**/ ?>
+<?php /**PATH C:\Users\Taaouati\Downloads\MVP\resources\views/auth/login.blade.php ENDPATH**/ ?>

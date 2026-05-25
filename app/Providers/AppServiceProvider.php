@@ -19,7 +19,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        \Illuminate\Database\Eloquent\Model::shouldBeStrict(! $this->app->isProduction());
+        \Illuminate\Database\Eloquent\Model::shouldBeStrict(! $this->app->environment('production'));
 
         \App\Models\StockPanel::observe(\App\Observers\StockPanelObserver::class);
         \App\Models\StockCanto::observe(\App\Observers\StockCantoObserver::class);

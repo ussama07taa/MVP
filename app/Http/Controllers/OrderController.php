@@ -19,8 +19,88 @@ class OrderController extends Controller {
     }
 
     public function index() {
-        $orders = Order::withoutGlobalScopes()->with(['client', 'lines.item', 'payments'])->latest()->get();
-        return OrderResource::collection($orders);
+        $tenantId = auth()->user()->tenant_id;
+
+        // 1. Fetch POS Orders (with full relations)
+        $orders = Order::withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->with(['client', 'lines.item', 'payments'])
+            ->latest()
+            ->get();
+
+        // 2. Fetch Validated Invoices (NO items.item — morph aliases differ)
+        $invoices = collect();
+        try {
+            $invoices = \App\Models\Invoice::withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->where('type', 'invoice')
+                ->whereNotNull('validated_at')
+                ->with(['client', 'items', 'payments'])
+                ->latest()
+                ->get();
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning("Could not load invoices: " . $e->getMessage());
+        }
+
+        // 3. Build unified collection
+        $result = collect();
+
+        foreach ($orders as $order) {
+            $result->push([
+                'id' => $order->id,
+                'client' => $order->client ? ['id' => $order->client->id, 'name' => $order->client->name, 'phone' => $order->client->phone] : null,
+                'total_sell_price' => (float) $order->total_sell_price,
+                'amount_paid' => (float) $order->amount_paid,
+                'status' => $order->status,
+                'display_reference' => "#FAC-" . $order->id,
+                'source' => 'pos',
+                'created_at' => $order->created_at?->toIso8601String(),
+                'lines' => $order->lines->map(fn($l) => [
+                    'id' => $l->id,
+                    'label' => $l->label,
+                    'quantity' => (float) $l->quantity,
+                    'unit_sell_price' => (float) $l->unit_sell_price,
+                    'total_line_sell' => (float) $l->total_line_sell,
+                    'item_type' => $l->item_type,
+                    'item' => $l->relationLoaded('item') ? $l->item : null,
+                    'quantity_returned' => (float) $l->returns()->sum('quantity_returned'),
+                ]),
+                'payments' => $order->payments,
+                'total_refunded' => (float) $order->returns()->sum('total_refunded'),
+                'return_history' => [],
+            ]);
+        }
+
+        foreach ($invoices as $inv) {
+            $result->push([
+                'id' => $inv->id,
+                'client' => $inv->client ? ['id' => $inv->client->id, 'name' => $inv->client->name, 'phone' => $inv->client->phone] : null,
+                'total_sell_price' => (float) $inv->total,
+                'amount_paid' => (float) $inv->amount_paid,
+                'status' => $inv->status,
+                'display_reference' => $inv->invoice_number,
+                'source' => 'invoice',
+                'created_at' => $inv->validated_at?->toIso8601String(),
+                'lines' => $inv->items->map(fn($l) => [
+                    'id' => $l->id,
+                    'label' => $l->description,
+                    'quantity' => (float) $l->quantity,
+                    'unit_sell_price' => (float) $l->unit_price,
+                    'total_line_sell' => (float) $l->total,
+                    'item_type' => $l->item_type,
+                    'item' => null,
+                    'quantity_returned' => 0,
+                ]),
+                'payments' => $inv->payments,
+                'total_refunded' => 0,
+                'return_history' => [],
+            ]);
+        }
+
+        // Sort by date descending
+        $sorted = $result->sortByDesc('created_at')->values();
+
+        return response()->json(['data' => $sorted]);
     }
 
     public function show($id) {
@@ -53,26 +133,62 @@ class OrderController extends Controller {
     }
 
     public function pay(\Illuminate\Http\Request $request, $id) {
-        $request->validate(['amount' => 'required|numeric|min:0.1']);
+        $request->validate([
+            'amount' => 'required|numeric|min:0.1',
+            'source' => 'sometimes|string'
+        ]);
         
         try {
             return DB::transaction(function() use ($request, $id) {
-                $order = Order::withoutGlobalScopes()->findOrFail($id);
-                
-                $this->ledger->recordPayment(
-                    $order->client_id, 
-                    $request->amount, 
-                    'avance', 
-                    $order->id
-                );
+                if ($request->source === 'invoice') {
+                    $invoice = \App\Models\Invoice::withoutGlobalScopes()->findOrFail($id);
+                    
+                    $this->ledger->recordPayment(
+                        $invoice->client_id, 
+                        $request->amount, 
+                        'reglement', 
+                        null,
+                        "Paiement facture {$invoice->invoice_number}",
+                        $invoice->id
+                    );
 
-                $order->increment('amount_paid', $request->amount);
-                $order->load(['client', 'lines.item', 'payments']);
+                    $invoice->increment('amount_paid', $request->amount);
+                    
+                    // Update status for Invoice
+                    $newPaid = (float) $invoice->amount_paid;
+                    $status = $newPaid >= (float) $invoice->total ? 'paid' : 'partial';
+                    $invoice->update(['status' => $status]);
 
-                return response()->json([
-                    'message' => 'Paiement ajouté', 
-                    'order' => new \App\Http\Resources\OrderResource($order)
-                ]);
+                    $invoice->load(['client', 'items', 'payments']);
+                    
+                    // Map items to lines for resource consistency
+                    $invoice->total_sell_price = (float) $invoice->total;
+                    $invoice->display_reference = $invoice->invoice_number;
+                    $invoice->source = 'invoice';
+                    $invoice->setRelation('lines', $invoice->items);
+
+                    return response()->json([
+                        'message' => 'Paiement facture ajouté', 
+                        'order' => new OrderResource($invoice)
+                    ]);
+                } else {
+                    $order = Order::withoutGlobalScopes()->findOrFail($id);
+                    
+                    $this->ledger->recordPayment(
+                        $order->client_id, 
+                        $request->amount, 
+                        'avance', 
+                        $order->id
+                    );
+
+                    $order->increment('amount_paid', $request->amount);
+                    $order->load(['client', 'lines.item', 'payments']);
+
+                    return response()->json([
+                        'message' => 'Paiement ajouté', 
+                        'order' => new OrderResource($order)
+                    ]);
+                }
             });
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 400);

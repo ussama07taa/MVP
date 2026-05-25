@@ -22,4 +22,9 @@ class InvoiceItem extends Model
     {
         return $this->belongsTo(Invoice::class);
     }
+
+    public function item()
+    {
+        return $this->morphTo();
+    }
 }

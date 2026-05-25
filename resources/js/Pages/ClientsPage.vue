@@ -224,6 +224,69 @@
             </div>
           </div>
 
+          <!-- TAB: Relevé (Unified Ledger) -->
+          <div v-if="activeDossierTab === 'ledger'" class="space-y-4">
+            <h3 class="text-sm font-black text-slate-800 flex items-center">
+              <HistoryIcon class="w-4 h-4 mr-2 text-brand-500" /> Relevé Chronologique des Opérations
+            </h3>
+            
+            <div v-if="!selectedClientDossier.timeline || selectedClientDossier.timeline.length === 0" class="p-8 text-center bg-white border border-dashed border-slate-200 rounded-2xl text-slate-400">
+               <p class="font-bold">Aucune opération enregistrée.</p>
+            </div>
+
+            <div v-else class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+               <div class="overflow-x-auto">
+                 <table class="w-full text-left border-collapse">
+                   <thead>
+                     <tr class="bg-slate-50 border-b border-slate-100">
+                       <th class="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
+                       <th class="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Type / Réf</th>
+                       <th class="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Débit (+)</th>
+                       <th class="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Crédit (-)</th>
+                     </tr>
+                   </thead>
+                   <tbody class="divide-y divide-slate-50">
+                     <tr v-for="entry in selectedClientDossier.timeline" :key="entry.id" class="hover:bg-slate-50/50 transition-colors">
+                       <td class="px-4 py-4 whitespace-nowrap">
+                         <p class="text-xs font-bold text-slate-900">{{ formatDate(entry.date) }}</p>
+                         <p class="text-[10px] text-slate-400">{{ new Date(entry.date).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'}) }}</p>
+                       </td>
+                       <td class="px-4 py-4">
+                         <div class="flex items-center gap-2">
+                           <span :class="entry.impact === 'increase' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'" 
+                                 class="w-6 h-6 rounded-lg flex items-center justify-center shrink-0">
+                             <PlusIcon v-if="entry.impact === 'increase'" class="w-3 h-3" />
+                             <MinusIcon v-else class="w-3 h-3" />
+                           </span>
+                           <div>
+                             <p class="text-xs font-black text-slate-800">{{ entry.type }}</p>
+                             <p class="text-[11px] font-bold text-slate-500">{{ entry.reference }}</p>
+                             <p v-if="entry.description" class="text-[10px] text-slate-400 italic mt-0.5 line-clamp-1">{{ entry.description }}</p>
+                           </div>
+                         </div>
+                       </td>
+                       <td class="px-4 py-4 text-right">
+                         <span v-if="entry.impact === 'increase'" class="text-sm font-black text-slate-900">+{{ Number(entry.amount).toFixed(2) }}</span>
+                         <span v-else class="text-sm font-bold text-slate-300">—</span>
+                       </td>
+                       <td class="px-4 py-4 text-right">
+                         <span v-if="entry.impact === 'decrease'" class="text-sm font-black text-emerald-600">-{{ Number(entry.amount).toFixed(2) }}</span>
+                         <span v-else class="text-sm font-bold text-slate-300">—</span>
+                       </td>
+                     </tr>
+                   </tbody>
+                 </table>
+               </div>
+            </div>
+            
+            <div class="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 flex justify-between items-center">
+              <span class="text-xs font-black text-emerald-700 uppercase tracking-wider">Solde Actuel</span>
+              <span class="text-xl font-black" :class="selectedClientDossier.client.total_credit > 0 ? 'text-red-600' : 'text-emerald-700'">
+                {{ selectedClientDossier.client.total_credit }} DH
+              </span>
+            </div>
+          </div>
+
           <!-- TAB: Devis -->
           <div v-if="activeDossierTab === 'devis'">
             <div v-if="!selectedClientDossier.invoices || selectedClientDossier.invoices.length === 0" class="p-8 text-center bg-white border border-dashed border-slate-200 rounded-2xl text-slate-400">
@@ -488,7 +551,8 @@ import {
   UsersIcon, UserPlusIcon, UserIcon, PhoneIcon, 
   PhoneCallIcon, AlertCircleIcon, CheckCircleIcon, UserSearchIcon,
   Edit2Icon, Trash2Icon, XIcon, FileTextIcon, CalendarIcon, CreditCardIcon,
-  RotateCwIcon, FileDownIcon, EyeIcon, PrinterIcon, MapPinIcon, StickyNoteIcon
+  RotateCwIcon, FileDownIcon, EyeIcon, PrinterIcon, MapPinIcon, StickyNoteIcon,
+  HistoryIcon, PlusIcon, MinusIcon
 } from 'lucide-vue-next';
 
 const clients = ref([]);
@@ -522,6 +586,7 @@ const dossierTabs = computed(() => {
   return [
     { label: 'Profil', value: 'profile' },
     { label: 'Factures', value: 'factures', count: d.stats?.order_count || 0 },
+    { label: 'Relevé', value: 'ledger' },
     { label: 'Devis & Fact.', value: 'devis', count: (d.invoices || []).length },
     { label: 'Atelier', value: 'atelier', count: d.stats?.workshop_jobs_count || 0 },
   ];
@@ -571,25 +636,17 @@ const formatItemName = (name) => {
 
 const printOrderInvoice = (order) => {
   const clientName = selectedClientDossier.value?.client?.name || order.client?.name || 'Client';
-  const dateStr = new Date(order.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
-  const linesHtml = (order.lines || []).map(line => {
-    const itemName = getLineItemName(line);
-    return `<tr><td>${formatItemName(itemName)}</td><td class="text-right">${Number(line.quantity).toFixed(2)}</td><td class="text-right">${Number(line.unit_sell_price).toFixed(2)} DH</td><td class="text-right" style="color:#0f172a;font-weight:800">${Number(line.total_line_sell).toFixed(2)} DH</td></tr>`;
-  }).join('');
-  const total = Number(order.total_sell_price);
-  const paid = Number(order.amount_paid) || 0;
-  const reste = total - paid;
-  const settings = window.appSettings || {};
-  const companyName = settings.company_name || 'Mon Entreprise';
-  const companyPhone = settings.company_phone || '';
-  const footerText = settings.invoice_footer_text || 'Merci pour votre confiance !';
-  const rcIceHtml = (settings.company_rc || settings.company_ice) ? `<p style="font-size:10px;color:#64748b;margin-top:5px;font-weight:bold">${settings.company_ice ? 'ICE: ' + settings.company_ice : ''} ${settings.company_rc ? 'RC: ' + settings.company_rc : ''}</p>` : '';
-  const logoHtml = settings.company_logo ? `<img src="/storage/${settings.company_logo}" style="height:80px;width:80px;object-fit:contain">` : '';
-  const w = window.open('', '', 'height=800,width=800');
-  w.document.write('<html><head><title>Facture #' + order.id + '</title><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet"><style>body{font-family:\'Inter\',sans-serif;color:#1e293b;padding:40px;max-width:800px;margin:0 auto}h1{font-size:28px;font-weight:800;margin:0}.header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #e2e8f0;padding-bottom:20px;margin-bottom:30px}.inv-num{font-size:14px;font-weight:800;color:#0f172a}.client-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:30px}table{width:100%;border-collapse:collapse;margin-bottom:30px}th{text-align:left;padding:12px 16px;font-size:11px;font-weight:800;text-transform:uppercase;color:#94a3b8;border-bottom:2px solid #e2e8f0}td{padding:16px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:600;color:#475569}.text-right{text-align:right}.totals{width:320px;margin-left:auto;background:#f8fafc;border-radius:12px;padding:20px;border:1px solid #e2e8f0}.total-line{display:flex;justify-content:space-between;margin-bottom:12px;font-size:14px;font-weight:600;color:#64748b}.total-final{display:flex;justify-content:space-between;margin-top:15px;padding-top:15px;border-top:2px dashed #cbd5e1;font-size:20px;font-weight:800;color:#0f172a}.footer{margin-top:50px;text-align:center;font-size:12px;color:#94a3b8;font-weight:600;padding-top:20px;border-top:1px solid #f1f5f9}@media print{body{padding:0}@page{margin:1cm}}</style></head><body><div class="header"><div style="display:flex;align-items:center;gap:20px">' + logoHtml + '<div><h1>' + companyName + '</h1>' + rcIceHtml + '</div></div><div style="text-align:right"><h2 style="font-size:28px;font-weight:800;text-transform:uppercase;color:#cbd5e1;margin:0">Facture</h2><p class="inv-num">N° FACT-' + order.id + '</p><p style="font-size:12px;font-weight:600;color:#64748b;margin-top:5px">' + dateStr + '</p></div></div><div class="client-box"><p style="font-size:10px;font-weight:800;color:#94a3b8;text-transform:uppercase;margin:0 0 8px">Client</p><p style="font-size:16px;font-weight:800;margin:0">' + clientName + '</p></div><table><thead><tr><th>Désignation</th><th class="text-right">Qté</th><th class="text-right">Prix U.</th><th class="text-right">Total</th></tr></thead><tbody>' + linesHtml + '</tbody></table><div class="totals"><div class="total-line"><span>Sous-total</span><span>' + total.toFixed(2) + ' DH</span></div><div class="total-final"><span>Total TTC</span><span>' + total.toFixed(2) + ' DH</span></div>' + (paid > 0 ? '<div class="total-line" style="margin-top:15px"><span>Payé</span><span style="color:#10b981;font-weight:800">' + paid.toFixed(2) + ' DH</span></div>' : '') + (reste > 0 ? '<div class="total-line"><span style="color:#ef4444;font-weight:800">Reste à payer</span><span style="color:#ef4444;font-weight:800">' + reste.toFixed(2) + ' DH</span></div>' : '') + '</div><div class="footer">' + (companyPhone ? '<p>' + companyPhone + '</p>' : '') + '<p>' + footerText + '</p></div></body></html>');
-  w.document.close();
-  w.focus();
-  setTimeout(() => { w.print(); }, 500);
+  
+  // Dispatch global print event
+  window.dispatchEvent(new CustomEvent('global-print', {
+    detail: {
+      order: order,
+      items: order.lines || [],
+      total: Number(order.total_sell_price),
+      amountPaid: Number(order.amount_paid) || 0,
+      clientName: clientName
+    }
+  }));
 };
 
 const filteredOrders = computed(() => {

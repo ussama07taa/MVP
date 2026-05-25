@@ -180,9 +180,12 @@
                 <FileTextIcon class="w-5 h-5" />
               </div>
               <div class="flex flex-col">
-                <span class="font-black text-slate-900 text-lg leading-tight" :class="order.total_refunded >= order.total_sell_price ? 'line-through text-rose-300' : ''">#FAC-{{ order.id }}</span>
+                <span class="font-black text-slate-900 text-lg leading-tight" :class="order.total_refunded >= order.total_sell_price ? 'line-through text-rose-300' : ''">{{ order.display_reference }}</span>
                 <span v-if="order.total_refunded > 0" class="inline-flex items-center text-[9px] font-black bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded mt-1 border border-rose-100 uppercase tracking-tighter w-fit">
                   <RotateCcwIcon class="w-2.5 h-2.5 mr-1" /> RETOURNÉ
+                </span>
+                <span v-if="order.source === 'invoice'" class="inline-flex items-center text-[9px] font-black bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded mt-1 border border-indigo-100 uppercase tracking-tighter w-fit">
+                  <FileTextIcon class="w-2.5 h-2.5 mr-1" /> FACTURE MOD.
                 </span>
               </div>
             </div>
@@ -278,7 +281,7 @@
                       {{ (Number(selectedOrder?.total_sell_price) - Number(selectedOrder?.amount_paid)) <= 0 ? 'Facture Réglée' : 'Paiement en attente' }}
                     </span>
                     <DialogTitle as="h3" class="text-3xl font-black text-slate-900 tracking-tight">
-                      Reçu #FAC-{{ selectedOrder?.id }}
+                      Reçu {{ selectedOrder?.display_reference }}
                     </DialogTitle>
                     <p class="text-sm font-bold text-slate-500 mt-2 flex items-center">
                       <CalendarIcon class="w-4 h-4 mr-2" /> {{ selectedOrder ? formatDate(selectedOrder.created_at) : '' }}
@@ -500,8 +503,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
+import { usePage } from '@inertiajs/vue3';
 import { useToast } from '@/composables/useToast';
 const toast = useToast();
+const page = usePage();
 import { 
   FileTextIcon, FilterIcon, CheckCircleIcon, ClockIcon, 
   PrinterIcon, ReceiptIcon, SearchIcon, CreditCardIcon, CalendarIcon,
@@ -574,7 +579,7 @@ const filteredOrders = computed(() => {
     // 3. Search Query (Reference, Client, Amount, Date)
     if (searchQuery.value) {
       const q = searchQuery.value.toLowerCase();
-      const refMatch = `fac-${o.id}`.includes(q);
+      const refMatch = o.display_reference.toLowerCase().includes(q);
       const clientMatch = o.client?.name?.toLowerCase().includes(q);
       const amountMatch = o.total_sell_price.toString().includes(q) || (Number(o.total_sell_price) - Number(o.amount_paid)).toFixed(2).includes(q);
       const dateMatch = formatDate(o.created_at).toLowerCase().includes(q);
@@ -617,7 +622,10 @@ const addPayment = async () => {
   }
 
   try {
-    const res = await axios.post(`/api/orders/${selectedOrder.value.id}/pay`, { amount: paymentAmount.value });
+    const res = await axios.post(`/api/orders/${selectedOrder.value.id}/pay`, { 
+      amount: paymentAmount.value,
+      source: selectedOrder.value.source 
+    });
     
     // Update local state to reflect new data
     const updatedOrder = res.data.order;
@@ -686,128 +694,17 @@ const processReturn = async () => {
 
 const printInvoice = (order) => {
   if (!order) return;
-  const linesHtml = order.lines ? order.lines.map(line => {
-    let name = '';
-    if (line.label) name = formatItemName(line.label);
-    else if (line.item_type.includes('StockPanel')) name = `Panneau: ${line.item?.type} ${line.item?.size_x}x${line.item?.size_y}`;
-    else if (line.item_type.includes('StockCanto')) name = `Bandchant: ${line.item?.color_code}`;
-    else name = `Service: ${formatItemName(line.item?.name)}`;
-    
-    return `
-      <tr>
-        <td>${name}</td>
-        <td class="text-right">${line.quantity}</td>
-        <td class="text-right">${Number(line.unit_sell_price).toFixed(2)} DH</td>
-        <td class="text-right" style="color:#0f172a;">${Number(line.total_line_sell).toFixed(2)} DH</td>
-      </tr>
-    `;
-  }).join('') : '<tr><td colspan="4">Détails non disponibles</td></tr>';
-
-  const dateStr = formatDate(order.created_at);
-  const remaining = (Number(order.total_sell_price) - Number(order.amount_paid)).toFixed(2);
-  const settings = window.appSettings || {};
-  const companyName = settings.company_name || 'Mon Entreprise';
-  const companyPhone = settings.company_phone || '';
-  const footerText = settings.invoice_footer_text || 'Merci pour votre confiance !';
-  const rcIceHtml = (settings.company_rc || settings.company_ice) ? `<p style="font-size: 10px; color: #64748b; margin-top: 5px; font-weight: bold;">${settings.company_ice ? 'ICE: ' + settings.company_ice : ''} ${settings.company_rc ? 'RC: ' + settings.company_rc : ''}</p>` : '';
-  const logoHtml = settings.company_logo ? `<img src="/storage/${settings.company_logo}" style="height: 80px; width: 80px; object-fit: contain;">` : '';
-
-  const printContent = `
-    <html>
-    <head>
-      <title>Facture FAC-${order.id}</title>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-      <style>
-        body { font-family: 'Inter', sans-serif; color: #1e293b; padding: 40px; max-width: 800px; margin: 0 auto; }
-        .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 30px; }
-        .logo { font-size: 24px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px; margin: 0;}
-        .logo span { color: #4f46e5; }
-        .invoice-details { text-align: right; }
-        .invoice-title { font-size: 28px; font-weight: 800; text-transform: uppercase; color: #cbd5e1; margin: 0 0 5px 0; letter-spacing: 1px; }
-        .client-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 30px; }
-        .client-title { font-size: 11px; font-weight: 800; text-transform: uppercase; color: #94a3b8; margin: 0 0 5px 0; letter-spacing: 1px; }
-        .client-name { font-size: 18px; font-weight: 800; color: #0f172a; margin: 0; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-        th { text-align: left; padding: 12px 16px; font-size: 11px; font-weight: 800; text-transform: uppercase; color: #94a3b8; border-bottom: 2px solid #e2e8f0; letter-spacing: 1px; }
-        td { padding: 16px; border-bottom: 1px solid #f1f5f9; font-size: 13px; font-weight: 600; color: #475569; }
-        .text-right { text-align: right; }
-        .totals-box { width: 320px; margin-left: auto; background: #f8fafc; border-radius: 12px; padding: 20px; border: 1px solid #e2e8f0; }
-        .total-line { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px; font-weight: 600; color: #64748b; }
-        .total-final { display: flex; justify-content: space-between; margin-top: 15px; padding-top: 15px; border-top: 2px dashed #cbd5e1; font-size: 20px; font-weight: 800; color: #0f172a; }
-        .total-reste { display: flex; justify-content: space-between; margin-top: 15px; padding-top: 15px; border-top: 2px solid #e2e8f0; font-size: 16px; font-weight: 800; color: #eab308; }
-        .footer { margin-top: 50px; text-align: center; font-size: 12px; color: #94a3b8; font-weight: 600; padding-top: 20px; border-top: 1px solid #f1f5f9; }
-        @media print {
-          body { padding: 0; }
-          .totals-box { break-inside: avoid; }
-          @page { margin: 1cm; }
-        }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <div style="display: flex; align-items: center; gap: 20px;">
-          ${logoHtml}
-          <div>
-            <h1 class="logo" style="font-size: 28px; line-height: 1;">${companyName}</h1>
-            ${rcIceHtml}
-          </div>
-        </div>
-        <div class="invoice-details">
-          <h2 class="invoice-title">Facture</h2>
-          <p style="font-size: 14px; font-weight: 800; color: #0f172a; margin: 0;">N° FAC-${order.id}</p>
-          <p style="font-size: 12px; font-weight: 600; color: #64748b; margin-top: 5px;">${dateStr}</p>
-        </div>
-      </div>
-
-      <div class="client-box">
-        <p class="client-title">Facturé à</p>
-        <p class="client-name">${order.client?.name}</p>
-      </div>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Désignation</th>
-            <th class="text-right">Qté</th>
-            <th class="text-right">P.U</th>
-            <th class="text-right">Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${linesHtml}
-        </tbody>
-      </table>
-
-      <div class="totals-box">
-        <div class="total-final" style="border-top: none; margin-top: 0; padding-top: 0;">
-          <span>Total TTC</span>
-          <span>${Number(order.total_sell_price).toFixed(2)} DH</span>
-        </div>
-        <div class="total-line" style="margin-top: 15px; color: #10b981;">
-          <span>Payé</span>
-          <span>- ${Number(order.amount_paid).toFixed(2)} DH</span>
-        </div>
-        <div class="total-reste">
-          <span style="color: #64748b;">Reste à payer</span>
-          <span>${remaining} DH</span>
-        </div>
-      </div>
-
-      <div class="footer">
-        ${footerText} <br>
-        ${companyName} - Contact: ${companyPhone}
-      </div>
-    </body>
-    </html>
-  `;
   
-  const printWindow = window.open('', '', 'height=800,width=800');
-  printWindow.document.write(printContent);
-  printWindow.document.close();
-  printWindow.focus();
-  setTimeout(() => {
-    printWindow.print();
-  }, 500);
+  // Dispatch global print event
+  window.dispatchEvent(new CustomEvent('global-print', {
+    detail: {
+      order: order,
+      items: order.lines || [],
+      total: Number(order.total_sell_price),
+      amountPaid: Number(order.amount_paid) || 0,
+      clientName: order.client?.name || 'Client'
+    }
+  }));
 };
 
 const loadOrders = async () => {

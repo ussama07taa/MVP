@@ -79,24 +79,25 @@ class ClientController extends Controller
         $client = Client::findOrFail($id);
         $orders = Order::with(['lines.item', 'payments'])->where('client_id', $id)->latest()->get();
 
-        // Devis & Factures from invoices table
-        $invoices = Invoice::withoutGlobalScopes()
-            ->with('client')
+        // Devis & Factures models for internal processing
+        $invoices_models = Invoice::withoutGlobalScopes()
+            ->with(['client', 'items'])
             ->where('client_id', $id)
             ->latest()
-            ->get()
-            ->map(function ($inv) {
-                return [
-                    'id' => $inv->id,
-                    'invoice_number' => $inv->invoice_number,
-                    'type' => $inv->type,
-                    'status' => $inv->isExpired() ? 'expired' : $inv->status,
-                    'total' => $inv->total,
-                    'issue_date' => $inv->issue_date,
-                    'expiry_date' => $inv->expiry_date,
-                    'validity_days' => $inv->validity_days,
-                ];
-            });
+            ->get();
+
+        $invoices = $invoices_models->map(function ($inv) {
+            return [
+                'id' => $inv->id,
+                'invoice_number' => $inv->invoice_number,
+                'type' => $inv->type,
+                'status' => $inv->isExpired() ? 'expired' : $inv->status,
+                'total' => $inv->total,
+                'issue_date' => $inv->issue_date,
+                'expiry_date' => $inv->expiry_date,
+                'validity_days' => $inv->validity_days,
+            ];
+        });
 
         // Workshop jobs linked by client name or phone
         $workshopJobs = WorkshopQueue::withoutGlobalScopes()
@@ -119,25 +120,100 @@ class ClientController extends Controller
                     'done_at' => $job->done_at,
                     'delivered_at' => $job->delivered_at,
                     'services' => $job->services->map(fn($s) => [
-                        'name' => $s->service_name,
+                        'name' => $s->label,
                         'is_done' => $s->is_done,
                     ]),
                 ];
             });
 
+        // 5. Unified Timeline (Ledger)
+        $timeline = collect();
+
+        // Add Orders (Debt)
+        foreach ($orders as $o) {
+            $timeline->push([
+                'id' => 'ord_' . $o->id,
+                'date' => $o->created_at,
+                'type' => 'Achat (POS)',
+                'reference' => '#FAC-' . $o->id,
+                'amount' => (float) $o->total_sell_price,
+                'impact' => 'increase',
+                'raw_id' => $o->id,
+                'raw_type' => 'order'
+            ]);
+        }
+
+        // Add Validated Invoices (Debt)
+        foreach ($invoices_models as $inv) {
+            if ($inv->validated_at && $inv->type === 'invoice') {
+                $timeline->push([
+                    'id' => 'inv_' . $inv->id,
+                    'date' => $inv->validated_at,
+                    'type' => 'Facture Validée',
+                    'reference' => $inv->invoice_number,
+                    'amount' => (float) $inv->total,
+                    'impact' => 'increase',
+                    'raw_id' => $inv->id,
+                    'raw_type' => 'invoice'
+                ]);
+            }
+        }
+
+        // Add Payments (Credit)
+        $payments = Payment::with('invoice')->where('client_id', $id)->get();
+        foreach ($payments as $p) {
+            $ref = 'Paiement';
+            if ($p->order_id) $ref .= " (Vente #{$p->order_id})";
+            if ($p->invoice_id) $ref .= " ({$p->invoice?->invoice_number})";
+            if ($p->notes) $ref .= " - {$p->notes}";
+
+            $timeline->push([
+                'id' => 'pay_' . $p->id,
+                'date' => $p->created_at,
+                'type' => 'Paiement',
+                'reference' => $p->payment_method ? strtoupper($p->payment_method) : 'CASH',
+                'description' => $ref,
+                'amount' => (float) $p->amount,
+                'impact' => 'decrease',
+                'raw_id' => $p->id,
+                'raw_type' => 'payment'
+            ]);
+        }
+
+        // Add Returns (Credit)
+        $returns = \App\Models\OrderReturn::whereHas('order', function($q) use ($id) {
+            $q->where('client_id', $id);
+        })->get();
+
+        foreach ($returns as $r) {
+            $timeline->push([
+                'id' => 'ret_' . $r->id,
+                'date' => $r->created_at,
+                'type' => 'Retour Article',
+                'reference' => 'Retour #' . $r->id,
+                'amount' => (float) $r->total_refunded,
+                'impact' => 'decrease',
+                'raw_id' => $r->id,
+                'raw_type' => 'return'
+            ]);
+        }
+
+        $sortedTimeline = $timeline->sortByDesc('date')->values();
+
         // Stats
-        $totalRevenue = $orders->sum('total_sell_price');
-        $totalPaid = $orders->sum('amount_paid');
+        $totalRevenue = $orders->sum('total_sell_price') + $invoices_models->whereNotNull('validated_at')->where('type', 'invoice')->sum('total');
+        $totalPaid = $orders->sum('amount_paid') + $invoices_models->where('type', 'invoice')->sum('amount_paid');
         $lastOrder = $orders->first();
         $orderCount = $orders->count();
-        $invoiceCount = $invoices->where('type', 'invoice')->count();
-        $devisCount = $invoices->where('type', 'quote')->count();
+        $invoiceCount = $invoices_models->where('type', 'invoice')->count();
+        $devisCount = $invoices_models->where('type', 'quote')->count();
 
         return response()->json([
             'client' => $client,
             'orders' => $orders,
             'invoices' => $invoices->values(),
             'workshop_jobs' => $workshopJobs,
+            'timeline' => $sortedTimeline,
             'stats' => [
                 'total_revenue' => round($totalRevenue, 2),
                 'total_paid' => round($totalPaid, 2),
@@ -175,7 +251,7 @@ class ClientController extends Controller
                     'order_id' => $order->id,
                     'client_id' => $client->id,
                     'amount' => $paymentForThisOrder,
-                    'type' => 'règlement',
+                    'type' => 'solde',
                     'payment_method' => 'cash'
                 ]);
                 

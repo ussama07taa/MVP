@@ -353,7 +353,7 @@ const props = defineProps({
   alerts: Object
 });
 
-const dashboardTitle = computed(() => (window.appSettings || {}).company_name || 'Mon Entreprise');
+const dashboardTitle = computed(() => (usePage().props.settings || {}).company_name || 'Mon Entreprise');
 const todayDate = computed(() => {
   return new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
 });

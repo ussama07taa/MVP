@@ -80,6 +80,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
+import { router } from '@inertiajs/vue3';
 import { useToast } from '@/composables/useToast';
 const toast = useToast();
 
@@ -145,6 +146,7 @@ const saveSettings = async () => {
         await loadSettings();
         logoFile.value = null;
         toast.success('Paramètres enregistrés avec succès.');
+        router.reload();
     } catch (e) {
         const msg = e?.response?.data?.message
             || (e?.response?.data?.errors ? Object.values(e.response.data.errors).flat().join('\n') : 'Erreur de sauvegarde.');

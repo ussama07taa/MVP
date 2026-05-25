@@ -111,7 +111,7 @@ const cartStore = useCartStore();
 const toast = useToast();
 const page = usePage();
 const authUser = computed(() => page.props.auth.user);
-const companyName = computed(() => (window.appSettings || {}).company_name || 'Mon Entreprise');
+const companyName = computed(() => (page.props.settings || {}).company_name || 'Mon Entreprise');
 const logout = () => router.post('/logout');
 
 const props = defineProps({

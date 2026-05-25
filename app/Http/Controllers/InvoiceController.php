@@ -563,7 +563,8 @@ class InvoiceController extends Controller
                 $amount,
                 'reglement',
                 null,
-                "Paiement facture {$invoice->invoice_number}"
+                "Paiement facture {$invoice->invoice_number}",
+                $invoice->id
             );
 
             // Update invoice amount_paid

@@ -57,12 +57,12 @@ class ReportController extends Controller
 
         // 3. Top Services
         $topServices = DB::table('workshop_queue_services')
-            ->join('workshop_queues', 'workshop_queue_services.workshop_queue_id', '=', 'workshop_queues.id')
-            ->select('workshop_queue_services.service_name', DB::raw('COUNT(*) as count'), DB::raw('SUM(workshop_queue_services.total_price) as total_revenue'))
+            ->join('workshop_queues', 'workshop_queue_services.queue_id', '=', 'workshop_queues.id')
+            ->select('workshop_queue_services.label', DB::raw('COUNT(*) as count'))
             ->where('workshop_queues.tenant_id', $tenantId)
             ->whereMonth('workshop_queues.created_at', $month)
             ->whereYear('workshop_queues.created_at', $year)
-            ->groupBy('workshop_queue_services.service_name')
+            ->groupBy('workshop_queue_services.label')
             ->orderByDesc('count')
             ->limit(5)
             ->get();
@@ -111,20 +111,26 @@ class ReportController extends Controller
 
         // 6. Worker Performance
         $workerPerformance = DB::table('workshop_queue_services')
-            ->join('workshop_queues', 'workshop_queue_services.workshop_queue_id', '=', 'workshop_queues.id')
-            ->select('workshop_queue_services.done_by', DB::raw('COUNT(*) as services_done'))
+            ->join('workshop_queues', 'workshop_queue_services.queue_id', '=', 'workshop_queues.id')
+            ->join('users', 'workshop_queue_services.done_by', '=', 'users.id')
+            ->select('users.name as worker_name', DB::raw('COUNT(*) as services_done'))
             ->where('workshop_queues.tenant_id', $tenantId)
             ->whereMonth('workshop_queues.created_at', $month)
             ->whereYear('workshop_queues.created_at', $year)
-            ->where('workshop_queue_services.status', 'done')
+            ->where('workshop_queue_services.is_done', 1)
             ->whereNotNull('workshop_queue_services.done_by')
-            ->groupBy('workshop_queue_services.done_by')
+            ->groupBy('users.name')
             ->orderByDesc('services_done')
             ->limit(10)
             ->get();
 
         // 7. Company settings for header
-        $settings = DB::table('settings')->where('tenant_id', $tenantId)->pluck('value', 'key');
+        $settings = DB::table('settings')->where('tenant_id', $tenantId)->first();
+        if ($settings) {
+            $settings = (array) $settings;
+        } else {
+            $settings = [];
+        }
 
         $data = [
             'monthName' => $monthName,

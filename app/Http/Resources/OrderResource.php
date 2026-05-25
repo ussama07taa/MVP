@@ -9,6 +9,8 @@ class OrderResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $isOrder = $this->resource instanceof \App\Models\Order;
+
         return [
             'id' => $this->id,
             'client' => $this->whenLoaded('client', function() {
@@ -18,14 +20,16 @@ class OrderResource extends JsonResource
                     'phone' => $this->client->phone,
                 ];
             }),
-            'total_sell_price' => (float) $this->total_sell_price,
-            'amount_paid' => (float) $this->amount_paid,
+            'total_sell_price' => (float) ($this->total_sell_price ?? 0),
+            'amount_paid' => (float) ($this->amount_paid ?? 0),
             'status' => $this->status,
-            'created_at' => $this->created_at->toIso8601String(),
-            'lines' => OrderLineResource::collection($this->whenLoaded('lines')),
-            'payments' => $this->whenLoaded('payments'),
-            'total_refunded' => (float) $this->returns()->sum('total_refunded'),
-            'return_history' => $this->whenLoaded('returns'),
+            'display_reference' => $this->display_reference ?? ("#FAC-" . $this->id),
+            'source' => $this->source ?? 'pos',
+            'created_at' => optional($this->created_at)->toIso8601String(),
+            'lines' => OrderLineResource::collection($this->lines ?? $this->items ?? []),
+            'payments' => $this->payments ?? [],
+            'total_refunded' => $isOrder ? (float) $this->returns()->sum('total_refunded') : 0,
+            'return_history' => ($isOrder && $this->relationLoaded('returns')) ? $this->returns : [],
         ];
     }
 }

@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Rapport Mensuel - {{ $monthName }}</title>
+    <title>Rapport Mensuel - <?php echo e($monthName); ?></title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'DejaVu Sans', sans-serif; color: #1e293b; font-size: 11px; line-height: 1.5; }
@@ -60,19 +60,19 @@
         <!-- Header -->
         <div class="header">
             <div>
-                <div class="company-name">{{ $settings['company_name'] ?? 'Mon Entreprise' }}</div>
+                <div class="company-name"><?php echo e($settings['company_name'] ?? 'Mon Entreprise'); ?></div>
                 <div class="company-sub">
-                    @if(isset($settings['company_ice'])) ICE: {{ $settings['company_ice'] }} @endif
-                    @if(isset($settings['company_rc'])) &nbsp;|&nbsp; RC: {{ $settings['company_rc'] }} @endif
+                    <?php if(isset($settings['company_ice'])): ?> ICE: <?php echo e($settings['company_ice']); ?> <?php endif; ?>
+                    <?php if(isset($settings['company_rc'])): ?> &nbsp;|&nbsp; RC: <?php echo e($settings['company_rc']); ?> <?php endif; ?>
                 </div>
-                @if(isset($settings['company_phone']))
-                    <div class="company-sub">Tél: {{ $settings['company_phone'] }}</div>
-                @endif
+                <?php if(isset($settings['company_phone'])): ?>
+                    <div class="company-sub">Tél: <?php echo e($settings['company_phone']); ?></div>
+                <?php endif; ?>
             </div>
             <div class="report-title">
                 <h2>Rapport Mensuel</h2>
-                <p>{{ $monthName }}</p>
-                <p>Généré le {{ $generatedAt }}</p>
+                <p><?php echo e($monthName); ?></p>
+                <p>Généré le <?php echo e($generatedAt); ?></p>
             </div>
         </div>
 
@@ -82,31 +82,31 @@
             <table class="summary-table">
                 <tr>
                     <td class="label">Chiffre d'Affaires Brut</td>
-                    <td class="value">{{ number_format($financial['gross_revenue'], 2, ',', ' ') }} DH</td>
+                    <td class="value"><?php echo e(number_format($financial['gross_revenue'], 2, ',', ' ')); ?> DH</td>
                 </tr>
                 <tr>
                     <td class="label">Retours Clients</td>
-                    <td class="value negative">- {{ number_format($financial['customer_returns'], 2, ',', ' ') }} DH</td>
+                    <td class="value negative">- <?php echo e(number_format($financial['customer_returns'], 2, ',', ' ')); ?> DH</td>
                 </tr>
                 <tr>
                     <td class="label">Chiffre d'Affaires Net</td>
-                    <td class="value">{{ number_format($financial['revenue'], 2, ',', ' ') }} DH</td>
+                    <td class="value"><?php echo e(number_format($financial['revenue'], 2, ',', ' ')); ?> DH</td>
                 </tr>
                 <tr>
                     <td class="label">Coût des Marchandises (COGS)</td>
-                    <td class="value negative">- {{ number_format($financial['cogs'], 2, ',', ' ') }} DH</td>
+                    <td class="value negative">- <?php echo e(number_format($financial['cogs'], 2, ',', ' ')); ?> DH</td>
                 </tr>
                 <tr>
                     <td class="label">Marge Brute</td>
-                    <td class="value {{ $financial['gross_margin'] >= 0 ? 'positive' : 'negative' }}">{{ number_format($financial['gross_margin'], 2, ',', ' ') }} DH</td>
+                    <td class="value <?php echo e($financial['gross_margin'] >= 0 ? 'positive' : 'negative'); ?>"><?php echo e(number_format($financial['gross_margin'], 2, ',', ' ')); ?> DH</td>
                 </tr>
                 <tr>
                     <td class="label">Charges Opérationnelles (OPEX)</td>
-                    <td class="value negative">- {{ number_format($financial['opex'], 2, ',', ' ') }} DH</td>
+                    <td class="value negative">- <?php echo e(number_format($financial['opex'], 2, ',', ' ')); ?> DH</td>
                 </tr>
                 <tr class="total">
                     <td class="label font-black">Bénéfice Net</td>
-                    <td class="value font-black {{ $financial['net_profit'] >= 0 ? 'positive' : 'negative' }}">{{ number_format($financial['net_profit'], 2, ',', ' ') }} DH</td>
+                    <td class="value font-black <?php echo e($financial['net_profit'] >= 0 ? 'positive' : 'negative'); ?>"><?php echo e(number_format($financial['net_profit'], 2, ',', ' ')); ?> DH</td>
                 </tr>
             </table>
         </div>
@@ -121,31 +121,31 @@
                 </tr>
                 <tr>
                     <td>Nombre de Commandes</td>
-                    <td class="text-right font-bold">{{ $financial['order_count'] }}</td>
+                    <td class="text-right font-bold"><?php echo e($financial['order_count']); ?></td>
                 </tr>
                 <tr>
                     <td>Panier Moyen</td>
-                    <td class="text-right font-bold">{{ number_format($financial['avg_order_value'], 2, ',', ' ') }} DH</td>
+                    <td class="text-right font-bold"><?php echo e(number_format($financial['avg_order_value'], 2, ',', ' ')); ?> DH</td>
                 </tr>
                 <tr>
                     <td>Marge Nette</td>
-                    <td class="text-right font-bold">{{ $financial['margin_percentage'] }}%</td>
+                    <td class="text-right font-bold"><?php echo e($financial['margin_percentage']); ?>%</td>
                 </tr>
                 <tr>
                     <td>Encaissé</td>
-                    <td class="text-right font-bold">{{ number_format($financial['cash_collected'], 2, ',', ' ') }} DH</td>
+                    <td class="text-right font-bold"><?php echo e(number_format($financial['cash_collected'], 2, ',', ' ')); ?> DH</td>
                 </tr>
                 <tr>
                     <td>Impayés</td>
-                    <td class="text-right font-bold" style="color: #dc2626;">{{ number_format($financial['unpaid_revenue'], 2, ',', ' ') }} DH</td>
+                    <td class="text-right font-bold" style="color: #dc2626;"><?php echo e(number_format($financial['unpaid_revenue'], 2, ',', ' ')); ?> DH</td>
                 </tr>
                 <tr>
                     <td>Achats du Mois</td>
-                    <td class="text-right font-bold">{{ number_format($financial['total_purchases'], 2, ',', ' ') }} DH</td>
+                    <td class="text-right font-bold"><?php echo e(number_format($financial['total_purchases'], 2, ',', ' ')); ?> DH</td>
                 </tr>
                 <tr>
                     <td>Trésorerie Nette</td>
-                    <td class="text-right font-bold" style="color: {{ $financial['net_cash_flow'] >= 0 ? '#059669' : '#dc2626' }};">{{ number_format($financial['net_cash_flow'], 2, ',', ' ') }} DH</td>
+                    <td class="text-right font-bold" style="color: <?php echo e($financial['net_cash_flow'] >= 0 ? '#059669' : '#dc2626'); ?>;"><?php echo e(number_format($financial['net_cash_flow'], 2, ',', ' ')); ?> DH</td>
                 </tr>
             </table>
         </div>
@@ -155,46 +155,46 @@
             <div class="col">
                 <div class="section">
                     <div class="section-title">Top 5 Clients</div>
-                    @if($topClients->count() > 0)
+                    <?php if($topClients->count() > 0): ?>
                     <table>
                         <tr>
                             <th>Client</th>
                             <th class="text-center">Cmd</th>
                             <th class="text-right">CA</th>
                         </tr>
-                        @foreach($topClients as $client)
+                        <?php $__currentLoopData = $topClients; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $client): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                         <tr>
-                            <td class="font-bold">{{ $client['name'] }}</td>
-                            <td class="text-center">{{ $client['order_count'] }}</td>
-                            <td class="text-right font-bold">{{ number_format($client['total_revenue'], 2, ',', ' ') }} DH</td>
+                            <td class="font-bold"><?php echo e($client['name']); ?></td>
+                            <td class="text-center"><?php echo e($client['order_count']); ?></td>
+                            <td class="text-right font-bold"><?php echo e(number_format($client['total_revenue'], 2, ',', ' ')); ?> DH</td>
                         </tr>
-                        @endforeach
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                     </table>
-                    @else
+                    <?php else: ?>
                     <p style="color: #94a3b8; font-style: italic;">Aucune commande ce mois.</p>
-                    @endif
+                    <?php endif; ?>
                 </div>
             </div>
             <div class="col-spacer"></div>
             <div class="col">
                 <div class="section">
                     <div class="section-title">Charges par Catégorie</div>
-                    @if($expensesByCategory->count() > 0)
+                    <?php if($expensesByCategory->count() > 0): ?>
                     <table>
                         <tr>
                             <th>Catégorie</th>
                             <th class="text-right">Montant</th>
                         </tr>
-                        @foreach($expensesByCategory as $exp)
+                        <?php $__currentLoopData = $expensesByCategory; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $exp): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                         <tr>
-                            <td>{{ ucfirst($exp->category) }}</td>
-                            <td class="text-right font-bold">{{ number_format($exp->total, 2, ',', ' ') }} DH</td>
+                            <td><?php echo e(ucfirst($exp->category)); ?></td>
+                            <td class="text-right font-bold"><?php echo e(number_format($exp->total, 2, ',', ' ')); ?> DH</td>
                         </tr>
-                        @endforeach
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                     </table>
-                    @else
+                    <?php else: ?>
                     <p style="color: #94a3b8; font-style: italic;">Aucune charge ce mois.</p>
-                    @endif
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -205,49 +205,49 @@
         <!-- Top Services -->
         <div class="section">
             <div class="section-title">Services les plus demandés</div>
-            @if($topServices->count() > 0)
+            <?php if($topServices->count() > 0): ?>
             <table>
                 <tr>
                     <th>Service</th>
                     <th class="text-center">Nombre</th>
                 </tr>
-                @foreach($topServices as $svc)
+                <?php $__currentLoopData = $topServices; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $svc): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                 <tr>
-                    <td class="font-bold">{{ $svc->label }}</td>
-                    <td class="text-center">{{ $svc->count }}</td>
+                    <td class="font-bold"><?php echo e($svc->label); ?></td>
+                    <td class="text-center"><?php echo e($svc->count); ?></td>
                 </tr>
-                @endforeach
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             </table>
-            @else
+            <?php else: ?>
             <p style="color: #94a3b8; font-style: italic;">Aucun service ce mois.</p>
-            @endif
+            <?php endif; ?>
         </div>
 
         <!-- Worker Performance -->
         <div class="section">
             <div class="section-title">Performance des Employés</div>
-            @if($workerPerformance->count() > 0)
+            <?php if($workerPerformance->count() > 0): ?>
             <table>
                 <tr>
                     <th>Employé</th>
                     <th class="text-center">Services Complétés</th>
                 </tr>
-                @foreach($workerPerformance as $worker)
+                <?php $__currentLoopData = $workerPerformance; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $worker): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                 <tr>
-                    <td class="font-bold">{{ $worker->worker_name }}</td>
-                    <td class="text-center font-bold">{{ $worker->services_done }}</td>
+                    <td class="font-bold"><?php echo e($worker->worker_name); ?></td>
+                    <td class="text-center font-bold"><?php echo e($worker->services_done); ?></td>
                 </tr>
-                @endforeach
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             </table>
-            @else
+            <?php else: ?>
             <p style="color: #94a3b8; font-style: italic;">Aucune donnée ce mois.</p>
-            @endif
+            <?php endif; ?>
         </div>
 
         <!-- Stock Status - Panels -->
         <div class="section">
             <div class="section-title">État du Stock — Panneaux</div>
-            @if($stockPanels->count() > 0)
+            <?php if($stockPanels->count() > 0): ?>
             <table>
                 <tr>
                     <th>Panneau</th>
@@ -255,28 +255,29 @@
                     <th class="text-right">Valeur</th>
                     <th class="text-center">État</th>
                 </tr>
-                @foreach($stockPanels as $panel)
+                <?php $__currentLoopData = $stockPanels; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $panel): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                 <tr>
-                    <td>{{ $panel['name'] }}</td>
-                    <td class="text-center font-bold">{{ $panel['quantity'] }}</td>
-                    <td class="text-right">{{ number_format($panel['value'], 2, ',', ' ') }} DH</td>
+                    <td><?php echo e($panel['name']); ?></td>
+                    <td class="text-center font-bold"><?php echo e($panel['quantity']); ?></td>
+                    <td class="text-right"><?php echo e(number_format($panel['value'], 2, ',', ' ')); ?> DH</td>
                     <td class="text-center">
-                        <span class="badge badge-{{ $panel['status'] }}">
-                            {{ $panel['status'] === 'critical' ? 'Critique' : ($panel['status'] === 'low' ? 'Bas' : 'OK') }}
+                        <span class="badge badge-<?php echo e($panel['status']); ?>">
+                            <?php echo e($panel['status'] === 'critical' ? 'Critique' : ($panel['status'] === 'low' ? 'Bas' : 'OK')); ?>
+
                         </span>
                     </td>
                 </tr>
-                @endforeach
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             </table>
-            @else
+            <?php else: ?>
             <p style="color: #94a3b8; font-style: italic;">Aucun panneau en stock.</p>
-            @endif
+            <?php endif; ?>
         </div>
 
         <!-- Stock Status - Cantos -->
         <div class="section">
             <div class="section-title">État du Stock — Bandchant</div>
-            @if($stockCantos->count() > 0)
+            <?php if($stockCantos->count() > 0): ?>
             <table>
                 <tr>
                     <th>Bandchant</th>
@@ -284,29 +285,31 @@
                     <th class="text-right">Valeur</th>
                     <th class="text-center">État</th>
                 </tr>
-                @foreach($stockCantos as $canto)
+                <?php $__currentLoopData = $stockCantos; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $canto): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                 <tr>
-                    <td>{{ $canto['name'] }}</td>
-                    <td class="text-center font-bold">{{ number_format($canto['quantity'], 1) }} m</td>
-                    <td class="text-right">{{ number_format($canto['value'], 2, ',', ' ') }} DH</td>
+                    <td><?php echo e($canto['name']); ?></td>
+                    <td class="text-center font-bold"><?php echo e(number_format($canto['quantity'], 1)); ?> m</td>
+                    <td class="text-right"><?php echo e(number_format($canto['value'], 2, ',', ' ')); ?> DH</td>
                     <td class="text-center">
-                        <span class="badge badge-{{ $canto['status'] }}">
-                            {{ $canto['status'] === 'critical' ? 'Critique' : ($canto['status'] === 'low' ? 'Bas' : 'OK') }}
+                        <span class="badge badge-<?php echo e($canto['status']); ?>">
+                            <?php echo e($canto['status'] === 'critical' ? 'Critique' : ($canto['status'] === 'low' ? 'Bas' : 'OK')); ?>
+
                         </span>
                     </td>
                 </tr>
-                @endforeach
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             </table>
-            @else
+            <?php else: ?>
             <p style="color: #94a3b8; font-style: italic;">Aucun bandchant en stock.</p>
-            @endif
+            <?php endif; ?>
         </div>
 
         <!-- Footer -->
         <div class="footer">
-            <p>{{ $settings['company_name'] ?? 'Mon Entreprise' }} — Rapport généré automatiquement le {{ $generatedAt }}</p>
+            <p><?php echo e($settings['company_name'] ?? 'Mon Entreprise'); ?> — Rapport généré automatiquement le <?php echo e($generatedAt); ?></p>
             <p style="margin-top: 4px;">Ce document est confidentiel et réservé à un usage interne.</p>
         </div>
     </div>
 </body>
 </html>
+<?php /**PATH C:\Users\Taaouati\Downloads\MVP\resources\views/reports/monthly.blade.php ENDPATH**/ ?>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TAAOUATI DESIGN - ERP</title>
+    <title><?php echo e(\App\Models\Setting::first()?->company_name ?? 'Mon Entreprise'); ?> - ERP</title>
     <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,4 +19,4 @@
     <?php if (!isset($__inertiaSsrDispatched)) { $__inertiaSsrDispatched = true; $__inertiaSsrResponse = app(\Inertia\Ssr\Gateway::class)->dispatch($page); }  if ($__inertiaSsrResponse) { echo $__inertiaSsrResponse->body; } elseif (config('inertia.use_script_element_for_initial_page')) { ?><script data-page="app" type="application/json"><?php echo json_encode($page); ?></script><div id="app"></div><?php } else { ?><div id="app" data-page="<?php echo e(json_encode($page)); ?>"></div><?php } ?>
 </body>
 </html>
-<?php /**PATH C:\Users\Taaouati\Documents\SAS_Menu-gitmain\SAS_Menu-main\resources\views/app.blade.php ENDPATH**/ ?>
+<?php /**PATH C:\Users\Taaouati\Downloads\MVP\resources\views/app.blade.php ENDPATH**/ ?>

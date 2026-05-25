@@ -11,10 +11,20 @@ class DashboardController extends Controller {
         // This Month's Stats
         $startOfMonth = Carbon::now()->startOfMonth();
         $ordersThisMonth = Order::withoutGlobalScopes()->where('created_at', '>=', $startOfMonth)->get();
+        $invoicesThisMonth = \App\Models\Invoice::withoutGlobalScopes()->where('type', 'invoice')->whereNotNull('validated_at')->where('validated_at', '>=', $startOfMonth)->get();
+        
         $ordersThisMonthIds = $ordersThisMonth->pluck('id');
         
-        $revenueThisMonth = $ordersThisMonth->sum('total_sell_price');
-        $costThisMonth = $ordersThisMonth->sum('total_cost_price');
+        // Revenue from POS + Invoices
+        $posRevenue = $ordersThisMonth->sum('total_sell_price');
+        $invoiceRevenue = $invoicesThisMonth->sum('total');
+        $revenueThisMonth = $posRevenue + $invoiceRevenue;
+
+        // Cost (COGS)
+        $posCost = $ordersThisMonth->sum('total_cost_price');
+        $invoiceCost = \App\Models\InvoiceItem::whereIn('invoice_id', $invoicesThisMonth->pluck('id'))->selectRaw('SUM(unit_cost * quantity) as total_cost')->value('total_cost') ?? 0;
+        $costThisMonth = $posCost + $invoiceCost;
+
         $profitThisMonth = $revenueThisMonth - $costThisMonth;
 
         $servicesRevenueThisMonth = 0;
@@ -23,6 +33,12 @@ class DashboardController extends Controller {
                                               ->where('item_type', Service::class)
                                               ->sum('total_line_sell');
         }
+        // Add service revenue from invoices (category = service)
+        $invoiceServicesRevenue = \App\Models\InvoiceItem::whereIn('invoice_id', $invoicesThisMonth->pluck('id'))
+                                              ->where('category', 'service')
+                                              ->sum('total');
+        $servicesRevenueThisMonth += $invoiceServicesRevenue;
+
         $materialsRevenueThisMonth = $revenueThisMonth - $servicesRevenueThisMonth;
 
         $marginPercent = $revenueThisMonth > 0 ? ($profitThisMonth / $revenueThisMonth) * 100 : 0;
@@ -30,7 +46,9 @@ class DashboardController extends Controller {
         // Last Month's Stats
         $startOfLastMonth = Carbon::now()->subMonth()->startOfMonth();
         $endOfLastMonth = Carbon::now()->subMonth()->endOfMonth();
-        $revenueLastMonth = Order::withoutGlobalScopes()->whereBetween('created_at', [$startOfLastMonth, $endOfLastMonth])->sum('total_sell_price');
+        $revenueLastMonthPos = Order::withoutGlobalScopes()->whereBetween('created_at', [$startOfLastMonth, $endOfLastMonth])->sum('total_sell_price');
+        $revenueLastMonthInv = \App\Models\Invoice::withoutGlobalScopes()->where('type', 'invoice')->whereNotNull('validated_at')->whereBetween('validated_at', [$startOfLastMonth, $endOfLastMonth])->sum('total');
+        $revenueLastMonth = $revenueLastMonthPos + $revenueLastMonthInv;
         
         $growthPercent = 0;
         if ($revenueLastMonth > 0) {
@@ -100,7 +118,13 @@ class DashboardController extends Controller {
             ];
         });
 
-        $recentActivity = $recentOrders->concat($recentPayments)->sortByDesc('raw_date')->take(5)->values();
+        $recentInvoices = \App\Models\Invoice::withoutGlobalScopes()->where('type', 'invoice')->whereNotNull('validated_at')->with('client')->latest()->take(5)->get()->map(function($i) {
+            return [
+                'id' => 'inv-' . $i->id, 'type' => 'invoice', 'title' => 'Facture ' . $i->invoice_number, 'subtitle' => $i->client?->name ?? 'Client', 'amount' => round($i->total, 2), 'time' => $i->validated_at->diffForHumans(), 'raw_date' => $i->validated_at
+            ];
+        });
+ 
+        $recentActivity = $recentOrders->concat($recentPayments)->concat($recentInvoices)->sortByDesc('raw_date')->take(5)->values();
 
         return \Inertia\Inertia::render('DashboardApp', [
             'stats' => [
