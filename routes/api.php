@@ -96,7 +96,7 @@ Route::middleware(['auth', 'identify.tenant', 'throttle:100,1'])->group(function
         Route::post('/admin/employees', [EmployeeController::class, 'store']);
         Route::put('/admin/employees/{id}', [EmployeeController::class, 'update']);
         Route::delete('/admin/employees/{id}', [EmployeeController::class, 'destroy']);
-        Route::post('/admin/employees/{id}/advance', [EmployeeController::class, 'advance']);
+        Route::post('/admin/employees/{id}/advance', [EmployeeController::class, 'adjustment']);
         Route::post('/admin/employees/{id}/pay', [EmployeeController::class, 'pay']);
         
         // Attendances Routes
