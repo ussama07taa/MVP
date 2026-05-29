@@ -62,6 +62,7 @@ class EmployeePayrollController extends Controller
                 'id' => $slip->id,
                 'start_date' => $slip->period_start,
                 'end_date' => $slip->period_end,
+                'days_worked' => (float)$slip->days_worked,
                 'gross_amount' => (float)$slip->base_wages_total + (float)$slip->overtime_wages_total,
                 'advances_deducted' => (float)$slip->advances_total,
                 'net_paid' => (float)$slip->net_paid,
