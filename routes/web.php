@@ -27,9 +27,15 @@ Route::middleware(['auth'])->group(function () {
             $component = 'DashboardApp'; // fallback
 
             if ($any) {
-                $component = collect(explode('/', $any))
-                    ->map(fn($part) => ucfirst(\Illuminate\Support\Str::camel($part)))
-                    ->last();
+                $parts = explode('/', $any);
+                $firstPart = $parts[0];
+
+                // Handle detail pages (e.g. /admin/employees/123)
+                if (count($parts) > 1 && is_numeric($parts[1])) {
+                    if ($firstPart === 'employees') {
+                        return Inertia::render('EmployeeProfile', ['id' => $parts[1]]);
+                    }
+                }
 
                 $mappings = [
                     'stock-mdf'         => 'StockMdfPage',
@@ -58,6 +64,13 @@ Route::middleware(['auth'])->group(function () {
 
                 if (isset($mappings[$any])) {
                     $component = $mappings[$any];
+                } elseif (isset($mappings[$firstPart])) {
+                    $component = $mappings[$firstPart];
+                } else {
+                    $component = collect($parts)
+                        ->filter(fn($p) => !is_numeric($p))
+                        ->map(fn($part) => ucfirst(\Illuminate\Support\Str::camel($part)))
+                        ->last() ?: 'DashboardApp';
                 }
             }
 
