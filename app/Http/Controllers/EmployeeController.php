@@ -170,7 +170,7 @@ class EmployeeController extends Controller
                 'tenant_id' => $tenantId,
                 'category' => 'Salaire',
                 'amount' => $netPay,
-                'description' => "Paiement salaire : {$employee->name} (H.S: {$overtimeHours}h, Primes: {$bonusesSum}DH, Sanctions: {$sanctionsSum}DH)",
+                'title' => "Paiement salaire : {$employee->name} (H.S: {$overtimeHours}h, Primes: {$bonusesSum}DH, Sanctions: {$sanctionsSum}DH)",
                 'expense_date' => now()
             ]);
 
