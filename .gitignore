@@ -1,25 +1,34 @@
-/.phpunit.cache
+
+# Environnements
+.env
+.env.production
+.env.backup
+.env.example.bak
+
+# Laravel spécifique
+/vendor
 /node_modules
 /public/build
 /public/hot
 /public/storage
 /storage/*.key
-/vendor
-.env
-.env.backup
-.env.production
-.phpunit.result.cache
+/.phpunit.cache
+/.phpunit.result.cache
 Homestead.json
 Homestead.yaml
 auth.json
 npm-debug.log
 yarn-error.log
-/.fleet
-/.idea
 
+# Framework et Logs
 /storage/framework/cache
 /storage/framework/sessions
 /storage/framework/testing
 /storage/framework/views
 /storage/logs
 /storage/app/public
+
+# IDEs
+/.fleet
+/.idea
+/.vscode

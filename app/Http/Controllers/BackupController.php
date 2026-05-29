@@ -99,15 +99,15 @@ class BackupController extends Controller
      */
     public function download(Request $request)
     {
-        $request->validate(['path' => 'required|string']);
-        $path = $request->input('path');
-        $disk = Storage::disk('local');
+        try {
+            $request->validate(['path' => 'required|string']);
+            $validatedPath = $this->validateBackupPath($request->input('path'));
+            $disk = Storage::disk('local');
 
-        if (!$disk->exists($path) || !str_ends_with($path, '.zip')) {
-            return response()->json(['message' => 'Fichier introuvable.'], 404);
+            return $disk->download($validatedPath, basename($validatedPath));
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Fichier introuvable ou accès refusé.'], 404);
         }
-
-        return $disk->download($path, basename($path));
     }
 
     /**
@@ -115,16 +115,16 @@ class BackupController extends Controller
      */
     public function destroy(Request $request)
     {
-        $request->validate(['path' => 'required|string']);
-        $path = $request->input('path');
-        $disk = Storage::disk('local');
+        try {
+            $request->validate(['path' => 'required|string']);
+            $validatedPath = $this->validateBackupPath($request->input('path'));
+            $disk = Storage::disk('local');
 
-        if (!$disk->exists($path) || !str_ends_with($path, '.zip')) {
-            return response()->json(['message' => 'Fichier introuvable.'], 404);
+            $disk->delete($validatedPath);
+            return response()->json(['success' => true, 'message' => 'Backup supprimé.']);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Fichier introuvable ou accès refusé.'], 404);
         }
-
-        $disk->delete($path);
-        return response()->json(['success' => true, 'message' => 'Backup supprimé.']);
     }
 
     /**
@@ -152,5 +152,39 @@ class BackupController extends Controller
         $units = ['B', 'KB', 'MB', 'GB'];
         $i = floor(log($bytes, 1024));
         return round($bytes / pow(1024, $i), 2) . ' ' . $units[$i];
+    }
+
+    /**
+     * Validate the backup path to prevent directory traversal and unauthorized access.
+     */
+    private function validateBackupPath(string $path): string
+    {
+        // 1. Block directory traversal
+        if (str_contains($path, '..')) {
+            throw new \Exception('Invalid path.');
+        }
+
+        // 2. Ensure it's a relative path (relative to storage/app)
+        if (str_starts_with($path, '/') || str_starts_with($path, '\\')) {
+            throw new \Exception('Invalid path.');
+        }
+
+        // 3. Ensure it starts with the configured backup folder
+        $appName = config('backup.backup.name');
+        if (!str_starts_with($path, $appName . '/')) {
+            throw new \Exception('Access denied.');
+        }
+
+        // 4. Ensure it ends with .zip
+        if (!str_ends_with($path, '.zip')) {
+            throw new \Exception('Invalid file type.');
+        }
+
+        // 5. Check existence on the local disk
+        if (!Storage::disk('local')->exists($path)) {
+            throw new \Exception('File not found.');
+        }
+
+        return $path;
     }
 }

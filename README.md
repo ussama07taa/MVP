@@ -228,6 +228,38 @@ php artisan cache:clear
 
 ---
 
+## Déploiement en Production
+
+Pour déployer ce projet sur un serveur de production, suivez ces étapes de sécurité et d'optimisation.
+
+### 1. Configuration de l'environnement
+Sur le serveur, créez un fichier `.env` à partir du modèle de production :
+```bash
+cp .env.production.example .env
+php artisan key:generate
+```
+**Important** : 
+- Gardez `APP_ENV=production` et `APP_DEBUG=false`.
+- Si `APP_DEBUG` est à `false`, les erreurs détaillées ne s'afficheront pas dans le navigateur. Consultez-les dans `storage/logs/laravel.log`.
+
+### 2. Optimisation du serveur
+Après chaque modification du fichier `.env` ou déploiement de code, lancez ces commandes pour vider et mettre en cache la configuration :
+```bash
+php artisan optimize:clear
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+```
+
+### 3. Compilation du Frontend
+Avant de pousser vos changements ou sur le serveur (si Node.js est installé) :
+```bash
+npm install
+npm run build
+```
+
+---
+
 ## Stack technique
 
 - **Backend** : Laravel 10, PHP 8.1+

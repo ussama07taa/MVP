@@ -182,4 +182,16 @@ class StockController extends Controller
             return response()->json(['success' => false, 'message' => 'Erreur lors de l\'importation : ' . $e->getMessage()], 500);
         }
     }
+
+    public function destroyPanel($id)
+    {
+        StockPanel::withoutGlobalScopes()->findOrFail($id)->delete();
+        return response()->json(['success' => true]);
+    }
+
+    public function destroyCanto($id)
+    {
+        StockCanto::withoutGlobalScopes()->findOrFail($id)->delete();
+        return response()->json(['success' => true]);
+    }
 }

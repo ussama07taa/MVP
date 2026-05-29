@@ -235,16 +235,17 @@ class PurchaseController extends Controller
     }
 
     public function storeSupplier(Request $request) {
-        $data = $request->validate([
-            'name' => 'required|string',
-            'phone' => 'nullable|string',
-            'company_name' => 'nullable|string',
-            'total_debt' => 'nullable|numeric'
+        $validated = $request->validate([
+            'name' => 'required|string|max:255', 
+            'phone' => 'nullable|string|max:50'
         ]);
-        
         $tenantId = auth()->user()->tenant_id;
-        
-        return Supplier::create(array_merge($data, ['tenant_id' => $tenantId]));
+        return Supplier::create([
+            'tenant_id' => $tenantId, 
+            'name' => $validated['name'], 
+            'phone' => $validated['phone'] ?? null, 
+            'total_debt' => 0
+        ]);
     }
     public function processReturn(Request $request, $id)
     {
