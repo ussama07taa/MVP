@@ -241,6 +241,9 @@
                 <button @click.stop="printInvoice(order)" class="w-10 h-10 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all" title="Imprimer">
                   <PrinterIcon class="w-5 h-5" />
                 </button>
+                <button @click.stop="shareOnWhatsApp(order)" class="w-10 h-10 flex items-center justify-center bg-emerald-50 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100 rounded-xl transition-all" title="WhatsApp">
+                  <MessageCircleIcon class="w-5 h-5" />
+                </button>
               </div>
             </div>
 
@@ -510,7 +513,7 @@ const page = usePage();
 import { 
   FileTextIcon, FilterIcon, CheckCircleIcon, ClockIcon, 
   PrinterIcon, ReceiptIcon, SearchIcon, CreditCardIcon, CalendarIcon,
-  RotateCwIcon, FileDownIcon, RotateCcwIcon
+  RotateCwIcon, FileDownIcon, RotateCcwIcon, MessageCircleIcon
 } from 'lucide-vue-next';
 import { TransitionRoot, TransitionChild, Dialog, DialogPanel, DialogTitle } from '@headlessui/vue';
 
@@ -693,8 +696,6 @@ const processReturn = async () => {
 };
 
 const printInvoice = (order) => {
-  if (!order) return;
-  
   // Dispatch global print event
   window.dispatchEvent(new CustomEvent('global-print', {
     detail: {
@@ -705,6 +706,35 @@ const printInvoice = (order) => {
       clientName: order.client?.name || 'Client'
     }
   }));
+};
+
+const shareOnWhatsApp = (order) => {
+  if (!order.client?.phone) {
+    toast.warning("Le client n'a pas de numéro de téléphone.");
+    return;
+  }
+
+  // 1. Generate PDF URL
+  // If it's a 'pos' source, use /orders/{id}/pdf, if it's 'invoice', use /invoices/{id}/pdf
+  const pdfUrl = order.source === 'pos' 
+    ? `/api/orders/${order.id}/pdf` 
+    : `/api/admin/invoices/${order.id}/pdf`;
+  
+  // 2. Open PDF in a new tab
+  window.open(pdfUrl, '_blank');
+
+  // 3. Prepare WhatsApp message
+  const phone = order.client.phone.replace(/\D/g, '');
+  const ref = order.display_reference || `#${order.id}`;
+  const text = `Bonjour ${order.client.name}, voici votre facture ${ref} d'un montant de ${Number(order.total_sell_price).toFixed(2)} DH.`;
+  
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const waUrl = isMobile 
+    ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
+    : `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(text)}`;
+  
+  // 4. Open WhatsApp
+  window.open(waUrl, '_blank');
 };
 
 const loadOrders = async () => {

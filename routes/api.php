@@ -22,6 +22,7 @@ Route::middleware(['auth', 'identify.tenant', 'throttle:100,1'])->group(function
     Route::get('/clients', [ClientController::class, 'index']);
     Route::post('/clients', [ClientController::class, 'store']);
     Route::get('/clients/{id}/history', [ClientController::class, 'history']);
+    Route::get('/orders/{id}/pdf', [OrderController::class, 'downloadPdf']);
     Route::post('/orders/{id}/pay', [OrderController::class, 'pay']);
     Route::post('/clients/{id}/pay', [ClientController::class, 'pay']);
     Route::delete('/clients/{id}', [ClientController::class, 'destroy']);
@@ -275,6 +276,7 @@ Route::middleware(['auth', 'identify.tenant', 'throttle:100,1'])->group(function
         Route::post('/admin/invoices/{id}/validate', [InvoiceController::class, 'validateInvoice']);
         Route::post('/admin/invoices/{id}/pay', [InvoiceController::class, 'payInvoice']);
         Route::post('/admin/invoices/{id}/duplicate', [InvoiceController::class, 'duplicate']);
+        Route::get('/admin/invoices/{id}/pdf', [InvoiceController::class, 'downloadPdf']);
         Route::get('/admin/invoices-summary', [InvoiceController::class, 'summary']);
         Route::delete('/admin/invoices/{id}', [InvoiceController::class, 'destroy']);
     });

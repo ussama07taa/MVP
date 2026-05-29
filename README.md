@@ -164,6 +164,24 @@ php artisan serve
 npm run dev
 ```
 
+### Raccourcis de démarrage rapide
+
+Pour gagner du temps, deux options s'offrent à vous :
+
+*   **Option 1 : Tout-en-un (Terminal unique)**
+    ```bash
+    npm run fast
+    ```
+    *Lance les serveurs Laravel et Vite simultanément dans le même terminal.*
+
+*   **Option 2 : Fenêtres séparées (PowerShell)**
+    ```powershell
+    ./dev.ps1
+    ```
+    *Ouvre deux nouvelles fenêtres PowerShell pour chaque serveur.*
+
+---
+
 Les changements Vue.js seront visibles en temps réel sans avoir à faire `npm run build`.
 
 ---

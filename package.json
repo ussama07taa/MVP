@@ -3,7 +3,8 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "build": "vite build"
+        "build": "vite build",
+        "fast": "npx concurrently \"php artisan serve --port=8001\" \"npm run dev\""
     },
     "devDependencies": {
         "@tailwindcss/postcss": "^4.2.4",

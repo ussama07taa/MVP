@@ -106,14 +106,20 @@
             
               <div class="flex items-center gap-8">
                 <!-- Massive Quantity Badge -->
-                <div class="w-20 h-20 rounded-3xl flex flex-col items-center justify-center shadow-lg transition-all"
+                <div class="w-16 h-16 rounded-2xl flex flex-col items-center justify-center shadow-lg transition-all"
                   :class="service.is_done ? 'bg-white/20 text-white' : 'bg-brand-500 text-white shadow-brand-500/20'">
-                  <span class="text-xs font-black uppercase opacity-60 leading-none mb-1">Qty</span>
-                  <span class="text-3xl font-black leading-none">{{ service.quantity }}</span>
+                  <span class="text-[8px] font-black uppercase opacity-60 leading-none mb-1">Qty</span>
+                  <span class="text-2xl font-black leading-none">{{ service.quantity }}</span>
                 </div>
                 
-                <div class="text-left">
-                   <span class="block text-2xl font-black transition-colors" :class="service.is_done ? 'text-white' : 'text-slate-300'">
+                <div class="text-left flex-1 min-w-0">
+                   <span 
+                    class="block font-black leading-[1.1] tracking-tight transition-colors break-words" 
+                    :class="[
+                      service.is_done ? 'text-white' : 'text-slate-300',
+                      service.label.length > 50 ? 'text-base' : (service.label.length > 30 ? 'text-lg' : 'text-xl')
+                    ]"
+                   >
                     {{ service.label }}
                    </span>
                    

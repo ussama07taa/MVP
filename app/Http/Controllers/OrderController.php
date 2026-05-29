@@ -4,9 +4,10 @@ namespace App\Http\Controllers;
 
 use Illuminate\Support\Facades\DB;
 use App\Http\Requests\StoreOrderRequest;
-use App\Models\{Order, OrderLine, StockPanel, StockCanto, Service, Client, Payment, User, Tenant, OrderReturn, OrderReturnLine, Consumable};
+use App\Models\{Order, OrderLine, StockPanel, StockCanto, Service, Client, Payment, User, Tenant, OrderReturn, OrderReturnLine, Consumable, Setting};
 use Illuminate\Support\Facades\Cache;
 use App\Http\Resources\OrderResource;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class OrderController extends Controller {
     protected $checkout;
@@ -106,6 +107,43 @@ class OrderController extends Controller {
     public function show($id) {
         $order = Order::withoutGlobalScopes()->with(['client', 'lines.item', 'payments'])->findOrFail($id);
         return new OrderResource($order);
+    }
+
+    /**
+     * Generate PDF for a POS order and stream it.
+     */
+    public function downloadPdf($id)
+    {
+        $order = Order::withoutGlobalScopes()->with(['client', 'lines'])->findOrFail($id);
+        $settings = Setting::first();
+
+        // Standardize data for the view
+        $invoiceData = (object) [
+            'invoice_number' => "#FAC-" . $order->id,
+            'type' => 'invoice',
+            'issue_date' => $order->created_at,
+            'client' => $order->client,
+            'items' => $order->lines->map(fn($l) => (object)[
+                'description' => $l->label,
+                'quantity' => $l->quantity,
+                'unit' => $l->item_type === StockCanto::class ? 'm' : 'unité',
+                'unit_price' => $l->unit_sell_price,
+                'total' => $l->total_line_sell
+            ]),
+            'subtotal' => $order->total_sell_price,
+            'tax_amount' => 0,
+            'tax_rate' => 0,
+            'total' => $order->total_sell_price,
+            'amount_paid' => $order->amount_paid,
+            'remaining_balance' => max(0, (float) $order->total_sell_price - (float) $order->amount_paid),
+        ];
+
+        $pdf = Pdf::loadView('pdf.invoice', [
+            'invoice' => $invoiceData,
+            'settings' => $settings ? $settings->toArray() : []
+        ]);
+
+        return $pdf->stream("Order-{$order->id}.pdf");
     }
 
     public function store(StoreOrderRequest $request) {

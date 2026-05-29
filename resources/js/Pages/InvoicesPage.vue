@@ -135,6 +135,10 @@
                 class="w-8 h-8 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-lg flex items-center justify-center transition-colors">
                 <PrinterIcon class="w-4 h-4" />
               </button>
+              <button @click.stop="shareOnWhatsApp(inv)" title="Envoyer sur WhatsApp (PDF)"
+                class="w-8 h-8 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center transition-colors">
+                <MessageCircleIcon class="w-4 h-4" />
+              </button>
               <button @click.stop="deleteInvoice(inv)" title="Supprimer"
                 class="w-8 h-8 bg-rose-50 hover:bg-rose-100 text-rose-500 rounded-lg flex items-center justify-center transition-colors">
                 <Trash2Icon class="w-4 h-4" />
@@ -348,7 +352,7 @@ import { usePage } from '@inertiajs/vue3';
 import { useToast } from '@/composables/useToast';
 const toast = useToast();
 const page = usePage();
-import { FileTextIcon, PlusIcon, XIcon, Trash2Icon, PrinterIcon, ArrowRightCircleIcon, Loader2Icon, CheckCircleIcon, XCircleIcon, CopyIcon, ClockIcon, AlertTriangleIcon, BanknoteIcon, ShieldCheckIcon, PackageIcon } from 'lucide-vue-next';
+import { FileTextIcon, PlusIcon, XIcon, Trash2Icon, PrinterIcon, ArrowRightCircleIcon, Loader2Icon, CheckCircleIcon, XCircleIcon, CopyIcon, ClockIcon, AlertTriangleIcon, BanknoteIcon, ShieldCheckIcon, PackageIcon, MessageCircleIcon } from 'lucide-vue-next';
 
 const invoices = ref([]);
 const clients = ref([]);
@@ -571,6 +575,32 @@ const printInvoice = (inv) => {
       clientName: inv.client?.name || 'Client'
     }
   }));
+};
+
+const shareOnWhatsApp = (inv) => {
+  if (!inv.client?.phone) {
+    toast.warning("Le client n'a pas de numéro de téléphone.");
+    return;
+  }
+
+  // 1. Generate PDF URL
+  const pdfUrl = `/api/admin/invoices/${inv.id}/pdf`;
+  
+  // 2. Open PDF in a new tab so user can save/see it
+  window.open(pdfUrl, '_blank');
+
+  // 3. Prepare WhatsApp message
+  const phone = inv.client.phone.replace(/\D/g, '');
+  const text = `Bonjour ${inv.client.name}, voici votre ${inv.type === 'invoice' ? 'facture' : 'devis'} ${inv.invoice_number} d'un montant de ${inv.total.toFixed(2)} DH.`;
+  
+  // Use web.whatsapp.com for more "Direct" desktop feel, or wa.me for universal
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const waUrl = isMobile 
+    ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
+    : `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(text)}`;
+  
+  // 4. Open WhatsApp
+  window.open(waUrl, '_blank');
 };
 
 const formatItemName = (name) => {

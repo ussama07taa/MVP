@@ -4,8 +4,9 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Models\{Invoice, InvoiceItem, Client, StockPanel, StockCanto, Service};
+use App\Models\{Invoice, InvoiceItem, Client, StockPanel, StockCanto, Service, Setting};
 use App\Services\{StockService, ClientLedgerService};
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class InvoiceController extends Controller
 {
@@ -361,6 +362,23 @@ class InvoiceController extends Controller
             'success' => true,
             'message' => "Document {$invoice->invoice_number} supprimé.",
         ]);
+    }
+
+    /**
+     * Generate PDF and stream it to browser.
+     */
+    public function downloadPdf($id)
+    {
+        $invoice = Invoice::withoutGlobalScopes()->with(['client', 'items'])->findOrFail($id);
+        $settings = Setting::first(); // General settings for logo/company info
+
+        $pdf = Pdf::loadView('pdf.invoice', [
+            'invoice' => $invoice,
+            'settings' => $settings ? $settings->toArray() : [],
+            'remaining_balance' => $invoice->remainingBalance()
+        ]);
+
+        return $pdf->stream("{$invoice->invoice_number}.pdf");
     }
 
     /**
