@@ -56,11 +56,16 @@ class EmployeeController extends Controller
     }
 
     /**
-     * Record an advance for an employee.
+     * Record an adjustment (advance, bonus, sanction) for an employee.
      */
-    public function advance(Request $request, $id)
+    public function adjustment(Request $request, $id)
     {
-        $request->validate(['amount' => 'required|numeric|min:0.1']);
+        $request->validate([
+            'amount' => 'required|numeric|min:0',
+            'type'   => 'required|in:advance,bonus,sanction',
+            'notes'  => 'nullable|string|max:500'
+        ]);
+        
         $tenantId = auth()->user()->tenant_id;
         
         DB::transaction(function() use ($request, $id, $tenantId) {
@@ -70,14 +75,22 @@ class EmployeeController extends Controller
                 'tenant_id' => $tenantId,
                 'employee_id' => $employee->id,
                 'date' => now()->toDateString(),
+                'type' => $request->type,
                 'amount' => $request->amount,
+                'notes' => $request->notes,
                 'is_deducted' => false
             ]);
             
-            $employee->increment('total_advances', $request->amount);
+            // For 'advance' and 'sanction', they act as debt (deductions)
+            // For 'bonus', it acts as additional gain
+            if ($request->type === 'bonus') {
+                // Bonuses don't increment total_advances (debt); they are added during pay
+            } else {
+                $employee->increment('total_advances', $request->amount);
+            }
         });
 
-        return response()->json(['message' => 'Avance enregistrée avec succès']);
+        return response()->json(['message' => 'Ajustement enregistré avec succès']);
     }
 
     /**
@@ -90,7 +103,7 @@ class EmployeeController extends Controller
         return DB::transaction(function() use ($id, $tenantId) {
             $employee = Employee::where('tenant_id', $tenantId)->findOrFail($id);
             
-            // 1. Gather stats from unpaid attendances to create historical record
+            // 1. Gather stats from unpaid attendances
             $unpaidAttendances = EmployeeAttendance::where('tenant_id', $tenantId)
                 ->where('employee_id', $employee->id)
                 ->where('is_paid', false)
@@ -101,30 +114,45 @@ class EmployeeController extends Controller
             $daysWorked = $presentDays + ($halfDays * 0.5);
             $baseWages = (float)$unpaidAttendances->sum('wage_earned');
             $overtimeWages = (float)$unpaidAttendances->sum('overtime_wage');
-            $grossPay = $baseWages + $overtimeWages;
-            $advancesSum = (float)$employee->total_advances; 
-            $netPay = max(0, $grossPay - $advancesSum);
+            $overtimeHours = (float)$unpaidAttendances->sum('overtime_hours');
+            
+            // 2. Fetch pending adjustments (advances, bonuses, sanctions)
+            $adjustments = EmployeeAdvance::where('tenant_id', $tenantId)
+                ->where('employee_id', $employee->id)
+                ->where('is_deducted', false)
+                ->get();
+            
+            $advancesSum = (float)$adjustments->where('type', 'advance')->sum('amount');
+            $bonusesSum = (float)$adjustments->where('type', 'bonus')->sum('amount');
+            $sanctionsSum = (float)$adjustments->where('type', 'sanction')->sum('amount');
+            
+            $grossPay = $baseWages + $overtimeWages + $bonusesSum;
+            $totalDeductions = $advancesSum + $sanctionsSum;
+            $netPay = max(0, $grossPay - $totalDeductions);
 
             if ($netPay <= 0 && $grossPay <= 0) {
                  return response()->json(['message' => 'Rien à payer (0 DH).'], 400);
             }
 
-            // 2. Create formal PaySlip record for History/Profile page
+            // 3. Create formal PaySlip record for History/Profile page
             \App\Models\PaySlip::create([
                 'tenant_id' => $tenantId,
                 'employee_id' => $employee->id,
                 'period_start' => $unpaidAttendances->min('date') ?? now()->toDateString(),
                 'period_end' => $unpaidAttendances->max('date') ?? now()->toDateString(),
                 'days_worked' => $daysWorked,
+                'overtime_hours_total' => $overtimeHours,
                 'base_wages_total' => $baseWages,
                 'overtime_wages_total' => $overtimeWages,
+                'bonuses_total' => $bonusesSum,
                 'advances_total' => $advancesSum,
+                'sanctions_total' => $sanctionsSum,
                 'net_paid' => $netPay,
                 'status' => 'paid',
                 'payment_date' => now()->toDateString(),
             ]);
 
-            // 3. Mark attendances and advances as paid/deducted
+            // 4. Mark everything as paid/deducted
             EmployeeAttendance::where('tenant_id', $tenantId)
                 ->where('employee_id', $employee->id)
                 ->where('is_paid', false)
@@ -137,12 +165,12 @@ class EmployeeController extends Controller
                 ->where('is_deducted', false)
                 ->update(['is_deducted' => true]);
 
-            // 4. Record as General Expense for bookkeeping
+            // 5. Record as General Expense
             \App\Models\Expense::create([
                 'tenant_id' => $tenantId,
                 'category' => 'Salaire',
                 'amount' => $netPay,
-                'description' => "Paiement salaire : {$employee->name}",
+                'description' => "Paiement salaire : {$employee->name} (H.S: {$overtimeHours}h, Primes: {$bonusesSum}DH, Sanctions: {$sanctionsSum}DH)",
                 'expense_date' => now()
             ]);
 

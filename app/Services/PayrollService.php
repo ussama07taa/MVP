@@ -30,18 +30,23 @@ class PayrollService
             $attendances = $employee->attendances;
             
             // Calculate days worked based on status
-            $presentDays = $attendances->where('status', 'present')->count();
-            $halfDays = $attendances->where('status', 'half_day')->count();
+            $presentDays = (float)$attendances->where('status', 'present')->count();
+            $halfDays = (float)$attendances->where('status', 'half_day')->count();
             $daysWorked = $presentDays + ($halfDays * 0.5);
             
             $baseWages = (float) $attendances->sum('wage_earned');
+            $overtimeHours = (float) $attendances->sum('overtime_hours');
             $overtimeWages = (float) $attendances->sum('overtime_wage');
-            $grossPay = $baseWages + $overtimeWages;
             
-            // Sum all non-deducted advances
-            $advancesSum = (float)$employee->advances->sum('amount');
+            // Fetch adjustments
+            $adjustments = $employee->advances;
+            $bonusesSum = (float)$adjustments->where('type', 'bonus')->sum('amount');
+            $advancesSum = (float)$adjustments->where('type', 'advance')->sum('amount');
+            $sanctionsSum = (float)$adjustments->where('type', 'sanction')->sum('amount');
             
-            $netPay = max(0, $grossPay - $advancesSum);
+            $grossPay = $baseWages + $overtimeWages + $bonusesSum;
+            $totalDeductions = $advancesSum + $sanctionsSum;
+            $netPay = max(0, $grossPay - $totalDeductions);
 
             $payroll[] = [
                 'employee_id' => $employee->id,
@@ -50,10 +55,14 @@ class PayrollService
                 'days_worked' => $daysWorked,
                 'present_days' => $presentDays,
                 'half_days' => $halfDays,
+                'overtime_hours' => $overtimeHours,
                 'base_wages' => $baseWages,
                 'overtime_wages' => $overtimeWages,
-                'gross_pay' => $grossPay,
+                'bonuses' => $bonusesSum,
                 'advances' => $advancesSum,
+                'sanctions' => $sanctionsSum,
+                'gross_pay' => $grossPay,
+                'total_deductions' => $totalDeductions,
                 'net_pay' => $netPay
             ];
             
@@ -86,21 +95,31 @@ class PayrollService
                 \App\Models\PaySlip::create([
                     'tenant_id' => $tenantId,
                     'employee_id' => $entry['employee_id'],
+                    'days_worked' => $entry['days_worked'],
+                    'overtime_hours_total' => $entry['overtime_hours'],
                     'period_start' => $startDate,
                     'period_end' => $endDate,
                     'base_wages_total' => $entry['base_wages'],
                     'overtime_wages_total' => $entry['overtime_wages'],
+                    'bonuses_total' => $entry['bonuses'],
                     'advances_total' => $entry['advances'],
+                    'sanctions_total' => $entry['sanctions'],
                     'net_paid' => $entry['net_pay'],
                     'status' => 'paid',
                     'payment_date' => now()->toDateString(),
                 ]);
 
                 // 2. Mark advances as deducted for this specific employee
-                EmployeeAdvance::where('tenant_id', $tenantId)
+                \App\Models\EmployeeAdvance::where('tenant_id', $tenantId)
                     ->where('employee_id', $entry['employee_id'])
                     ->where('is_deducted', false)
                     ->update(['is_deducted' => true]);
+
+                // 3. Mark attendances as paid
+                \App\Models\EmployeeAttendance::where('tenant_id', $tenantId)
+                    ->where('employee_id', $entry['employee_id'])
+                    ->whereBetween('date', [$startDate, $endDate])
+                    ->update(['is_paid' => true]);
             }
 
             return true;

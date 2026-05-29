@@ -107,8 +107,9 @@
           </td>
           <td class="p-4">
             <div class="flex justify-center gap-1.5">
-              <button @click="openAdvance(emp)" class="px-3 py-1.5 bg-amber-50 text-amber-600 rounded-lg text-[10px] font-black uppercase hover:bg-amber-100 transition-all">
-                <BanknoteIcon class="w-3 h-3 inline mr-1" />Avance
+              <button @click="openAdjustment(emp)" class="px-3 py-1.5 bg-amber-50 text-amber-600 rounded-lg text-[10px] font-black uppercase hover:bg-amber-100 transition-all flex items-center gap-1 group/btn" :title="Number(emp.total_advances) > Number(emp.earned_salary) ? 'Dette élevée !' : ''">
+                <AlertTriangleIcon v-if="Number(emp.total_advances) > Number(emp.earned_salary)" class="w-3 h-3 text-rose-500 animate-pulse" />
+                <BanknoteIcon class="w-3 h-3" /> Ajuster
               </button>
               <button @click="payEmp(emp)" class="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-black uppercase hover:bg-indigo-100 transition-all">
                 <CheckCircle2Icon class="w-3 h-3 inline mr-1" />Payer
@@ -147,18 +148,38 @@
 
 <Teleport to="body">
 
-  <!-- Advance Modal -->
-  <div v-if="advanceEmp" class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md" @click.self="advanceEmp=null">
-    <div class="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
-      <h3 class="text-xl font-black text-slate-900 mb-1">💸 Avance (Salaf)</h3>
-      <p class="text-sm text-slate-500 mb-6">Pour : <span class="font-black text-indigo-600">{{ advanceEmp.name }}</span></p>
-      <div class="relative mb-6">
-        <span class="absolute left-4 top-1/2 -translate-y-1/2 font-black text-xl text-slate-300">DH</span>
-        <input v-model="advanceAmt" type="number" step="50" class="w-full pl-14 pr-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-xl text-2xl font-black text-slate-900 focus:border-amber-400 focus:ring-0" placeholder="0" autofocus>
+  <!-- Adjustment Modal -->
+  <div v-if="adjustmentEmp" class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md" @click.self="adjustmentEmp=null">
+    <div class="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl animate-in zoom-in duration-300">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-12 h-12 rounded-2xl flex items-center justify-center" :class="adjType === 'bonus' ? 'bg-emerald-50 text-emerald-600' : adjType === 'sanction' ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-600'">
+          <component :is="adjType === 'bonus' ? TrendingUpIcon : adjType === 'sanction' ? TrendingDownIcon : BanknoteIcon" class="w-6 h-6" />
+        </div>
+        <div>
+          <h3 class="text-xl font-black text-slate-900 leading-tight">Ajustement</h3>
+          <p class="text-sm text-slate-500 font-bold">Pour : <span class="text-indigo-600">{{ adjustmentEmp.name }}</span></p>
+        </div>
       </div>
+
+      <div class="flex bg-slate-100 p-1.5 rounded-xl mb-6">
+        <button v-for="t in ['advance', 'bonus', 'sanction']" :key="t" 
+          @click="adjType = t"
+          :class="adjType === t ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'"
+          class="flex-1 py-2 rounded-lg text-xs font-black uppercase transition-all capitalize">
+          {{ t === 'advance' ? 'Salaf' : t === 'bonus' ? 'Prime' : 'Sanction' }}
+        </button>
+      </div>
+
+      <div class="relative mb-4">
+        <span class="absolute left-4 top-1/2 -translate-y-1/2 font-black text-xl text-slate-300">DH</span>
+        <input v-model="adjAmt" type="number" step="50" class="w-full pl-14 pr-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-2xl font-black text-slate-900 focus:border-amber-400 focus:ring-0" placeholder="0" autofocus>
+      </div>
+
+      <textarea v-model="adjNotes" placeholder="Notes / Raison (optionnel)..." class="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-sm font-bold text-slate-700 focus:border-amber-400 focus:ring-0 mb-6" rows="2"></textarea>
+
       <div class="flex gap-3">
-        <button @click="advanceEmp=null" class="flex-1 py-3 text-slate-500 font-bold">Annuler</button>
-        <button @click="submitAdvance" class="flex-1 py-3 bg-amber-500 text-white rounded-xl font-black shadow-lg">VALIDER</button>
+        <button @click="adjustmentEmp=null" class="flex-1 py-4 text-slate-500 font-black">ANNULER</button>
+        <button @click="submitAdjustment" class="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-black shadow-xl hover:-translate-y-0.5 transition-all">VALIDER</button>
       </div>
     </div>
   </div>
@@ -179,7 +200,7 @@ import axios from 'axios';
 import { useToast } from '@/composables/useToast';
 const toast = useToast();
 import { usePage, router, Link } from '@inertiajs/vue3';
-import { HardHatIcon, UserPlusIcon, SearchIcon, UsersIcon, BanknoteIcon, CheckCircle2Icon, PencilIcon, Trash2Icon, CalendarCheckIcon, HistoryIcon, RotateCwIcon } from 'lucide-vue-next';
+import { HardHatIcon, UserPlusIcon, SearchIcon, UsersIcon, BanknoteIcon, CheckCircle2Icon, PencilIcon, Trash2Icon, CalendarCheckIcon, HistoryIcon, RotateCwIcon, TrendingUpIcon, TrendingDownIcon, AlertTriangleIcon } from 'lucide-vue-next';
 
 const employees = ref([]);
 const isLoading = ref(true);
@@ -187,8 +208,13 @@ const showForm = ref(false);
 const searchQuery = ref('');
 const selectedMonth = ref(new Date().toISOString().slice(0, 7));
 const form = ref({ id: null, name: '', role: 'Menuisier', phone: '', daily_salary: 0 });
-const advanceEmp = ref(null);
-const advanceAmt = ref('');
+
+// Adjustment Modal Refs
+const adjustmentEmp = ref(null);
+const adjAmt = ref('');
+const adjType = ref('advance');
+const adjNotes = ref('');
+
 const showPointage = ref(false);
 const pointageDate = ref(new Date().toISOString().split('T')[0]);
 const attendancesForm = reactive({});
@@ -227,17 +253,6 @@ const kpis = computed(() => [
 
 const showSuccess = (msg) => { successMsg.value = msg; setTimeout(() => successMsg.value = '', 3000); };
 const fmt = (v) => { const n = parseFloat(v); return isNaN(n) ? '0.00' : n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
-const formatDate = (d) => new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(d));
-const formatDateFull = (d) => new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(d));
-
-const filteredHistory = computed(() => {
-  if (!history.value || history.value.length === 0) return [];
-  return history.value.filter(item => {
-    if (historyStart.value && item.expense_date < historyStart.value) return false;
-    if (historyEnd.value && item.expense_date > historyEnd.value) return false;
-    return true;
-  });
-});
 
 const loadEmployees = async () => {
   isLoading.value = true;
@@ -263,16 +278,27 @@ const deleteEmployee = async (emp) => {
   catch(e) { toast.error(e.response?.data?.error || 'Erreur'); }
 };
 
-const openAdvance = (emp) => { advanceEmp.value = emp; advanceAmt.value = ''; };
-const submitAdvance = async () => {
-  if (!advanceAmt.value || advanceAmt.value <= 0) return;
-  await axios.post(`/api/admin/employees/${advanceEmp.value.id}/advance`, { amount: parseFloat(advanceAmt.value) });
-  advanceEmp.value = null; showSuccess('Avance enregistrée !'); loadEmployees();
+const openAdjustment = (emp) => { 
+  adjustmentEmp.value = emp; 
+  adjAmt.value = ''; 
+  adjType.value = 'advance';
+  adjNotes.value = '';
+};
+
+const submitAdjustment = async () => {
+  if (!adjAmt.value || adjAmt.value < 0) return;
+  await axios.post(`/api/admin/employees/${adjustmentEmp.value.id}/advance`, { 
+    amount: parseFloat(adjAmt.value),
+    type: adjType.value,
+    notes: adjNotes.value
+  });
+  adjustmentEmp.value = null; 
+  showSuccess('Ajustement enregistré !'); 
+  loadEmployees();
 };
 
 const payEmp = async (emp) => {
   const net = emp.net_to_pay || 0;
-  if (net <= 0) { toast.warning('Rien à payer.'); return; }
   if (!confirm(`✅ Payer ${fmt(net)} DH à ${emp.name} ?`)) return;
   try { await axios.post(`/api/admin/employees/${emp.id}/pay`); showSuccess(`💰 ${emp.name} payé !`); loadEmployees(); }
   catch(e) { toast.error(e.response?.data?.error || 'Erreur'); }

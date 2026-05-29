@@ -63,15 +63,16 @@ class EmployeePayrollController extends Controller
                 'start_date' => $slip->period_start,
                 'end_date' => $slip->period_end,
                 'days_worked' => (float)$slip->days_worked,
-                'gross_amount' => (float)$slip->base_wages_total + (float)$slip->overtime_wages_total,
+                'overtime_hours' => (float)$slip->overtime_hours_total,
+                'gross_amount' => (float)$slip->base_wages_total + (float)$slip->overtime_wages_total + (float)$slip->bonuses_total,
                 'advances_deducted' => (float)$slip->advances_total,
+                'sanctions_deducted' => (float)$slip->sanctions_total,
                 'net_paid' => (float)$slip->net_paid,
-                'overtime_amount' => (float)$slip->overtime_wages_total,
                 'is_advance_only' => false
             ];
         });
 
-        // ---- 2. Pending Advances (not yet deducted / no payroll closure yet) ----
+        // ---- 2. Pending Adjustments (Advances, Bonuses, Sanctions - not yet deducted) ----
         $advancesQuery = EmployeeAdvance::where('tenant_id', $tenantId)
             ->where('employee_id', $employeeId)
             ->where('is_deducted', false);
@@ -79,23 +80,26 @@ class EmployeePayrollController extends Controller
         if ($request->has('year') && $request->year) { $advancesQuery->whereYear('date', $request->year); }
         if ($request->has('month') && $request->month) { $advancesQuery->whereMonth('date', $request->month); }
 
-        $pendingAdvances = $advancesQuery->orderBy('date', 'desc')->get()->map(function($adv) {
+        $pendingAdjustments = $advancesQuery->orderBy('date', 'desc')->get()->map(function($adv) {
             return [
-                'id'                => 'adv_' . $adv->id,
+                'id'                => 'adj_' . $adv->id,
                 'start_date'        => $adv->date,
                 'end_date'          => $adv->date,
+                'type'              => $adv->type, // advance, bonus, sanction
                 'days_worked'       => 0,
-                'gross_amount'      => 0,
-                'advances_deducted' => (float) $adv->amount,
+                'gross_amount'      => $adv->type === 'bonus' ? (float)$adv->amount : 0,
+                'advances_deducted' => $adv->type === 'advance' ? (float)$adv->amount : 0,
+                'sanctions_deducted' => $adv->type === 'sanction' ? (float)$adv->amount : 0,
+                'amount'            => (float)$adv->amount,
                 'net_paid'          => 0,
-                'is_advance_only'   => true, // Flag for frontend display
+                'is_advance_only'   => true, 
             ];
         });
 
-        // Merge payroll history with pending advances
+        // Merge payroll history with pending adjustments
         $allHistory = $history->toArray();
-        foreach ($pendingAdvances as $adv) {
-            $allHistory[] = $adv;
+        foreach ($pendingAdjustments as $adj) {
+            $allHistory[] = $adj;
         }
 
         // Sort by date descending
@@ -103,10 +107,14 @@ class EmployeePayrollController extends Controller
 
         // ---- 3. Stats ----
         $employee = Employee::where('tenant_id', $tenantId)->find($employeeId);
+        $totalAdjBonus = $pendingAdjustments->where('type', 'bonus')->sum('amount');
+        $totalAdjDeduct = $pendingAdjustments->where('type', 'advance')->sum('amount') + $pendingAdjustments->where('type', 'sanction')->sum('amount');
+        
         $stats = [
             'total_net'          => (float)$history->sum('net_paid'),
-            'total_advances'     => (float)$history->sum('advances_deducted') + $pendingAdvances->sum('advances_deducted'),
+            'total_advances'     => (float)$history->sum('advances_deducted') + (float)$history->sum('sanctions_deducted') + $totalAdjDeduct,
             'total_days_worked'  => (float)$history->sum('days_worked'),
+            'total_overtime'     => (float)$history->sum('overtime_hours'),
             'count'              => $history->count(),
             'employee_name'      => $employee ? $employee->name : '',
         ];
