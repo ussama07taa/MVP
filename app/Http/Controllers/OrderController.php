@@ -23,18 +23,21 @@ class OrderController extends Controller {
         $tenantId = auth()->user()->tenant_id;
 
         // 1. Fetch POS Orders (with full relations)
-        $orders = Order::where('tenant_id', $tenantId)
-            ->with(['client', 'lines.item', 'payments'])
+        $orders = Order::with(['client' => fn($q) => $q->withTrashed(), 'lines.item', 'payments'])
             ->latest()
             ->get();
+            
+        \Illuminate\Support\Facades\Log::info("POS Orders indexed. Count: " . $orders->count());
+        foreach($orders->take(5) as $o) {
+            \Illuminate\Support\Facades\Log::info("Order #{$o->id} - ClientID: {$o->client_id} - ClientName: " . ($o->client?->name ?? 'NULL'));
+        }
 
         // 2. Fetch Validated Invoices (NO items.item — morph aliases differ)
         $invoices = collect();
         try {
-            $invoices = \App\Models\Invoice::where('tenant_id', $tenantId)
-                ->where('type', 'invoice')
+            $invoices = \App\Models\Invoice::where('type', 'invoice')
                 ->whereNotNull('validated_at')
-                ->with(['client', 'items', 'payments'])
+                ->with(['client' => fn($q) => $q->withTrashed(), 'items', 'payments'])
                 ->latest()
                 ->get();
         } catch (\Exception $e) {
@@ -47,7 +50,15 @@ class OrderController extends Controller {
         foreach ($orders as $order) {
             $result->push([
                 'id' => $order->id,
-                'client' => $order->client ? ['id' => $order->client->id, 'name' => $order->client->name, 'phone' => $order->client->phone] : null,
+                'client' => $order->client ? [
+                    'id' => $order->client->id, 
+                    'name' => $order->client->name, 
+                    'phone' => $order->client->phone
+                ] : [
+                    'id' => $order->client_id, 
+                    'name' => 'Unknown (' . ($order->client_id ?? 'N/A') . ')',
+                    'phone' => null
+                ],
                 'total_sell_price' => (float) $order->total_sell_price,
                 'amount_paid' => (float) $order->amount_paid,
                 'status' => $order->status,
@@ -73,7 +84,15 @@ class OrderController extends Controller {
         foreach ($invoices as $inv) {
             $result->push([
                 'id' => $inv->id,
-                'client' => $inv->client ? ['id' => $inv->client->id, 'name' => $inv->client->name, 'phone' => $inv->client->phone] : null,
+                'client' => $inv->client ? [
+                    'id' => $inv->client->id, 
+                    'name' => $inv->client->name, 
+                    'phone' => $inv->client->phone
+                ] : [
+                    'id' => $inv->client_id, 
+                    'name' => 'Unknown (' . ($inv->client_id ?? 'N/A') . ')',
+                    'phone' => null
+                ],
                 'total_sell_price' => (float) $inv->total,
                 'amount_paid' => (float) $inv->amount_paid,
                 'status' => $inv->status,

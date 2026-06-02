@@ -15,7 +15,8 @@ class ClientController extends Controller
 {
     public function index()
     {
-        return Client::select('id', 'name', 'phone', 'address', 'city', 'notes', 'total_credit', 'created_at')
+        return Client::withTrashed()
+            ->select('id', 'name', 'phone', 'address', 'city', 'notes', 'total_credit', 'created_at')
             ->latest()
             ->get();
     }
