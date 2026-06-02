@@ -93,6 +93,7 @@ class ClientController extends Controller
                 'type' => $inv->type,
                 'status' => $inv->isExpired() ? 'expired' : $inv->status,
                 'total' => $inv->total,
+                'amount_paid' => $inv->amount_paid,
                 'issue_date' => $inv->issue_date,
                 'expiry_date' => $inv->expiry_date,
                 'validity_days' => $inv->validity_days,
