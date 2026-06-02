@@ -109,36 +109,40 @@ class CheckoutService
                 // Dynamic Splitting for Material and Collage/Façonnage only
                 $has_splitting = !empty($item['with_canto_service']) && !empty($item['custom_canto_service_price']);
 
-                if ($has_splitting) {
-                    // Line 1: Canto Material (Fourniture)
-                    $base_price = $item['base_canto_price'] ?? $canto->base_price_sell_per_m;
-                    $lines[] = [
-                        'type' => $item_type,
-                        'id' => $item_id,
-                        'label' => 'Fourniture: ' . ($item['base_name'] ?? $item['name'] ?? 'Bandchant'),
-                        'quantity' => $item['quantity'],
-                        'unit_price' => $base_price,
-                        'unit_buy' => $unit_buy,
-                        'line_sell' => $item['quantity'] * $base_price,
-                        'line_cost' => $line_cost
-                    ];
+                    if ($has_splitting) {
+                        // Line 1: Canto Material (Fourniture)
+                        $base_price = $item['base_canto_price'] ?? $canto->base_price_sell_per_m;
+                        $lines[] = [
+                            'type' => $item_type,
+                            'id' => $item_id,
+                            'label' => 'Fourniture: ' . ($item['base_name'] ?? $item['name'] ?? 'Bandchant'),
+                            'quantity' => $item['quantity'],
+                            'unit_price' => $base_price,
+                            'unit_buy' => $unit_buy,
+                            'line_sell' => $item['quantity'] * $base_price,
+                            'line_cost' => $line_cost,
+                            'width_mm' => $item['width_mm'] ?? null,
+                            'thickness_mm' => $item['thickness_mm'] ?? null,
+                        ];
 
-                    // Line 2: Collage de Chant (Façonnage)
-                    $service = Service::where('name', 'like', '%chant%')->orWhere('name', 'like', '%coupe%')->first();
-                    $service_id = $service ? $service->id : null;
-                    $lines[] = [
-                        'type' => Service::class,
-                        'id' => $service_id,
-                        'label' => 'Collage Chant: ' . ($item['base_name'] ?? $item['name'] ?? 'Bandchant'),
-                        'quantity' => $item['quantity'],
-                        'unit_price' => $item['custom_canto_service_price'],
-                        'unit_buy' => 0,
-                        'line_sell' => $item['quantity'] * $item['custom_canto_service_price'],
-                        'line_cost' => 0
-                    ];
+                        // Line 2: Collage de Chant (Façonnage)
+                        $service = \App\Models\Service::where('name', 'like', '%chant%')->orWhere('name', 'like', '%coupe%')->first();
+                        $service_id = $service ? $service->id : null;
+                        $lines[] = [
+                            'type' => \App\Models\Service::class,
+                            'id' => $service_id,
+                            'label' => 'Collage Chant: ' . ($item['base_name'] ?? $item['name'] ?? 'Bandchant'),
+                            'quantity' => $item['quantity'],
+                            'unit_price' => $item['custom_canto_service_price'],
+                            'unit_buy' => 0,
+                            'line_sell' => $item['quantity'] * $item['custom_canto_service_price'],
+                            'line_cost' => 0,
+                            'width_mm' => $item['width_mm'] ?? null,
+                            'thickness_mm' => $item['thickness_mm'] ?? null,
+                        ];
 
-                    return $lines; // Return immediately to skip the default append
-                }
+                        return $lines; // Return immediately to skip the default append
+                    }
                 break;
 
             case 'consumable':
@@ -168,7 +172,9 @@ class CheckoutService
             'unit_price' => $item['unit_price'],
             'unit_buy' => $unit_buy,
             'line_sell' => $line_sell,
-            'line_cost' => $line_cost
+            'line_cost' => $line_cost,
+            'width_mm' => $item['width_mm'] ?? null,
+            'thickness_mm' => $item['thickness_mm'] ?? null,
         ];
 
         return $lines;
@@ -184,7 +190,9 @@ class CheckoutService
             'unit_sell_price' => $pItem['unit_price'],
             'unit_buy_price' => $pItem['unit_buy'],
             'total_line_sell' => $pItem['line_sell'],
-            'total_line_cost' => $pItem['line_cost']
+            'total_line_cost' => $pItem['line_cost'],
+            'width_mm' => $pItem['width_mm'] ?? null,
+            'thickness_mm' => $pItem['thickness_mm'] ?? null,
         ]);
     }
 

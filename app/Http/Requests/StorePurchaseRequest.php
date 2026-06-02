@@ -8,6 +8,15 @@ class StorePurchaseRequest extends FormRequest
 {
     public function authorize() { return true; }
 
+    protected function prepareForValidation()
+    {
+        if (is_string($this->items)) {
+            $this->merge([
+                'items' => json_decode($this->items, true)
+            ]);
+        }
+    }
+
     public function rules()
     {
         return [

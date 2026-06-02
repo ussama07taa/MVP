@@ -73,6 +73,9 @@
                           class="text-white bg-brand-600 hover:bg-brand-500 disabled:opacity-30 disabled:cursor-not-allowed px-5 py-2 rounded-xl transition-all font-black text-[10px] uppercase tracking-widest shadow-lg shadow-brand-900/10 active:scale-95">
                     Régler Dette
                   </button>
+                  <button @click="recalculateDebt(sup)" title="Recalculer la dette réelle" class="text-amber-600 hover:text-white bg-amber-50 hover:bg-amber-500 border border-amber-200 hover:border-amber-500 px-3 py-2 rounded-xl transition-all font-black text-[10px] uppercase tracking-widest active:scale-95">
+                    <RotateCwIcon class="w-4 h-4"/>
+                  </button>
                   <button @click="viewHistory(sup)" class="text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-3 py-2 rounded-xl transition-all font-black text-[10px] uppercase tracking-widest active:scale-95">
                     <HistoryIcon class="w-4 h-4"/>
                   </button>
@@ -471,6 +474,17 @@ const submitPayment = async () => {
     toast.success('Paiement enregistré avec succès !');
   } catch (error) {
     toast.error(error.response?.data?.error || 'Erreur');
+  }
+};
+
+const recalculateDebt = async (supplier) => {
+  try {
+    const res = await axios.post(`/api/admin/suppliers/${supplier.id}/recalculate`);
+    await loadSuppliers();
+    if (isHistoryModalOpen.value) await refreshHistory();
+    toast.success(res.data.message);
+  } catch (error) {
+    toast.error(error.response?.data?.error || 'Erreur lors du recalcul');
   }
 };
 

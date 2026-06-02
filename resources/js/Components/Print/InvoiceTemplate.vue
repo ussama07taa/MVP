@@ -70,6 +70,9 @@
             <td class="py-3 px-2 text-[10px] font-bold text-slate-300">0{{ index + 1 }}</td>
             <td class="py-3 px-2">
               <p class="text-[11px] font-black text-slate-800 leading-tight">{{ formatItemName(item.name || item.label) }}</p>
+              <div v-if="item.width_mm && item.thickness_mm" class="flex gap-2 mt-0.5">
+                <span class="text-[8px] text-slate-400 font-bold uppercase tracking-wider">Specs: {{ item.width_mm }}x{{ item.thickness_mm }}mm</span>
+              </div>
               <p v-if="item.description" class="text-[8px] text-slate-400 font-bold mt-0.5 uppercase tracking-wider">{{ item.description }}</p>
             </td>
             <td class="py-3 px-2 text-center">

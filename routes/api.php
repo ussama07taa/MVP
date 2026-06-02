@@ -88,6 +88,7 @@ Route::middleware(['auth', 'identify.tenant', 'throttle:100,1'])->group(function
         Route::post('/admin/suppliers', [PurchaseController::class, 'storeSupplier']);
         Route::get('/admin/suppliers/{id}/history', [PurchaseController::class, 'supplierHistory']);
         Route::post('/admin/suppliers/{id}/pay', [PurchaseController::class, 'paySupplier']);
+        Route::post('/admin/suppliers/{id}/recalculate', [PurchaseController::class, 'recalculateDebt']);
         Route::post('/admin/purchases', [PurchaseController::class, 'store']);
         Route::get('/admin/purchases', [PurchaseController::class, 'index']);
         Route::get('/admin/purchases/history', [PurchaseController::class, 'index']);

@@ -102,6 +102,7 @@ class EmployeeController extends Controller
         
         return DB::transaction(function() use ($id, $tenantId) {
             $employee = Employee::where('tenant_id', $tenantId)->findOrFail($id);
+            \Illuminate\Support\Facades\Log::info("Pay: Found employee {$employee->name}");
             
             // 1. Gather stats from unpaid attendances
             $unpaidAttendances = EmployeeAttendance::where('tenant_id', $tenantId)
@@ -129,8 +130,11 @@ class EmployeeController extends Controller
             $grossPay = $baseWages + $overtimeWages + $bonusesSum;
             $totalDeductions = $advancesSum + $sanctionsSum;
             $netPay = max(0, $grossPay - $totalDeductions);
+            
+            \Illuminate\Support\Facades\Log::info("Pay logic: Gross=$grossPay, Net=$netPay, Base=$baseWages, Overtime=$overtimeWages, Bonuses=$bonusesSum, Deductions=$totalDeductions");
 
             if ($netPay <= 0 && $grossPay <= 0) {
+                 \Illuminate\Support\Facades\Log::warning("Pay: Nothing to pay condition met.");
                  return response()->json(['message' => 'Rien à payer (0 DH).'], 400);
             }
 

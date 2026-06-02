@@ -116,6 +116,16 @@
               <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Catalogue</label>
               <input v-model="form.provider_catalog" type="text" class="w-full bg-slate-50 border-slate-200 rounded-2xl p-4 focus:ring-2 focus:ring-brand-500 font-black uppercase text-sm">
             </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="space-y-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Largeur (mm)</label>
+                <input v-model="form.width_mm" type="number" class="w-full bg-slate-50 border-slate-200 rounded-2xl p-4 focus:ring-2 focus:ring-brand-500 font-black text-center text-sm">
+              </div>
+              <div class="space-y-2">
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest text-emerald-600">Épaisseur (mm) *</label>
+                <input v-model="form.thickness_mm" type="number" step="0.01" class="w-full bg-emerald-50 border-emerald-200 rounded-2xl p-4 focus:ring-2 focus:ring-emerald-500 font-black text-center text-emerald-900 text-sm italic">
+              </div>
+            </div>
             <!-- Secure Edit Section (Premium UX) -->
             <div v-if="editingId" class="md:col-span-2 mt-4 pt-8 border-t border-slate-100 animate-in fade-in slide-in-from-bottom duration-500">
                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 items-stretch">
@@ -296,10 +306,15 @@
              </div>
           </div>
 
-          <!-- Price -->
-          <div class="mt-auto pt-4 border-t border-slate-50 flex items-center justify-center gap-1.5">
-             <span class="text-2xl font-black text-slate-900 tracking-tighter">{{ canto.base_price_sell_per_m }}</span>
-             <span class="text-[10px] font-black text-slate-400 uppercase">DH/M</span>
+          <!-- Price & Spec -->
+          <div class="mt-auto pt-4 border-t border-slate-50 flex flex-col gap-1">
+             <div class="flex items-center justify-center gap-3 mb-1">
+                <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">{{ canto.width_mm }}mm × {{ canto.thickness_mm }}mm</span>
+             </div>
+             <div class="flex items-center justify-center gap-1.5">
+                <span class="text-2xl font-black text-slate-900 tracking-tighter">{{ canto.base_price_sell_per_m }}</span>
+                <span class="text-[10px] font-black text-slate-400 uppercase">DH/M</span>
+             </div>
           </div>
         </div>
       </transition-group>
@@ -326,7 +341,11 @@
                     </div>
                     <div>
                       <div class="font-black text-slate-900 uppercase italic">{{ canto.color_name || canto.name || 'BANDCHANT' }}</div>
-                      <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{ canto.name }} <span class="mx-1">•</span> {{ canto.color_code }} <span class="mx-1">•</span> {{ canto.finish_type || 'STD' }}</div>
+                      <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                        {{ canto.name }} <span class="mx-1">•</span> {{ canto.color_code }} 
+                        <span class="mx-1">•</span> {{ canto.width_mm }}x{{ canto.thickness_mm }}mm 
+                        <span class="mx-1">•</span> {{ canto.finish_type || 'STD' }}
+                      </div>
                     </div>
                   </div>
                 </td>
@@ -649,7 +668,7 @@ const itemToDelete = ref(null);
 const form = ref({ 
     existing_id: null,
     name: '', color_code: '', color_name: '', finish_type: '', provider_catalog: '', 
-    rolls: 1, meters_per_roll: 150, 
+    rolls: 1, meters_per_roll: 150, width_mm: 22, thickness_mm: 0.8,
     unit_cost_m: 3.5, sell_price_m: 6, supplier_id: null, amount_paid: 0, reference_invoice: ''
 });
 
@@ -706,7 +725,7 @@ const saveNewSupplier = async () => {
 };
 
 const toggleAddForm = () => { if (showAddForm.value && editingId.value) { editingId.value = null; resetForm(); } showAddForm.value = !showAddForm.value; };
-const resetForm = () => { form.value = { existing_id: null, name: '', color_code: '', color_name: '', finish_type: '', provider_catalog: '', rolls: 1, meters_per_roll: 150, unit_cost_m: 3.5, sell_price_m: 6, supplier_id: null, amount_paid: 0, reference_invoice: '' }; invoiceFile.value = null; };
+const resetForm = () => { form.value = { existing_id: null, name: '', color_code: '', color_name: '', finish_type: '', provider_catalog: '', rolls: 1, meters_per_roll: 150, width_mm: 22, thickness_mm: 0.8, unit_cost_m: 3.5, sell_price_m: 6, supplier_id: null, amount_paid: 0, reference_invoice: '' }; invoiceFile.value = null; };
 const handleExistingSelection = (event) => {
   const id = event.target.value;
   if (!id) {
@@ -723,6 +742,8 @@ const handleExistingSelection = (event) => {
     form.value.provider_catalog = c.provider_catalog;
     form.value.sell_price_m = c.base_price_sell_per_m;
     form.value.unit_cost_m = c.cost_price_per_m;
+    form.value.width_mm = c.width_mm;
+    form.value.thickness_mm = c.thickness_mm;
     form.value.meters_per_roll = 150; // Default reset for new entry logic
     form.value.rolls = 1;
     form.value.supplier_id = c.supplier_id;
@@ -751,8 +772,8 @@ const saveCanto = async () => {
           total_length_remaining: totalMeters.value, 
           cost_price_per_m: costPerM, 
           base_price_sell_per_m: form.value.sell_price_m, 
-          width_mm: 22, 
-          thickness_mm: 0.8,
+          width_mm: form.value.width_mm, 
+          thickness_mm: form.value.thickness_mm,
           supplier_id: form.value.supplier_id
       };
       await axios.put(`/api/admin/cantos/${editingId.value}`, payload);
@@ -769,8 +790,8 @@ const saveCanto = async () => {
             color_name: form.value.color_name,
             finish_type: form.value.finish_type,
             provider_catalog: form.value.provider_catalog,
-            width_mm: 22,
-            thickness_mm: 0.8,
+            width_mm: form.value.width_mm,
+            thickness_mm: form.value.thickness_mm,
             total_length_remaining: totalMeters.value,
             cost_price_per_m: costPerM,
             base_price_sell_per_m: form.value.sell_price_m

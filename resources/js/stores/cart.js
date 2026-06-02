@@ -86,7 +86,9 @@ export const useCartStore = defineStore('cart', () => {
                     with_canto_service: false,
                     custom_canto_service_price: 0,
                     base_canto_price: type === 'canto' ? batchPrice : null,
-                    base_name: name
+                    base_name: name,
+                    width_mm: product.width_mm || product.size_x,
+                    thickness_mm: product.thickness_mm || product.thickness
                 });
             }
             remainingToFulfill -= qtyToTake;

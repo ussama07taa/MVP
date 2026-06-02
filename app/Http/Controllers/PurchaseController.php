@@ -453,9 +453,48 @@ class PurchaseController extends Controller
                 ]);
             }
 
-            $supplier->decrement('total_debt', $request->amount);
+            // Auto-sync: recalculate debt from actual purchase data to prevent desync
+            $realDebt = Purchase::withoutGlobalScopes()
+                ->where('supplier_id', $id)
+                ->selectRaw('COALESCE(SUM(total_amount) - SUM(amount_paid), 0) as real_debt')
+                ->value('real_debt');
+            $supplier->update(['total_debt' => max(0, round($realDebt, 2))]);
 
             return response()->json(['success' => true]);
+        });
+    }
+
+    /**
+     * Recalculate supplier debt from actual purchase data.
+     * Fixes any desync between total_debt and real unpaid amounts.
+     */
+    public function recalculateDebt($id) {
+        return DB::transaction(function() use ($id) {
+            $supplier = Supplier::withoutGlobalScopes()->lockForUpdate()->findOrFail($id);
+            
+            $realDebt = Purchase::withoutGlobalScopes()
+                ->where('supplier_id', $id)
+                ->selectRaw('COALESCE(SUM(total_amount) - SUM(amount_paid), 0) as real_debt')
+                ->value('real_debt');
+
+            // Account for purchase returns
+            $totalRefunds = \App\Models\PurchaseReturn::withoutGlobalScopes()
+                ->whereHas('purchase', function($q) use ($id) {
+                    $q->where('supplier_id', $id);
+                })->sum('refund_amount');
+
+            $correctedDebt = max(0, round($realDebt - $totalRefunds, 2));
+            $oldDebt = $supplier->total_debt;
+            $supplier->update(['total_debt' => $correctedDebt]);
+
+            return response()->json([
+                'success' => true,
+                'old_debt' => $oldDebt,
+                'new_debt' => $correctedDebt,
+                'message' => $oldDebt != $correctedDebt 
+                    ? "Dette corrigée: {$oldDebt} → {$correctedDebt} DH" 
+                    : "La dette est déjà correcte: {$correctedDebt} DH"
+            ]);
         });
     }
 }
