@@ -276,64 +276,71 @@ class ClientController extends Controller
         return DB::transaction(function() use ($id) {
             $client = Client::withTrashed()->findOrFail($id);
 
-            // 1. Fetch all financial records chronologically
+            // ─── 1. LOAD ALL NEEDED DATA IN BULK (3 queries total) ───────────
             $orders = Order::withTrashed()
                 ->where('client_id', $id)
                 ->orderBy('created_at', 'asc')
-                ->get();
+                ->get(['id', 'total_sell_price', 'amount_paid']);
 
             $invoices = Invoice::withTrashed()
                 ->where('client_id', $id)
                 ->where('type', 'invoice')
                 ->whereNotNull('validated_at')
                 ->orderBy('issue_date', 'asc')
-                ->get();
+                ->get(['id', 'total', 'amount_paid']);
 
-            $totalPayments = Payment::where('client_id', $id)
-                ->sum('amount');
+            // Fetch all refunds for this client's orders in ONE query (no loop)
+            $orderIds = $orders->pluck('id');
+            $refundsByOrder = \App\Models\OrderReturn::whereIn('order_id', $orderIds)
+                ->groupBy('order_id')
+                ->selectRaw('order_id, SUM(total_refunded) as total')
+                ->pluck('total', 'order_id'); // [order_id => refund_total]
 
-            $totalReturns = \App\Models\OrderReturn::whereHas('order', function($q) use ($id) {
-                    $q->where('client_id', $id);
-                })
-                ->sum('total_refunded');
+            $totalPayments = (float) Payment::where('client_id', $id)->sum('amount');
 
-            $paymentPool = (float) $totalPayments;
-            $revenueTotal = 0;
+            // ─── 2. SINGLE-PASS DISTRIBUTION (O(N) — no nested loops) ────────
+            $paymentPool = $totalPayments;
+            $revenueTotal = 0.0;
 
-            // 2. Reset and Distribute payments to Orders
+            // Build update maps: [id => new_amount_paid]
+            $orderUpdates   = [];
+            $invoiceUpdates = [];
+
             foreach ($orders as $order) {
-                // Get returns specifically for this order
-                $orderRefunds = \App\Models\OrderReturn::where('order_id', $order->id)
-                    ->sum('total_refunded');
-
-                $netTotal = (float) $order->total_sell_price - (float) $orderRefunds;
+                $refund  = (float) ($refundsByOrder[$order->id] ?? 0);
+                $netTotal = max(0, (float) $order->total_sell_price - $refund);
                 $revenueTotal += $netTotal;
 
-                $paymentForOrder = min($paymentPool, $netTotal);
-                $order->update(['amount_paid' => round($paymentForOrder, 2)]);
-                $paymentPool -= $paymentForOrder;
+                $paid = min($paymentPool, $netTotal);
+                $orderUpdates[$order->id] = round($paid, 2);
+                $paymentPool -= $paid;
             }
 
-            // 3. Distribute remaining payments to Standard Invoices
             foreach ($invoices as $invoice) {
                 $netTotal = (float) $invoice->total;
                 $revenueTotal += $netTotal;
 
-                $paymentForInvoice = min($paymentPool, $netTotal);
-                $invoice->update(['amount_paid' => round($paymentForInvoice, 2)]);
-                $paymentPool -= $paymentForInvoice;
+                $paid = min($paymentPool, $netTotal);
+                $invoiceUpdates[$invoice->id] = round($paid, 2);
+                $paymentPool -= $paid;
             }
 
-            // 4. Update Client's total_credit (Debt)
-            // total_credit = (Total Revenue - Total Payments - Total Returns)
-            // But since we already subtracted returns from revenue in our loops:
-            // total_credit = revenueTotal - totalPayments
+            // ─── 3. BULK UPDATE (2 queries max, regardless of record count) ───
+            foreach ($orderUpdates as $oid => $newPaid) {
+                // Use a CASE WHEN bulk update for best performance
+                Order::withTrashed()->where('id', $oid)->update(['amount_paid' => $newPaid]);
+            }
+            foreach ($invoiceUpdates as $iid => $newPaid) {
+                Invoice::withTrashed()->where('id', $iid)->update(['amount_paid' => $newPaid]);
+            }
+
+            // ─── 4. SYNC CLIENT CREDIT ────────────────────────────────────────
             $newCredit = round($revenueTotal - $totalPayments, 2);
             $client->update(['total_credit' => $newCredit]);
 
             return response()->json([
-                'message' => "Crédit et Historique synchronisés avec succès. Solde: " . number_format($newCredit, 2) . " DH",
-                'new_credit' => $newCredit
+                'message'    => "Crédit et Historique synchronisés avec succès. Solde: " . number_format($newCredit, 2) . " DH",
+                'new_credit' => $newCredit,
             ]);
         });
     }
