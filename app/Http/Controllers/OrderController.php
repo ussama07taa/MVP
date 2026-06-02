@@ -122,7 +122,7 @@ class OrderController extends Controller {
     }
 
     public function show($id) {
-        $order = Order::withoutGlobalScopes()->with(['client', 'lines.item', 'payments'])->findOrFail($id);
+        $order = Order::withTrashed()->with(['client' => fn($q) => $q->withTrashed(), 'lines.item', 'payments'])->findOrFail($id);
         return new OrderResource($order);
     }
 
@@ -131,7 +131,7 @@ class OrderController extends Controller {
      */
     public function downloadPdf($id)
     {
-        $order = Order::withoutGlobalScopes()->with(['client', 'lines'])->findOrFail($id);
+        $order = Order::withTrashed()->with(['client' => fn($q) => $q->withTrashed(), 'lines'])->findOrFail($id);
         $settings = Setting::first();
 
         // Standardize data for the view

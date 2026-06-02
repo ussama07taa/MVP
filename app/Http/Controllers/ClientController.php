@@ -76,11 +76,12 @@ class ClientController extends Controller
 
     public function history($id)
     {
-        $client = Client::findOrFail($id);
-        $orders = Order::with(['lines.item', 'payments'])->where('client_id', $id)->latest()->get();
+        $client = Client::withTrashed()->findOrFail($id);
+        $orders = Order::withTrashed()->with(['lines.item', 'payments'])->where('client_id', $id)->latest()->get();
 
         // Devis & Factures models for internal processing
-        $invoices_models = Invoice::with(['client', 'items'])
+        $invoices_models = Invoice::withTrashed()
+            ->with(['client', 'items'])
             ->where('client_id', $id)
             ->latest()
             ->get();
@@ -273,14 +274,16 @@ class ClientController extends Controller
     public function recalculateCredit($id)
     {
         return DB::transaction(function() use ($id) {
-            $client = Client::findOrFail($id);
+            $client = Client::withTrashed()->findOrFail($id);
 
             // 1. Fetch all financial records chronologically
-            $orders = Order::where('client_id', $id)
+            $orders = Order::withTrashed()
+                ->where('client_id', $id)
                 ->orderBy('created_at', 'asc')
                 ->get();
 
-            $invoices = Invoice::where('client_id', $id)
+            $invoices = Invoice::withTrashed()
+                ->where('client_id', $id)
                 ->where('type', 'invoice')
                 ->whereNotNull('validated_at')
                 ->orderBy('issue_date', 'asc')
