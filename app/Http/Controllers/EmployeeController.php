@@ -50,9 +50,8 @@ class EmployeeController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate($this->rules());
-        $tenantId = auth()->user()->tenant_id;
 
-        return Employee::create(array_merge($validated, ['tenant_id' => $tenantId]));
+        return Employee::create(array_merge($validated, ['tenant_id' => 1]));
     }
 
     /**
@@ -68,11 +67,11 @@ class EmployeeController extends Controller
         
         $tenantId = auth()->user()->tenant_id;
         
-        DB::transaction(function() use ($request, $id, $tenantId) {
-            $employee = Employee::where('tenant_id', $tenantId)->findOrFail($id);
+        DB::transaction(function() use ($request, $id) {
+            $employee = Employee::findOrFail($id);
             
             EmployeeAdvance::create([
-                'tenant_id' => $tenantId,
+                'tenant_id' => 1,
                 'employee_id' => $employee->id,
                 'date' => now()->toDateString(),
                 'type' => $request->type,
@@ -98,15 +97,12 @@ class EmployeeController extends Controller
      */
     public function pay(Request $request, $id)
     {
-        $tenantId = auth()->user()->tenant_id;
-        
-        return DB::transaction(function() use ($id, $tenantId) {
-            $employee = Employee::where('tenant_id', $tenantId)->findOrFail($id);
+        return DB::transaction(function() use ($id) {
+            $employee = Employee::findOrFail($id);
             \Illuminate\Support\Facades\Log::info("Pay: Found employee {$employee->name}");
             
             // 1. Gather stats from unpaid attendances
-            $unpaidAttendances = EmployeeAttendance::where('tenant_id', $tenantId)
-                ->where('employee_id', $employee->id)
+            $unpaidAttendances = EmployeeAttendance::where('employee_id', $employee->id)
                 ->where('is_paid', false)
                 ->get();
             
@@ -118,8 +114,7 @@ class EmployeeController extends Controller
             $overtimeHours = (float)$unpaidAttendances->sum('overtime_hours');
             
             // 2. Fetch pending adjustments (advances, bonuses, sanctions)
-            $adjustments = EmployeeAdvance::where('tenant_id', $tenantId)
-                ->where('employee_id', $employee->id)
+            $adjustments = EmployeeAdvance::where('employee_id', $employee->id)
                 ->where('is_deducted', false)
                 ->get();
             
@@ -140,7 +135,7 @@ class EmployeeController extends Controller
 
             // 3. Create formal PaySlip record for History/Profile page
             \App\Models\PaySlip::create([
-                'tenant_id' => $tenantId,
+                'tenant_id' => 1,
                 'employee_id' => $employee->id,
                 'period_start' => $unpaidAttendances->min('date') ?? now()->toDateString(),
                 'period_end' => $unpaidAttendances->max('date') ?? now()->toDateString(),
@@ -157,21 +152,19 @@ class EmployeeController extends Controller
             ]);
 
             // 4. Mark everything as paid/deducted
-            EmployeeAttendance::where('tenant_id', $tenantId)
-                ->where('employee_id', $employee->id)
+            EmployeeAttendance::where('employee_id', $employee->id)
                 ->where('is_paid', false)
                 ->update(['is_paid' => true]);
                 
             $employee->update(['total_advances' => 0]);
             
-            EmployeeAdvance::where('tenant_id', $tenantId)
-                ->where('employee_id', $employee->id)
+            EmployeeAdvance::where('employee_id', $employee->id)
                 ->where('is_deducted', false)
                 ->update(['is_deducted' => true]);
 
             // 5. Record as General Expense
             \App\Models\Expense::create([
-                'tenant_id' => $tenantId,
+                'tenant_id' => 1,
                 'category' => 'Salaire',
                 'amount' => $netPay,
                 'title' => "Paiement salaire : {$employee->name} (H.S: {$overtimeHours}h, Primes: {$bonusesSum}DH, Sanctions: {$sanctionsSum}DH)",

@@ -30,10 +30,9 @@ class SettingsController extends Controller
         $tenantId = auth()->user()->tenant_id;
 
         unset($validated['logo']);
-
-        $settings = Setting::firstOrNew(['tenant_id' => $tenantId]);
+        $settings = Setting::firstOrNew(['tenant_id' => 1]);
         $settings->fill($validated);
-        $settings->tenant_id = $tenantId;
+        $settings->tenant_id = 1;
 
         if ($request->hasFile('logo')) {
             // Delete previous logo if any to avoid orphaned files.
@@ -61,7 +60,7 @@ class SettingsController extends Controller
         }
 
         $settings = new Setting();
-        $settings->tenant_id = $tenantId;
+        $settings->tenant_id = 1;
         $settings->company_name = 'Mon Entreprise';
         $settings->company_phone = '';
         $settings->invoice_footer_text = 'Merci pour votre confiance !';

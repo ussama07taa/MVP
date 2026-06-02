@@ -59,7 +59,7 @@ class ExpenseController extends Controller {
         ]);
 
         $data = $request->only(['title', 'category', 'amount', 'expense_date', 'notes']);
-        $data['tenant_id'] = auth()->user()->tenant_id;
+        $data['tenant_id'] = 1;
         $data['is_recurring'] = $request->is_recurring == '1' || $request->is_recurring === true;
 
         if ($request->hasFile('attachment')) {

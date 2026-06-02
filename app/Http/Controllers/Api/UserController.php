@@ -13,7 +13,7 @@ class UserController extends Controller
     public function index(Request $request)
     {
         if ($request->user()->role !== 'admin') abort(403);
-        return response()->json(User::where('tenant_id', $request->user()->tenant_id)->get());
+        return response()->json(User::all());
     }
 
     public function store(Request $request)
@@ -28,7 +28,7 @@ class UserController extends Controller
         ]);
         
         $user = User::create([
-            'tenant_id' => $request->user()->tenant_id,
+            'tenant_id' => 1,
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),

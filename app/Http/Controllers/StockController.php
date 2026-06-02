@@ -46,9 +46,8 @@ class StockController extends Controller
         $panel = StockPanel::withoutGlobalScopes()->findOrFail($id);
         $panel->update($request->validated());
         
-        $tenantId = auth()->user()->tenant_id;
-        Cache::forget("tenant.{$tenantId}.panels");
-        Cache::forget("tenant.{$tenantId}.pos_panels_paged");
+        Cache::forget("global.panels");
+        Cache::forget("global.pos_panels_paged");
         
         return $panel;
     }
@@ -77,9 +76,8 @@ class StockController extends Controller
         $canto = StockCanto::withoutGlobalScopes()->findOrFail($id);
         $canto->update($request->validated());
 
-        $tenantId = auth()->user()->tenant_id;
-        Cache::forget("tenant.{$tenantId}.cantos");
-        Cache::forget("tenant.{$tenantId}.pos_cantos_paged");
+        Cache::forget("global.cantos");
+        Cache::forget("global.pos_cantos_paged");
 
         return $canto;
     }
@@ -119,7 +117,7 @@ class StockController extends Controller
             $item = $modelClass::withoutGlobalScopes()->lockForUpdate()->findOrFail($validated['item_id']);
             
             \App\Models\InventoryAdjustment::create([
-                'tenant_id' => auth()->user()->tenant_id,
+                'tenant_id' => 1,
                 'item_id' => $item->id,
                 'item_type' => $modelClass,
                 'purchase_line_id' => $validated['purchase_line_id'] ?? null,
@@ -138,11 +136,10 @@ class StockController extends Controller
             }
             $item->save();
             
-            $tenantId = auth()->user()->tenant_id;
-            Cache::forget("tenant.{$tenantId}.panels");
-            Cache::forget("tenant.{$tenantId}.cantos");
-            Cache::forget("tenant.{$tenantId}.pos_panels_paged");
-            Cache::forget("tenant.{$tenantId}.pos_cantos_paged");
+            Cache::forget("global.panels");
+            Cache::forget("global.cantos");
+            Cache::forget("global.pos_panels_paged");
+            Cache::forget("global.pos_cantos_paged");
 
             if (!empty($validated['purchase_line_id'])) {
                 $batch = \App\Models\PurchaseLine::withoutGlobalScopes()->lockForUpdate()->find($validated['purchase_line_id']);
@@ -177,15 +174,14 @@ class StockController extends Controller
 
         try {
             $importClass = match($type) {
-                'canto' => new InitialStockCantoImport(auth()->user()->tenant_id),
-                default => new InitialStockImport(auth()->user()->tenant_id),
+                'canto' => new InitialStockCantoImport(1),
+                default => new InitialStockImport(1),
             };
 
             Excel::import($importClass, $request->file('file'));
             
-            $tenantId = auth()->user()->tenant_id;
-            Cache::forget("tenant.{$tenantId}.pos_panels_paged");
-            Cache::forget("tenant.{$tenantId}.pos_cantos_paged");
+            Cache::forget("global.pos_panels_paged");
+            Cache::forget("global.pos_cantos_paged");
 
             return response()->json(['success' => true, 'message' => 'Stock initial importé avec succès !']);
         } catch (\Exception $e) {

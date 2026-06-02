@@ -19,14 +19,13 @@ class EmployeePayrollController extends Controller
 
     public function index(Request $request)
     {
-        $tenantId = auth()->user()->tenant_id;
         
         // Default to current week (Monday to Saturday)
         $now = Carbon::now();
         $startDate = $request->query('start_date', $now->startOfWeek()->format('Y-m-d'));
         $endDate = $request->query('end_date', $now->endOfWeek()->format('Y-m-d'));
 
-        $payroll = $this->payrollService->calculateWeeklyPayroll($tenantId, $startDate, $endDate);
+        $payroll = $this->payrollService->calculateWeeklyPayroll($startDate, $endDate);
 
         return response()->json($payroll);
     }
@@ -38,22 +37,20 @@ class EmployeePayrollController extends Controller
             'end_date' => 'required|date',
         ]);
 
-        $tenantId = auth()->user()->tenant_id;
         
         // Recalculate to ensure data integrity during closure
-        $payroll = $this->payrollService->calculateWeeklyPayroll($tenantId, $request->start_date, $request->end_date);
+        $payroll = $this->payrollService->calculateWeeklyPayroll($request->start_date, $request->end_date);
         
-        $this->payrollService->finalizeWeeklyPayroll($tenantId, $payroll);
+        $this->payrollService->finalizeWeeklyPayroll($payroll);
 
         return response()->json(['message' => 'La paie a été clôturée avec succès. Les historiques ont été enregistrés.']);
     }
 
     public function employeeHistory(Request $request, $employeeId)
     {
-        $tenantId = auth()->user()->tenant_id;
         
         // ---- 1. Payroll History (after payroll closure) ----
-        $query = \App\Models\PaySlip::where('tenant_id', $tenantId)->where('employee_id', $employeeId);
+        $query = \App\Models\PaySlip::where('employee_id', $employeeId);
         if ($request->has('year') && $request->year) { $query->whereYear('period_end', $request->year); }
         if ($request->has('month') && $request->month) { $query->whereMonth('period_end', $request->month); }
         
@@ -73,8 +70,7 @@ class EmployeePayrollController extends Controller
         });
 
         // ---- 2. Pending Adjustments (Advances, Bonuses, Sanctions - not yet deducted) ----
-        $advancesQuery = EmployeeAdvance::where('tenant_id', $tenantId)
-            ->where('employee_id', $employeeId)
+        $advancesQuery = EmployeeAdvance::where('employee_id', $employeeId)
             ->where('is_deducted', false);
 
         if ($request->has('year') && $request->year) { $advancesQuery->whereYear('date', $request->year); }
@@ -106,7 +102,7 @@ class EmployeePayrollController extends Controller
         usort($allHistory, fn($a, $b) => strcmp($b['end_date'], $a['end_date']));
 
         // ---- 3. Stats ----
-        $employee = Employee::where('tenant_id', $tenantId)->find($employeeId);
+        $employee = Employee::find($employeeId);
         $totalAdjBonus = $pendingAdjustments->where('type', 'bonus')->sum('amount');
         $totalAdjDeduct = $pendingAdjustments->where('type', 'advance')->sum('amount') + $pendingAdjustments->where('type', 'sanction')->sum('amount');
         

@@ -12,7 +12,7 @@ class ExportController extends Controller
 {
     public function export(Request $request, $type, FinancialStatsService $statsService)
     {
-        $tenantId = $request->user()->tenant_id;
+        $tenantId = 1;
         $fileName = "{$type}_export_" . now()->format('Y_m_d_His') . ".xlsx";
 
         $exportClass = match($type) {

@@ -10,11 +10,11 @@ use Illuminate\Support\Facades\DB;
 class PayrollService
 {
     /**
-     * Calculate weekly payroll for all active employees in a given tenant.
+     * Calculate weekly payroll for all active employees.
      */
-    public function calculateWeeklyPayroll($tenantId, $startDate, $endDate)
+    public function calculateWeeklyPayroll($startDate, $endDate)
     {
-        $employees = Employee::where('tenant_id', $tenantId)
+        $employees = Employee::where('is_active', true)
             ->where('is_active', true)
             ->with(['attendances' => function($query) use ($startDate, $endDate) {
                 $query->whereBetween('date', [$startDate, $endDate]);
@@ -84,16 +84,16 @@ class PayrollService
      * 1. Create PaySlip records.
      * 2. Mark advances as deducted.
      */
-    public function finalizeWeeklyPayroll($tenantId, $payrollData)
+    public function finalizeWeeklyPayroll($payrollData)
     {
-        return DB::transaction(function() use ($tenantId, $payrollData) {
+        return DB::transaction(function() use ($payrollData) {
             $startDate = $payrollData['period']['start'];
             $endDate = $payrollData['period']['end'];
 
             foreach ($payrollData['details'] as $entry) {
                 // 1. Create PaySlip Record (Professional Snapshot)
                 \App\Models\PaySlip::create([
-                    'tenant_id' => $tenantId,
+                    'tenant_id' => 1,
                     'employee_id' => $entry['employee_id'],
                     'days_worked' => $entry['days_worked'],
                     'overtime_hours_total' => $entry['overtime_hours'],
@@ -110,13 +110,13 @@ class PayrollService
                 ]);
 
                 // 2. Mark advances as deducted for this specific employee
-                \App\Models\EmployeeAdvance::where('tenant_id', $tenantId)
+                \App\Models\EmployeeAdvance::where('employee_id', $entry['employee_id'])
                     ->where('employee_id', $entry['employee_id'])
                     ->where('is_deducted', false)
                     ->update(['is_deducted' => true]);
 
                 // 3. Mark attendances as paid
-                \App\Models\EmployeeAttendance::where('tenant_id', $tenantId)
+                \App\Models\EmployeeAttendance::where('employee_id', $entry['employee_id'])
                     ->where('employee_id', $entry['employee_id'])
                     ->whereBetween('date', [$startDate, $endDate])
                     ->update(['is_paid' => true]);
@@ -130,10 +130,10 @@ class PayrollService
      * Close the payroll for a period: mark advances as deducted.
      * (Deprecated in favor of finalizeWeeklyPayroll)
      */
-    public function closePayroll($tenantId, $employeeIds)
+    public function closePayroll($employeeIds)
     {
-        return DB::transaction(function() use ($tenantId, $employeeIds) {
-            return EmployeeAdvance::where('tenant_id', $tenantId)
+        return DB::transaction(function() use ($employeeIds) {
+            return EmployeeAdvance::whereIn('employee_id', $employeeIds)
                 ->whereIn('employee_id', $employeeIds)
                 ->where('is_deducted', false)
                 ->update(['is_deducted' => true]);

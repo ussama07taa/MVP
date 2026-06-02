@@ -26,9 +26,7 @@ class ServiceController extends Controller
             'unit_price' => 'required|numeric|min:0'
         ]);
 
-        $tenantId = auth()->user()->tenant_id;
-
-        return Service::create(array_merge($validated, ['tenant_id' => $tenantId]));
+        return Service::create(array_merge($validated, ['tenant_id' => 1]));
     }
 
     /**

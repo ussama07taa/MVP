@@ -96,12 +96,9 @@ class WorkshopQueueController extends Controller
             'services.*.unit'           => 'nullable|string|max:20',
         ]);
 
-        $tenantId = auth()->user()->tenant_id;
-
         DB::beginTransaction();
         try {
             $queue = WorkshopQueue::create([
-                'tenant_id'    => 1,
                 'queue_number' => WorkshopQueue::generateNumber(1),
                 'client_name'  => $request->client_name,
                 'client_phone' => $request->client_phone,

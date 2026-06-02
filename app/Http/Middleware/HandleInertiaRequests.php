@@ -49,10 +49,6 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user() ? $request->user()->only('id', 'name', 'role', 'tenant_id') : null,
             ],
             'settings' => $settings ?: ['company_name' => 'Mon Entreprise'],
-            'tenant' => $request->user() && $request->user()->tenant ? [
-                'name' => $request->user()->tenant->name,
-                'logo_url' => $logoUrl,
-            ] : null,
             'flash' => [
                 'message' => fn () => $request->session()->get('message'),
                 'error' => fn () => $request->session()->get('error'),

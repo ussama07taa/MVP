@@ -19,7 +19,6 @@ class PurchaseController extends Controller
         try {
             DB::beginTransaction();
             
-            $tenantId = auth()->user()->tenant_id;
 
             $documentPath = null;
             if ($request->hasFile('invoice_document')) {
@@ -30,7 +29,7 @@ class PurchaseController extends Controller
             $items = is_string($request->items) ? json_decode($request->items, true) : $request->items;
 
             $purchase = Purchase::create([
-                'tenant_id' => $tenantId,
+                'tenant_id' => 1,
                 'supplier_id' => $request->supplier_id,
                 'reference_invoice' => $request->reference_invoice,
                 'total_amount' => $request->total_amount,
@@ -44,7 +43,6 @@ class PurchaseController extends Controller
             }
             if ($request->amount_paid > 0) {
                  SupplierPayment::create([
-                    'tenant_id' => $tenantId,
                     'supplier_id' => $request->supplier_id, 
                     'purchase_id' => $purchase->id, 
                     'amount' => $request->amount_paid, 
@@ -94,7 +92,6 @@ class PurchaseController extends Controller
                         ])->toArray();
 
                         StockPanel::create(array_merge($panelData, [
-                            'tenant_id' => $tenantId,
                             'supplier_id' => $request->supplier_id,
                             'purchase_id' => $purchase->id
                         ]));
@@ -116,7 +113,6 @@ class PurchaseController extends Controller
                         ])->toArray();
 
                         StockCanto::create(array_merge($cantoData, [
-                            'tenant_id' => $tenantId,
                             'supplier_id' => $request->supplier_id,
                             'purchase_id' => $purchase->id
                         ]));
@@ -124,7 +120,7 @@ class PurchaseController extends Controller
                 } elseif ($item['category'] === 'consumable') {
                     $consumable = Consumable::withoutGlobalScopes()->firstOrCreate(
                         ['name' => $item['data']['name'], 'unit' => $item['data']['unit']],
-                        ['tenant_id' => $tenantId, 'quantity_in_stock' => 0, 'average_cost_price' => 0]
+                        ['quantity_in_stock' => 0, 'average_cost_price' => 0]
                     );
                     
                     $this->stockService->recordConsumablePurchase(
@@ -137,9 +133,6 @@ class PurchaseController extends Controller
             }
 
             DB::commit();
-
-            Cache::forget("tenant.{$tenantId}.panels");
-            Cache::forget("tenant.{$tenantId}.cantos");
 
             return response()->json(['message' => 'Facture Fournisseur traitée avec succès. Stocks mis à jour!', 'purchase_id' => $purchase->id]);
         } catch (\Exception $e) {
@@ -239,9 +232,7 @@ class PurchaseController extends Controller
             'name' => 'required|string|max:255', 
             'phone' => 'nullable|string|max:50'
         ]);
-        $tenantId = auth()->user()->tenant_id;
         return Supplier::create([
-            'tenant_id' => $tenantId, 
             'name' => $validated['name'], 
             'phone' => $validated['phone'] ?? null, 
             'total_debt' => 0
@@ -309,10 +300,6 @@ class PurchaseController extends Controller
 
             $supplier = Supplier::withoutGlobalScopes()->lockForUpdate()->findOrFail($purchase->supplier_id);
             $supplier->decrement('total_debt', $refundAmount);
-
-            $tenantId = auth()->user()->tenant_id;
-            Cache::forget("tenant.{$tenantId}.panels");
-            Cache::forget("tenant.{$tenantId}.cantos");
 
             return response()->json([
                 'success' => true,
@@ -403,7 +390,6 @@ class PurchaseController extends Controller
                 }
 
                 SupplierPayment::create([
-                    'tenant_id' => $supplier->tenant_id,
                     'supplier_id' => $supplier->id,
                     'purchase_id' => $purch->id,
                     'amount' => $amountToDistribute,
@@ -432,7 +418,6 @@ class PurchaseController extends Controller
                 $payForThis = min($amountToDistribute, $reste);
 
                 SupplierPayment::create([
-                    'tenant_id' => $supplier->tenant_id,
                     'supplier_id' => $supplier->id,
                     'purchase_id' => $purch->id,
                     'amount' => $payForThis,
@@ -445,7 +430,6 @@ class PurchaseController extends Controller
 
             if ($amountToDistribute > 0) {
                  SupplierPayment::create([
-                    'tenant_id' => $supplier->tenant_id,
                     'supplier_id' => $supplier->id,
                     'purchase_id' => null,
                     'amount' => $amountToDistribute,

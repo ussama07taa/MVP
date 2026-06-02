@@ -14,9 +14,7 @@ class AttendanceController extends Controller
      */
     public function index($date)
     {
-        $tenantId = auth()->user()->tenant_id;
-        return EmployeeAttendance::where('tenant_id', $tenantId)
-            ->whereDate('date', $date)
+        return EmployeeAttendance::whereDate('date', $date)
             ->get();
     }
 
@@ -25,15 +23,13 @@ class AttendanceController extends Controller
      */
     public function store(Request $request)
     {
-        $tenantId = auth()->user()->tenant_id;
         $date = $request->input('date');
         $attendances = $request->input('attendances');
         
-        DB::transaction(function() use ($tenantId, $date, $attendances) {
+        DB::transaction(function() use ($date, $attendances) {
             foreach ($attendances as $att) {
                 // Fetch employee to get daily_salary
-                $employee = Employee::where('tenant_id', $tenantId)
-                    ->find($att['employee_id']);
+                $employee = Employee::find($att['employee_id']);
 
                 if (!$employee) continue;
 
@@ -49,7 +45,7 @@ class AttendanceController extends Controller
                 $overtimeWage = ($dailySalary / 8) * $overtimeHours;
 
                 EmployeeAttendance::updateOrCreate(
-                    ['tenant_id' => $tenantId, 'employee_id' => $att['employee_id'], 'date' => $date],
+                    ['tenant_id' => 1, 'employee_id' => $att['employee_id'], 'date' => $date],
                     [
                         'status' => $att['status'], 
                         'wage_earned' => $wageEarned,
@@ -69,10 +65,7 @@ class AttendanceController extends Controller
      */
     public function destroy($employee_id, $date)
     {
-        $tenantId = auth()->user()->tenant_id;
-        
-        $deleted = EmployeeAttendance::where('tenant_id', $tenantId)
-            ->where('employee_id', $employee_id)
+        $deleted = EmployeeAttendance::where('employee_id', $employee_id)
             ->whereDate('date', $date)
             ->delete();
 

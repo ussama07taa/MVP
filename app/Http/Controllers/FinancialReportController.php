@@ -25,7 +25,6 @@ class FinancialReportController extends Controller
         // Revenue Breakdown by Item Type
         $revenueBreakdown = DB::table('order_lines')
             ->join('orders', 'order_lines.order_id', '=', 'orders.id')
-            ->where('orders.tenant_id', $tenant_id)
             ->where('orders.status', '!=', 'devis')
             ->whereMonth('orders.created_at', $month)
             ->whereYear('orders.created_at', $year)
@@ -42,7 +41,6 @@ class FinancialReportController extends Controller
 
         $cogsBreakdown = DB::table('order_lines')
             ->join('orders', 'order_lines.order_id', '=', 'orders.id')
-            ->where('orders.tenant_id', $tenant_id)
             ->where('orders.status', '!=', 'devis')
             ->whereMonth('orders.created_at', $month)
             ->whereYear('orders.created_at', $year)
@@ -58,7 +56,6 @@ class FinancialReportController extends Controller
             });
 
         $expenseBreakdown = DB::table('expenses')
-            ->where('tenant_id', $tenant_id)
             ->whereMonth('expense_date', $month)
             ->whereYear('expense_date', $year)
             ->where('category', '!=', 'salaire')
@@ -73,10 +70,9 @@ class FinancialReportController extends Controller
             })->toArray();
 
         $monthlyWages = DB::table('employee_attendances')
-                          ->where('tenant_id', $tenant_id)
-                          ->whereMonth('date', $month)
-                          ->whereYear('date', $year)
-                          ->sum('wage_earned');
+            ->whereMonth('date', $month)
+            ->whereYear('date', $year)
+            ->sum('wage_earned');
 
         $expenseBreakdown[] = [
             'category' => 'Salaire (Employés)',
@@ -85,7 +81,6 @@ class FinancialReportController extends Controller
 
         $topClients = DB::table('orders')
             ->join('clients', 'orders.client_id', '=', 'clients.id')
-            ->where('orders.tenant_id', $tenant_id)
             ->whereMonth('orders.created_at', $month)
             ->whereYear('orders.created_at', $year)
             ->where('orders.status', '!=', 'devis')
@@ -96,7 +91,6 @@ class FinancialReportController extends Controller
             ->get();
 
         $dailyRevenue = DB::table('orders')
-            ->where('tenant_id', $tenant_id)
             ->whereMonth('created_at', $month)
             ->whereYear('created_at', $year)
             ->where('status', '!=', 'devis')
@@ -107,7 +101,6 @@ class FinancialReportController extends Controller
 
         $recentOrders = DB::table('orders')
             ->leftJoin('clients', 'orders.client_id', '=', 'clients.id')
-            ->where('orders.tenant_id', $tenant_id)
             ->where('orders.status', '!=', 'devis')
             ->select('orders.id', 'clients.name as client', 'orders.total_sell_price as amount', 'orders.created_at')
             ->latest('orders.created_at')

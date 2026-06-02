@@ -13,7 +13,7 @@ class ActivityLogController extends Controller
         // Ensure only Admins can view logs. In a real app, use Policies/Middleware.
         if ($request->user()->role !== 'admin') abort(403);
 
-        $query = Activity::where('tenant_id', auth()->user()->tenant_id)
+        $query = Activity::query()
             ->with('causer'); // 'causer' is the User who did the action
 
         // Optional: Filter by event type (created, updated, deleted)
@@ -24,7 +24,7 @@ class ActivityLogController extends Controller
         $logs = $query->latest()->paginate(50);
 
         return response()->json([
-            'data' => $logs->map(function ($log) {
+            'data' => $logs->getCollection()->map(function ($log) {
                 return [
                     'id' => $log->id,
                     'user' => $log->causer ? $log->causer->name : 'Système',

@@ -31,7 +31,7 @@ class ClientController extends Controller
         $client->address = $validated['address'] ?? null;
         $client->city = $validated['city'] ?? null;
         $client->notes = $validated['notes'] ?? null;
-        $client->tenant_id = auth()->user()->tenant_id;
+        $client->tenant_id = 1;
         $client->save();
 
         return response()->json($client, 201);
@@ -255,7 +255,6 @@ class ClientController extends Controller
                 $paymentForThisOrder = min($amountToDistribute, $reste);
                 
                 Payment::create([
-                    'tenant_id' => $client->tenant_id,
                     'order_id' => $order->id,
                     'client_id' => $client->id,
                     'amount' => $paymentForThisOrder,
