@@ -23,20 +23,18 @@ class OrderController extends Controller {
         $tenantId = auth()->user()->tenant_id;
 
         // 1. Fetch POS Orders (with full relations)
-        $orders = Order::withoutGlobalScopes()
-            ->where('tenant_id', $tenantId)
-            ->with(['client' => fn($q) => $q->withoutGlobalScopes(), 'lines.item', 'payments'])
+        $orders = Order::where('tenant_id', $tenantId)
+            ->with(['client', 'lines.item', 'payments'])
             ->latest()
             ->get();
 
         // 2. Fetch Validated Invoices (NO items.item — morph aliases differ)
         $invoices = collect();
         try {
-            $invoices = \App\Models\Invoice::withoutGlobalScopes()
-                ->where('tenant_id', $tenantId)
+            $invoices = \App\Models\Invoice::where('tenant_id', $tenantId)
                 ->where('type', 'invoice')
                 ->whereNotNull('validated_at')
-                ->with(['client' => fn($q) => $q->withoutGlobalScopes(), 'items', 'payments'])
+                ->with(['client', 'items', 'payments'])
                 ->latest()
                 ->get();
         } catch (\Exception $e) {

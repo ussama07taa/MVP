@@ -15,7 +15,7 @@ class InvoiceController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Invoice::withoutGlobalScopes()->with(['client' => function($q) { $q->withoutGlobalScopes()->withTrashed(); }, 'items', 'user:id,name'])
+        $query = Invoice::with(['client' => function($q) { $q->withTrashed(); }, 'items', 'user:id,name'])
             ->latest();
 
         // Filter by type
@@ -83,7 +83,7 @@ class InvoiceController extends Controller
      */
     public function show($id)
     {
-        $invoice = Invoice::withoutGlobalScopes()->with(['client' => function($q) { $q->withoutGlobalScopes()->withTrashed(); }, 'items', 'user:id,name'])->findOrFail($id);
+        $invoice = Invoice::with(['client' => function($q) { $q->withTrashed(); }, 'items', 'user:id,name'])->findOrFail($id);
 
         return response()->json([
             'id' => $invoice->id,
@@ -230,7 +230,7 @@ class InvoiceController extends Controller
         try {
             DB::beginTransaction();
 
-            $invoice = Invoice::withoutGlobalScopes()->findOrFail($id);
+            $invoice = Invoice::findOrFail($id);
             $tenantId = auth()->user()->tenant_id;
             $taxRate = (float) ($request->tax_rate ?? 0);
             $validityDays = $request->type === 'quote' ? ($request->validity_days ?? $invoice->validity_days ?? 15) : null;
@@ -350,7 +350,7 @@ class InvoiceController extends Controller
      */
     public function destroy($id)
     {
-        $invoice = Invoice::withoutGlobalScopes()->findOrFail($id);
+        $invoice = Invoice::findOrFail($id);
 
         if ($invoice->status === 'paid') {
             return response()->json(['error' => 'Impossible de supprimer une facture déjà payée.'], 422);
@@ -369,7 +369,7 @@ class InvoiceController extends Controller
      */
     public function downloadPdf($id)
     {
-        $invoice = Invoice::withoutGlobalScopes()->with(['client', 'items'])->findOrFail($id);
+        $invoice = Invoice::with(['client', 'items'])->findOrFail($id);
         $settings = Setting::first(); // General settings for logo/company info
 
         $pdf = Pdf::loadView('pdf.invoice', [
@@ -398,7 +398,7 @@ class InvoiceController extends Controller
      */
     public function duplicate($id)
     {
-        $original = Invoice::withoutGlobalScopes()->with('items')->findOrFail($id);
+        $original = Invoice::with('items')->findOrFail($id);
         $tenantId = auth()->user()->tenant_id;
 
         DB::beginTransaction();
@@ -492,7 +492,7 @@ class InvoiceController extends Controller
      */
     public function validateInvoice($id)
     {
-        $invoice = Invoice::withoutGlobalScopes()->with('items')->findOrFail($id);
+        $invoice = Invoice::with('items')->findOrFail($id);
 
         if ($invoice->type !== 'invoice') {
             return response()->json(['error' => 'Seules les factures peuvent être validées. Convertissez d\'abord le devis.'], 422);
@@ -554,7 +554,7 @@ class InvoiceController extends Controller
             'amount' => 'required|numeric|min:0.01',
         ]);
 
-        $invoice = Invoice::withoutGlobalScopes()->findOrFail($id);
+        $invoice = Invoice::findOrFail($id);
 
         if ($invoice->type !== 'invoice') {
             return response()->json(['error' => 'Les paiements ne s\'appliquent qu\'aux factures.'], 422);

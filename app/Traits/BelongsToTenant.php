@@ -7,10 +7,11 @@ use App\Models\Tenant;
 
 trait BelongsToTenant {
     protected static function bootBelongsToTenant() {
-        static::addGlobalScope(new TenantScope);
+        // Multi-tenancy is disabled, but we keep the trait for DB compatibility.
+        // We set a default tenant_id to prevent null constraints.
         static::creating(function ($model) {
-            if (auth()->check() && !$model->tenant_id) {
-                $model->tenant_id = auth()->user()->tenant_id;
+            if (!$model->tenant_id) {
+                $model->tenant_id = 1;
             }
         });
     }

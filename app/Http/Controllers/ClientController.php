@@ -15,8 +15,7 @@ class ClientController extends Controller
 {
     public function index()
     {
-        return Client::withoutGlobalScopes()
-            ->select('id', 'name', 'phone', 'address', 'city', 'notes', 'total_credit', 'created_at')
+        return Client::select('id', 'name', 'phone', 'address', 'city', 'notes', 'total_credit', 'created_at')
             ->latest()
             ->get();
     }
@@ -55,7 +54,7 @@ class ClientController extends Controller
 
     public function destroy($id)
     {
-        $client = Client::withoutGlobalScopes()->withTrashed()->findOrFail($id);
+        $client = Client::withTrashed()->findOrFail($id);
 
         if ((float) $client->total_credit > 0) {
             return response()->json([
@@ -76,12 +75,11 @@ class ClientController extends Controller
 
     public function history($id)
     {
-        $client = Client::withoutGlobalScopes()->findOrFail($id);
-        $orders = Order::withoutGlobalScopes()->with(['lines.item', 'payments'])->where('client_id', $id)->latest()->get();
+        $client = Client::findOrFail($id);
+        $orders = Order::with(['lines.item', 'payments'])->where('client_id', $id)->latest()->get();
 
         // Devis & Factures models for internal processing
-        $invoices_models = Invoice::withoutGlobalScopes()
-            ->with(['client', 'items'])
+        $invoices_models = Invoice::with(['client', 'items'])
             ->where('client_id', $id)
             ->latest()
             ->get();
@@ -274,28 +272,24 @@ class ClientController extends Controller
     public function recalculateCredit($id)
     {
         return DB::transaction(function() use ($id) {
-            $client = Client::withoutGlobalScopes()->findOrFail($id);
+            $client = Client::findOrFail($id);
 
             // 1. Fetch all financial records chronologically
-            $orders = Order::withoutGlobalScopes()
-                ->where('client_id', $id)
+            $orders = Order::where('client_id', $id)
                 ->orderBy('created_at', 'asc')
                 ->get();
 
-            $invoices = Invoice::withoutGlobalScopes()
-                ->where('client_id', $id)
+            $invoices = Invoice::where('client_id', $id)
                 ->where('type', 'invoice')
                 ->whereNotNull('validated_at')
                 ->orderBy('issue_date', 'asc')
                 ->get();
 
-            $totalPayments = Payment::withoutGlobalScopes()
-                ->where('client_id', $id)
+            $totalPayments = Payment::where('client_id', $id)
                 ->sum('amount');
 
-            $totalReturns = \App\Models\OrderReturn::withoutGlobalScopes()
-                ->whereHas('order', function($q) use ($id) {
-                    $q->withoutGlobalScopes()->where('client_id', $id);
+            $totalReturns = \App\Models\OrderReturn::whereHas('order', function($q) use ($id) {
+                    $q->where('client_id', $id);
                 })
                 ->sum('total_refunded');
 
@@ -305,8 +299,7 @@ class ClientController extends Controller
             // 2. Reset and Distribute payments to Orders
             foreach ($orders as $order) {
                 // Get returns specifically for this order
-                $orderRefunds = \App\Models\OrderReturn::withoutGlobalScopes()
-                    ->where('order_id', $order->id)
+                $orderRefunds = \App\Models\OrderReturn::where('order_id', $order->id)
                     ->sum('total_refunded');
 
                 $netTotal = (float) $order->total_sell_price - (float) $orderRefunds;
