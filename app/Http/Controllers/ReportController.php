@@ -20,6 +20,8 @@ class ReportController extends Controller
 
     public function generate(Request $request)
     {
+        if ($request->user()->role !== 'admin') abort(403);
+        
         $request->validate([
             'month' => 'required|integer|between:1,12',
             'year' => 'required|integer|between:2020,2099',
@@ -150,6 +152,8 @@ class ReportController extends Controller
 
     public function preview(Request $request)
     {
+        if ($request->user()->role !== 'admin') abort(403);
+
         $request->validate([
             'month' => 'required|integer|between:1,12',
             'year' => 'required|integer|between:2020,2099',

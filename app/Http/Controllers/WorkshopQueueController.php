@@ -13,6 +13,7 @@ class WorkshopQueueController extends Controller
      */
     public function index()
     {
+        if (auth()->user()->role !== 'admin') abort(403);
         return response()->json($this->buildQueueData(includeDelivered: true, includeHidden: true));
     }
 
@@ -200,6 +201,7 @@ class WorkshopQueueController extends Controller
      */
     public function destroy($id)
     {
+        if (auth()->user()->role !== 'admin') abort(403);
         WorkshopQueue::findOrFail($id)->delete();
         return response()->json(['success' => true]);
     }

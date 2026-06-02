@@ -19,7 +19,14 @@ class StockController extends Controller
 {
     public function panels()
     {
-        return StockPanel::withoutGlobalScopes()->with('supplier')->latest()->get();
+        $panels = StockPanel::withoutGlobalScopes()->with('supplier')->latest()->get();
+        if (auth()->user()->role !== 'admin') {
+            $panels->transform(function($p) {
+                $p->cost_price = null;
+                return $p;
+            });
+        }
+        return $panels;
     }
 
     public function showPanel($id)
@@ -48,7 +55,14 @@ class StockController extends Controller
 
     public function cantos()
     {
-        return StockCanto::withoutGlobalScopes()->with('supplier')->latest()->get();
+        $cantos = StockCanto::withoutGlobalScopes()->with('supplier')->latest()->get();
+        if (auth()->user()->role !== 'admin') {
+            $cantos->transform(function($c) {
+                $c->cost_price_per_m = null;
+                return $c;
+            });
+        }
+        return $cantos;
     }
 
     public function posCantos()
@@ -185,12 +199,14 @@ class StockController extends Controller
 
     public function destroyPanel($id)
     {
+        if (auth()->user()->role !== 'admin') abort(403);
         StockPanel::withoutGlobalScopes()->findOrFail($id)->delete();
         return response()->json(['success' => true]);
     }
 
     public function destroyCanto($id)
     {
+        if (auth()->user()->role !== 'admin') abort(403);
         StockCanto::withoutGlobalScopes()->findOrFail($id)->delete();
         return response()->json(['success' => true]);
     }

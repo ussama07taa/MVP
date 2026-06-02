@@ -11,6 +11,7 @@ class WorkshopStatsController extends Controller
 {
     public function index(Request $request)
     {
+        if ($request->user()->role !== 'admin') abort(403);
         $month = $request->input('month', now()->month);
         $year  = $request->input('year', now()->year);
 

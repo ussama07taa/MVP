@@ -55,6 +55,7 @@ class ClientController extends Controller
 
     public function destroy($id)
     {
+        if (auth()->user()->role !== 'admin') abort(403);
         $client = Client::withTrashed()->findOrFail($id);
 
         if ((float) $client->total_credit > 0) {
@@ -273,6 +274,7 @@ class ClientController extends Controller
 
     public function recalculateCredit($id)
     {
+        if (auth()->user()->role !== 'admin') abort(403);
         return DB::transaction(function() use ($id) {
             $client = Client::withTrashed()->findOrFail($id);
 

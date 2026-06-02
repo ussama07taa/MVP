@@ -12,6 +12,8 @@ class FinancialReportController extends Controller
 {
     public function index(Request $request, \App\Services\FinancialStatsService $service) 
     {
+        if ($request->user()->role !== 'admin') abort(403);
+        
         $tenant_id = auth()->user()->tenant_id;
         
         $month = $request->query('month', \Carbon\Carbon::now()->month);
