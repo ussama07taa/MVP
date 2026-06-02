@@ -25,7 +25,7 @@ class OrderController extends Controller {
         // 1. Fetch POS Orders (with full relations)
         $orders = Order::withoutGlobalScopes()
             ->where('tenant_id', $tenantId)
-            ->with(['client', 'lines.item', 'payments'])
+            ->with(['client' => fn($q) => $q->withoutGlobalScopes(), 'lines.item', 'payments'])
             ->latest()
             ->get();
 
@@ -36,7 +36,7 @@ class OrderController extends Controller {
                 ->where('tenant_id', $tenantId)
                 ->where('type', 'invoice')
                 ->whereNotNull('validated_at')
-                ->with(['client', 'items', 'payments'])
+                ->with(['client' => fn($q) => $q->withoutGlobalScopes(), 'items', 'payments'])
                 ->latest()
                 ->get();
         } catch (\Exception $e) {
