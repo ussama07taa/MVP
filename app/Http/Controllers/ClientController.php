@@ -273,36 +273,71 @@ class ClientController extends Controller
 
     public function recalculateCredit($id)
     {
-        $client = Client::withoutGlobalScopes()->findOrFail($id);
+        return DB::transaction(function() use ($id) {
+            $client = Client::withoutGlobalScopes()->findOrFail($id);
 
-        $totalRevenue = Order::withoutGlobalScopes()
-            ->where('client_id', $id)
-            ->sum('total_sell_price');
+            // 1. Fetch all financial records chronologically
+            $orders = Order::withoutGlobalScopes()
+                ->where('client_id', $id)
+                ->orderBy('created_at', 'asc')
+                ->get();
 
-        $totalInvoiced = Invoice::withoutGlobalScopes()
-            ->where('client_id', $id)
-            ->where('type', 'invoice')
-            ->whereNotNull('validated_at')
-            ->sum('total');
+            $invoices = Invoice::withoutGlobalScopes()
+                ->where('client_id', $id)
+                ->where('type', 'invoice')
+                ->whereNotNull('validated_at')
+                ->orderBy('issue_date', 'asc')
+                ->get();
 
-        $totalPaid = Payment::withoutGlobalScopes()
-            ->where('client_id', $id)
-            ->sum('amount');
+            $totalPayments = Payment::withoutGlobalScopes()
+                ->where('client_id', $id)
+                ->sum('amount');
 
-        $totalReturned = \App\Models\OrderReturn::withoutGlobalScopes()
-            ->whereHas('order', function($q) use ($id) {
-                $q->withoutGlobalScopes()->where('client_id', $id);
-            })
-            ->sum('total_refunded');
+            $totalReturns = \App\Models\OrderReturn::withoutGlobalScopes()
+                ->whereHas('order', function($q) use ($id) {
+                    $q->withoutGlobalScopes()->where('client_id', $id);
+                })
+                ->sum('total_refunded');
 
-        $newCredit = ($totalRevenue + $totalInvoiced) - $totalPaid - $totalReturned;
-        $oldCredit = $client->total_credit;
+            $paymentPool = (float) $totalPayments;
+            $revenueTotal = 0;
 
-        $client->update(['total_credit' => round($newCredit, 2)]);
+            // 2. Reset and Distribute payments to Orders
+            foreach ($orders as $order) {
+                // Get returns specifically for this order
+                $orderRefunds = \App\Models\OrderReturn::withoutGlobalScopes()
+                    ->where('order_id', $order->id)
+                    ->sum('total_refunded');
 
-        return response()->json([
-            'message' => "Crédit recalculé avec succès : " . number_format($oldCredit, 2) . " DH → " . number_format($newCredit, 2) . " DH",
-            'new_credit' => round($newCredit, 2)
-        ]);
+                $netTotal = (float) $order->total_sell_price - (float) $orderRefunds;
+                $revenueTotal += $netTotal;
+
+                $paymentForOrder = min($paymentPool, $netTotal);
+                $order->update(['amount_paid' => round($paymentForOrder, 2)]);
+                $paymentPool -= $paymentForOrder;
+            }
+
+            // 3. Distribute remaining payments to Standard Invoices
+            foreach ($invoices as $invoice) {
+                $netTotal = (float) $invoice->total;
+                $revenueTotal += $netTotal;
+
+                $paymentForInvoice = min($paymentPool, $netTotal);
+                $invoice->update(['amount_paid' => round($paymentForInvoice, 2)]);
+                $paymentPool -= $paymentForInvoice;
+            }
+
+            // 4. Update Client's total_credit (Debt)
+            // total_credit = (Total Revenue - Total Payments - Total Returns)
+            // But since we already subtracted returns from revenue in our loops:
+            // total_credit = revenueTotal - totalPayments
+            $newCredit = round($revenueTotal - $totalPayments, 2);
+            $client->update(['total_credit' => $newCredit]);
+
+            return response()->json([
+                'message' => "Crédit et Historique synchronisés avec succès. Solde: " . number_format($newCredit, 2) . " DH",
+                'new_credit' => $newCredit
+            ]);
+        });
     }
 }
