@@ -20,7 +20,6 @@ class OrderController extends Controller {
     }
 
     public function index() {
-        $tenantId = auth()->user()->tenant_id;
 
         // 1. Fetch POS Orders (with full relations)
         $orders = Order::with(['client' => fn($q) => $q->withTrashed(), 'lines.item', 'payments'])

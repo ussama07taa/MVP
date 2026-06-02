@@ -13,8 +13,7 @@ class WorkshopQueueController extends Controller
      */
     public function index()
     {
-        $tenantId = auth()->user()->tenant_id;
-        return response()->json($this->buildQueueData($tenantId, includeDelivered: true, includeHidden: true));
+        return response()->json($this->buildQueueData(includeDelivered: true, includeHidden: true));
     }
 
     /**
@@ -22,15 +21,13 @@ class WorkshopQueueController extends Controller
      */
     public function mobileIndex()
     {
-        $tenantId = auth()->user()->tenant_id;
-        return response()->json($this->buildQueueData($tenantId, includeDelivered: false, includeHidden: false));
+        return response()->json($this->buildQueueData(includeDelivered: false, includeHidden: false));
     }
 
-    private function buildQueueData(int $tenantId, bool $includeDelivered, bool $includeHidden): array
+    private function buildQueueData(bool $includeDelivered, bool $includeHidden): array
     {
         // Show ALL non-delivered jobs (regardless of date) + delivered jobs from today only
-        $query = WorkshopQueue::where('tenant_id', $tenantId)
-            ->with(['services' => fn($q) => $q->with('doneByUser:id,name')])
+        $query = WorkshopQueue::with(['services' => fn($q) => $q->with('doneByUser:id,name')])
             ->where(function ($q) {
                 $q->where('status', '!=', 'delivered')
                   ->orWhereDate('delivered_at', today());
@@ -103,8 +100,8 @@ class WorkshopQueueController extends Controller
         DB::beginTransaction();
         try {
             $queue = WorkshopQueue::create([
-                'tenant_id'    => $tenantId,
-                'queue_number' => WorkshopQueue::generateNumber($tenantId),
+                'tenant_id'    => 1,
+                'queue_number' => WorkshopQueue::generateNumber(1),
                 'client_name'  => $request->client_name,
                 'client_phone' => $request->client_phone,
                 'notes'        => $request->notes,
@@ -173,8 +170,7 @@ class WorkshopQueueController extends Controller
      */
     public function hideFromWorkshop($id)
     {
-        $tenantId = auth()->user()->tenant_id;
-        $queue    = WorkshopQueue::where('tenant_id', $tenantId)->findOrFail($id);
+        $queue = WorkshopQueue::findOrFail($id);
         $queue->update(['is_hidden_from_workshop' => true]);
         return response()->json(['success' => true]);
     }
@@ -184,8 +180,7 @@ class WorkshopQueueController extends Controller
      */
     public function deliver($id)
     {
-        $tenantId = auth()->user()->tenant_id;
-        $queue    = WorkshopQueue::where('tenant_id', $tenantId)->findOrFail($id);
+        $queue = WorkshopQueue::findOrFail($id);
         $queue->update(['status' => 'delivered', 'delivered_at' => now()]);
         return response()->json(['success' => true, 'message' => "Commande {$queue->queue_number} livrée!"]);
     }
@@ -195,8 +190,7 @@ class WorkshopQueueController extends Controller
      */
     public function undeliver($id)
     {
-        $tenantId = auth()->user()->tenant_id;
-        $queue    = WorkshopQueue::where('tenant_id', $tenantId)->findOrFail($id);
+        $queue = WorkshopQueue::findOrFail($id);
         $queue->update(['status' => 'done', 'delivered_at' => null]);
         return response()->json(['success' => true, 'message' => "Livraison annulée pour {$queue->queue_number}!"]);
     }
@@ -206,8 +200,7 @@ class WorkshopQueueController extends Controller
      */
     public function destroy($id)
     {
-        $tenantId = auth()->user()->tenant_id;
-        WorkshopQueue::where('tenant_id', $tenantId)->findOrFail($id)->delete();
+        WorkshopQueue::findOrFail($id)->delete();
         return response()->json(['success' => true]);
     }
 }

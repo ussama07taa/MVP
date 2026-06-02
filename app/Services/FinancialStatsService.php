@@ -9,13 +9,12 @@ use Illuminate\Support\Facades\DB;
 
 class FinancialStatsService
 {
-    public function getMonthlyStats($month, $year, $tenantId)
+    public function getMonthlyStats($month, $year, $tenantId = null)
     {
         $dateObj = Carbon::createFromDate($year, $month, 1);
 
         // 1. Revenue (Net of Devis)
         $revenue = DB::table('orders')
-                        ->where('tenant_id', $tenantId)
                         ->whereMonth('created_at', $month)
                         ->whereYear('created_at', $year)
                         ->where('status', '!=', 'devis')
@@ -24,7 +23,6 @@ class FinancialStatsService
         // 2. COGS (Cost of Goods Sold)
         $cogs = DB::table('order_lines')
             ->join('orders', 'order_lines.order_id', '=', 'orders.id')
-            ->where('orders.tenant_id', $tenantId)
             ->where('orders.status', '!=', 'devis')
             ->whereMonth('orders.created_at', $month)
             ->whereYear('orders.created_at', $year)
@@ -32,14 +30,12 @@ class FinancialStatsService
 
         // 3. OPEX (Operating Expenses)
         $otherExpenses = DB::table('expenses')
-                                ->where('tenant_id', $tenantId)
                                 ->whereMonth('expense_date', $month)
                                 ->whereYear('expense_date', $year)
                                 ->where('category', '!=', 'salaire')
                                 ->sum('amount');
         
         $monthlyWages = DB::table('employee_attendances')
-                          ->where('tenant_id', $tenantId)
                           ->whereMonth('date', $month)
                           ->whereYear('date', $year)
                           ->sum('wage_earned');
@@ -48,7 +44,6 @@ class FinancialStatsService
 
         // 4. Cash Flow (Collected vs Credit)
         $totalCollected = (float)DB::table('orders')
-                                ->where('tenant_id', $tenantId)
                                 ->whereMonth('created_at', $month)
                                 ->whereYear('created_at', $year)
                                 ->where('status', '!=', 'devis')
@@ -57,7 +52,6 @@ class FinancialStatsService
         $unpaidRevenue = (float)$revenue - $totalCollected;
 
         $orderCount = DB::table('orders')
-                        ->where('tenant_id', $tenantId)
                         ->whereMonth('created_at', $month)
                         ->whereYear('created_at', $year)
                         ->where('status', '!=', 'devis')
@@ -67,7 +61,6 @@ class FinancialStatsService
 
         // 5. Purchases (Achats)
         $purchases = DB::table('purchases')
-                        ->where('tenant_id', $tenantId)
                         ->whereMonth('created_at', $month)
                         ->whereYear('created_at', $year);
         
@@ -75,21 +68,17 @@ class FinancialStatsService
         $purchasesPaid = (float)$purchases->sum('amount_paid');
 
         // 6. Net Cash Flow (Trésorerie Réelle)
-        // Cash In = totalCollected
-        // Cash Out = otherExpenses + monthlyWages + purchasesPaid
         $cashOut = (float)$otherExpenses + (float)$monthlyWages + (float)$purchasesPaid;
         $netCashFlow = (float)$totalCollected - $cashOut;
 
         // 7. Customer Returns (Order Refunds)
         $customerReturns = (float) DB::table('order_returns')
-            ->where('tenant_id', $tenantId)
             ->whereMonth('created_at', $month)
             ->whereYear('created_at', $year)
             ->sum('total_refunded');
 
         // 8. Invoice Revenue (validated invoices from module Factures)
         $invoiceRevenue = (float) DB::table('invoices')
-            ->where('tenant_id', $tenantId)
             ->where('type', 'invoice')
             ->whereNotNull('validated_at')
             ->whereMonth('validated_at', $month)
@@ -98,7 +87,6 @@ class FinancialStatsService
             ->sum('total');
 
         $invoiceCollected = (float) DB::table('invoices')
-            ->where('tenant_id', $tenantId)
             ->where('type', 'invoice')
             ->whereNotNull('validated_at')
             ->whereMonth('validated_at', $month)
@@ -108,7 +96,6 @@ class FinancialStatsService
 
         $invoiceCost = (float) DB::table('invoice_items')
             ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
-            ->where('invoices.tenant_id', $tenantId)
             ->where('invoices.type', 'invoice')
             ->whereNotNull('invoices.validated_at')
             ->whereMonth('invoices.validated_at', $month)

@@ -27,18 +27,16 @@ class ReportController extends Controller
 
         $month = (int) $request->month;
         $year = (int) $request->year;
-        $tenantId = auth()->user()->tenant_id;
 
         $dateObj = Carbon::createFromDate($year, $month, 1);
         $monthName = $dateObj->translatedFormat('F Y');
 
         // 1. Financial Stats (reuse existing service)
-        $financial = $this->financialStats->getMonthlyStats($month, $year, $tenantId);
+        $financial = $this->financialStats->getMonthlyStats($month, $year);
 
         // 2. Top Clients
         $topClients = DB::table('orders')
             ->select('client_id', DB::raw('SUM(total_sell_price) as total_revenue'), DB::raw('COUNT(*) as order_count'))
-            ->where('tenant_id', $tenantId)
             ->whereMonth('created_at', $month)
             ->whereYear('created_at', $year)
             ->where('status', '!=', 'devis')
@@ -47,7 +45,7 @@ class ReportController extends Controller
             ->limit(5)
             ->get()
             ->map(function ($row) {
-                $client = Client::withoutGlobalScopes()->find($row->client_id);
+                $client = Client::withTrashed()->find($row->client_id);
                 return [
                     'name' => $client->name ?? 'Inconnu',
                     'total_revenue' => (float) $row->total_revenue,
@@ -59,7 +57,6 @@ class ReportController extends Controller
         $topServices = DB::table('workshop_queue_services')
             ->join('workshop_queues', 'workshop_queue_services.queue_id', '=', 'workshop_queues.id')
             ->select('workshop_queue_services.label', DB::raw('COUNT(*) as count'))
-            ->where('workshop_queues.tenant_id', $tenantId)
             ->whereMonth('workshop_queues.created_at', $month)
             ->whereYear('workshop_queues.created_at', $year)
             ->groupBy('workshop_queue_services.label')
@@ -69,7 +66,6 @@ class ReportController extends Controller
 
         // 4. Stock Status
         $stockPanels = StockPanel::withoutGlobalScopes()
-            ->where('tenant_id', $tenantId)
             ->select('type', 'color_name', 'size_x', 'size_y', 'quantity', 'cost_price')
             ->orderBy('quantity')
             ->limit(10)
@@ -84,7 +80,6 @@ class ReportController extends Controller
             });
 
         $stockCantos = StockCanto::withoutGlobalScopes()
-            ->where('tenant_id', $tenantId)
             ->select('color_name', 'color_code', 'total_length_remaining', 'cost_price_per_m')
             ->orderBy('total_length_remaining')
             ->limit(10)
@@ -102,7 +97,6 @@ class ReportController extends Controller
         // 5. Expense breakdown by category
         $expensesByCategory = DB::table('expenses')
             ->select('category', DB::raw('SUM(amount) as total'))
-            ->where('tenant_id', $tenantId)
             ->whereMonth('expense_date', $month)
             ->whereYear('expense_date', $year)
             ->groupBy('category')
@@ -114,7 +108,6 @@ class ReportController extends Controller
             ->join('workshop_queues', 'workshop_queue_services.queue_id', '=', 'workshop_queues.id')
             ->join('users', 'workshop_queue_services.done_by', '=', 'users.id')
             ->select('users.name as worker_name', DB::raw('COUNT(*) as services_done'))
-            ->where('workshop_queues.tenant_id', $tenantId)
             ->whereMonth('workshop_queues.created_at', $month)
             ->whereYear('workshop_queues.created_at', $year)
             ->where('workshop_queue_services.is_done', 1)
@@ -125,7 +118,7 @@ class ReportController extends Controller
             ->get();
 
         // 7. Company settings for header
-        $settings = DB::table('settings')->where('tenant_id', $tenantId)->first();
+        $settings = DB::table('settings')->first();
         if ($settings) {
             $settings = (array) $settings;
         } else {
@@ -164,9 +157,8 @@ class ReportController extends Controller
 
         $month = (int) $request->month;
         $year = (int) $request->year;
-        $tenantId = auth()->user()->tenant_id;
 
-        $financial = $this->financialStats->getMonthlyStats($month, $year, $tenantId);
+        $financial = $this->financialStats->getMonthlyStats($month, $year);
 
         $dateObj = Carbon::createFromDate($year, $month, 1);
 
