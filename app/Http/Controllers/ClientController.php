@@ -47,7 +47,7 @@ class ClientController extends Controller
             'notes' => 'nullable|string|max:2000',
         ]);
 
-        $client = Client::findOrFail($id);
+        $client = Client::withoutGlobalScopes()->findOrFail($id);
         $client->update($validated);
 
         return response()->json($client);
@@ -76,8 +76,8 @@ class ClientController extends Controller
 
     public function history($id)
     {
-        $client = Client::findOrFail($id);
-        $orders = Order::with(['lines.item', 'payments'])->where('client_id', $id)->latest()->get();
+        $client = Client::withoutGlobalScopes()->findOrFail($id);
+        $orders = Order::withoutGlobalScopes()->with(['lines.item', 'payments'])->where('client_id', $id)->latest()->get();
 
         // Devis & Factures models for internal processing
         $invoices_models = Invoice::withoutGlobalScopes()
@@ -160,7 +160,7 @@ class ClientController extends Controller
         }
 
         // Add Payments (Credit)
-        $payments = Payment::with('invoice')->where('client_id', $id)->get();
+        $payments = Payment::withoutGlobalScopes()->with('invoice')->where('client_id', $id)->get();
         foreach ($payments as $p) {
             $ref = 'Paiement';
             if ($p->order_id) $ref .= " (Vente #{$p->order_id})";
@@ -181,8 +181,8 @@ class ClientController extends Controller
         }
 
         // Add Returns (Credit)
-        $returns = \App\Models\OrderReturn::whereHas('order', function($q) use ($id) {
-            $q->where('client_id', $id);
+        $returns = \App\Models\OrderReturn::withoutGlobalScopes()->whereHas('order', function($q) use ($id) {
+            $q->withoutGlobalScopes()->where('client_id', $id);
         })->get();
 
         foreach ($returns as $r) {
@@ -231,11 +231,17 @@ class ClientController extends Controller
     {
         $request->validate(['amount' => 'required|numeric|min:0.1']);
         
-        return DB::transaction(function() use ($request, $id) {
-            $client = Client::findOrFail($id);
+        $client = Client::withoutGlobalScopes()->findOrFail($id);
+
+        if ($request->amount > ($client->total_credit + 0.01)) {
+            return response()->json([
+                'error' => "Le montant (" . number_format($request->amount, 2) . " DH) dépasse la dette actuelle (" . number_format($client->total_credit, 2) . " DH)."
+            ], 422);
+        }
+        return DB::transaction(function() use ($request, $id, $client) {
             $amountToDistribute = $request->amount;
             
-            $unpaidOrders = Order::where('client_id', $id)
+            $unpaidOrders = Order::withoutGlobalScopes()->where('client_id', $id)
                 ->whereRaw('amount_paid < total_sell_price')
                 ->orderBy('created_at', 'asc')
                 ->get();
@@ -262,5 +268,40 @@ class ClientController extends Controller
             $client->decrement('total_credit', $request->amount);
             return response()->json(['message' => 'Paiement effectué']);
         });
+    }
+
+    public function recalculateCredit($id)
+    {
+        $client = Client::withoutGlobalScopes()->findOrFail($id);
+
+        $totalRevenue = Order::withoutGlobalScopes()
+            ->where('client_id', $id)
+            ->sum('total_sell_price');
+
+        $totalInvoiced = Invoice::withoutGlobalScopes()
+            ->where('client_id', $id)
+            ->where('type', 'invoice')
+            ->whereNotNull('validated_at')
+            ->sum('total');
+
+        $totalPaid = Payment::withoutGlobalScopes()
+            ->where('client_id', $id)
+            ->sum('amount');
+
+        $totalReturned = \App\Models\OrderReturn::withoutGlobalScopes()
+            ->whereHas('order', function($q) use ($id) {
+                $q->withoutGlobalScopes()->where('client_id', $id);
+            })
+            ->sum('total_refunded');
+
+        $newCredit = ($totalRevenue + $totalInvoiced) - $totalPaid - $totalReturned;
+        $oldCredit = $client->total_credit;
+
+        $client->update(['total_credit' => round($newCredit, 2)]);
+
+        return response()->json([
+            'message' => "Crédit recalculé avec succès : " . number_format($oldCredit, 2) . " DH → " . number_format($newCredit, 2) . " DH",
+            'new_credit' => round($newCredit, 2)
+        ]);
     }
 }

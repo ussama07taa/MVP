@@ -66,11 +66,14 @@
                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">CA Total</p>
                <h3 class="text-lg font-black text-slate-900">{{ selectedClientDossier.stats?.total_revenue || 0 }} DH</h3>
             </div>
-            <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+            <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm relative group/stat">
                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Crédit / Dette</p>
                <h3 class="text-lg font-black" :class="selectedClientDossier.client.total_credit > 0 ? 'text-red-500' : 'text-emerald-500'">
                  {{ selectedClientDossier.client.total_credit }} DH
                </h3>
+               <button @click="recalculateCredit" title="Recalculer le crédit réel" class="absolute top-2 right-2 p-1.5 bg-brand-50 text-brand-600 rounded-lg opacity-0 group-hover/stat:opacity-100 transition-opacity hover:bg-brand-100">
+                 <RotateCwIcon class="w-3.5 h-3.5" />
+               </button>
             </div>
             <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Dernière visite</p>
@@ -717,6 +720,18 @@ const submitGlobalPayment = async () => {
     await openClientDetails({ id: clientIdToRefresh });
   } catch(e) {
     toast.error("Erreur lors de l'encaissement global.");
+  }
+};
+
+const recalculateCredit = async () => {
+  if (!selectedClientDossier.value) return;
+  try {
+    const res = await axios.post(`/api/clients/${selectedClientDossier.value.client.id}/recalculate`);
+    toast.success(res.data.message);
+    await loadClients();
+    await openClientDetails({ id: selectedClientDossier.value.client.id });
+  } catch (error) {
+    toast.error(error.response?.data?.error || 'Erreur lors du recalcul');
   }
 };
 

@@ -25,6 +25,7 @@ Route::middleware(['auth', 'identify.tenant', 'throttle:100,1'])->group(function
     Route::get('/orders/{id}/pdf', [OrderController::class, 'downloadPdf']);
     Route::post('/orders/{id}/pay', [OrderController::class, 'pay']);
     Route::post('/clients/{id}/pay', [ClientController::class, 'pay']);
+    Route::post('/clients/{id}/recalculate', [ClientController::class, 'recalculateCredit']);
     Route::delete('/clients/{id}', [ClientController::class, 'destroy']);
     Route::put('/clients/{id}', [ClientController::class, 'update']);
     
