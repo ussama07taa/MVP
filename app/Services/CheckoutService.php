@@ -208,6 +208,11 @@ class CheckoutService
 
         $client = Client::find($order->client_id);
 
+        $tefsilPath = null;
+        if (isset($data['tefsil_file']) && $data['tefsil_file'] instanceof \Illuminate\Http\UploadedFile) {
+            $tefsilPath = $data['tefsil_file']->store('workshop/tefsils', 'public');
+        }
+
         $queue = WorkshopQueue::create([
             'tenant_id'    => $tenantId,
             'queue_number' => WorkshopQueue::generateNumber($tenantId),
@@ -215,6 +220,7 @@ class CheckoutService
             'client_phone' => $client->phone ?? null,
             'notes'        => trim(($data['workshop_notes'] ?? '') . ' | Facture #' . $order->id),
             'status'       => 'waiting',
+            'tefsil_path'  => $tefsilPath,
         ]);
 
         foreach ($serviceLines as $line) {

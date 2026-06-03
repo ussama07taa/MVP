@@ -1,63 +1,66 @@
 <template>
   <ToastNotification />
-  <div class="h-screen flex flex-col lg:flex-row bg-slate-50 font-sans overflow-hidden selection:bg-brand-500 selection:text-white">
+  <div class="h-screen flex flex-col lg:flex-row bg-[#FAFAF9] font-sans overflow-hidden selection:bg-amber-500 selection:text-white">
 
     <!-- ═══════════════════════════════════════════════════════════ -->
     <!-- LEFT: Products                                              -->
     <!-- ═══════════════════════════════════════════════════════════ -->
-    <div class="print:hidden flex-1 flex flex-col min-h-0 relative bg-slate-50">
+    <div class="print:hidden flex-1 flex flex-col min-h-0 relative bg-[#FAFAF9]">
 
-      <!-- Compact Glassmorphic Header -->
-      <header class="shrink-0 bg-white/90 backdrop-blur-xl border-b border-slate-200/60 px-4 sm:px-6 py-3 z-20 flex items-center gap-3 shadow-sm">
+      <!-- Premium Hero Header -->
+      <header class="shrink-0 bg-white/70 backdrop-blur-2xl border-b border-slate-200/50 px-4 sm:px-8 py-4 z-20 flex items-center gap-4 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
 
         <!-- Logo mark -->
-        <div class="w-9 h-9 bg-gradient-to-br from-slate-900 to-slate-700 rounded-xl flex items-center justify-center shadow shadow-slate-900/20 shrink-0">
-          <LayoutDashboardIcon class="w-4 h-4 text-white"/>
+        <div class="w-11 h-11 bg-slate-950 rounded-2xl flex items-center justify-center shadow-2xl shadow-slate-900/10 shrink-0 group hover:scale-105 transition-transform cursor-pointer">
+          <div class="w-5 h-5 bg-amber-500 rounded-lg blur-[8px] absolute opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <LayoutDashboardIcon class="w-5 h-5 text-amber-500 relative z-10"/>
         </div>
 
-        <!-- Title (hidden on very small phones) -->
+        <!-- Title -->
         <div class="hidden sm:block shrink-0">
-          <h1 class="text-base font-black text-slate-900 tracking-tight leading-none flex items-center gap-1.5">
-            Point de Vente
-            <span class="px-1.5 py-0.5 bg-emerald-50 border border-emerald-200 text-[9px] font-black text-emerald-600 rounded-md uppercase tracking-wider">Live</span>
+          <h1 class="text-lg font-black text-slate-950 tracking-tighter leading-none flex items-center gap-2">
+            POS Terminal
+            <span class="px-2 py-0.5 bg-amber-500 text-[10px] font-black text-slate-950 rounded-lg uppercase tracking-widest animate-pulse">Pro</span>
           </h1>
-          <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-0.5">{{ companyName }}</p>
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">{{ companyName }}</p>
         </div>
 
         <!-- Search bar -->
-        <div class="flex-1 relative group">
-          <SearchIcon class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-brand-500 transition-colors" />
-          <input type="text" v-model="searchQuery" placeholder="Chercher un produit..." class="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 font-bold text-sm text-slate-700 transition-all shadow-sm">
+        <div class="flex-1 relative group max-w-xl mx-auto">
+          <SearchIcon class="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-amber-600 transition-colors" />
+          <input type="text" v-model="searchQuery" placeholder="Rechercher un produit ou service..." 
+            class="w-full pl-11 pr-4 py-3 bg-slate-100/50 border border-transparent rounded-2xl focus:outline-none focus:bg-white focus:border-amber-500/30 focus:ring-4 focus:ring-amber-500/5 font-bold text-sm text-slate-800 transition-all placeholder:text-slate-400">
         </div>
 
         <!-- Desktop actions -->
-        <div class="hidden lg:flex items-center gap-2 shrink-0">
+        <div class="hidden lg:flex items-center gap-3 shrink-0">
           <Link v-if="authUser?.role === 'admin' || authUser?.role === 'cashier'" href="/admin/dashboard"
-            class="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:text-slate-900 bg-white border border-slate-200 hover:border-slate-300 px-3 py-2 rounded-xl transition-all">
-            <LayoutDashboardIcon class="w-3.5 h-3.5"/> Dashboard
+            class="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-600 hover:text-slate-950 bg-white border border-slate-200/60 hover:border-slate-400 px-4 py-2.5 rounded-2xl transition-all shadow-sm">
+            <LayoutDashboardIcon class="w-4 h-4"/> Dashboard
           </Link>
           <button @click="logout"
-            class="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 px-3 py-2 rounded-xl transition-all">
-            Déconnexion
+            class="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-white bg-slate-950 hover:bg-slate-800 px-4 py-2.5 rounded-2xl transition-all shadow-xl shadow-slate-900/10">
+            Quitter
           </button>
         </div>
 
         <!-- Mobile: hamburger -->
         <button @click="showMobileMenu = !showMobileMenu"
-          class="lg:hidden w-9 h-9 flex items-center justify-center bg-slate-100 rounded-xl border border-slate-200 shrink-0">
-          <MenuIcon class="w-4 h-4 text-slate-600" />
+          class="lg:hidden w-11 h-11 flex items-center justify-center bg-slate-100 rounded-2xl border border-slate-200 shrink-0">
+          <MenuIcon class="w-5 h-5 text-slate-700" />
         </button>
       </header>
 
       <!-- Mobile dropdown menu -->
       <Transition name="slide-down">
-        <div v-if="showMobileMenu" class="lg:hidden absolute inset-x-0 top-[57px] z-40 bg-white border-b border-slate-200 shadow-lg px-4 py-3 flex flex-col gap-2">
+        <div v-if="showMobileMenu" class="lg:hidden absolute inset-x-0 top-[76px] z-40 bg-white/80 backdrop-blur-xl border-b border-slate-200 shadow-2xl px-6 py-4 flex flex-col gap-3">
           <Link v-if="authUser?.role === 'admin' || authUser?.role === 'cashier'" href="/admin/dashboard"
-            class="flex items-center gap-2 text-sm font-black text-slate-700 px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200">
-            <LayoutDashboardIcon class="w-4 h-4"/> Dashboard
+            class="flex items-center gap-3 text-sm font-black text-slate-800 px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200">
+            <LayoutDashboardIcon class="w-5 h-5 text-amber-600"/> Dashboard
           </Link>
           <button @click="logout"
-            class="flex items-center gap-2 text-sm font-black text-red-600 px-3 py-2.5 rounded-xl bg-red-50 border border-red-100 w-full text-left">
+            class="flex items-center gap-3 text-sm font-black text-rose-600 px-4 py-3 rounded-2xl bg-rose-50 border border-rose-100 w-full text-left">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
             Déconnexion
           </button>
         </div>
@@ -79,8 +82,8 @@
     <!-- RIGHT: Cart — Desktop sidebar / Mobile drawer              -->
     <!-- ═══════════════════════════════════════════════════════════ -->
 
-    <!-- Desktop sidebar (always visible) -->
-    <div class="print:hidden hidden lg:flex lg:w-[340px] xl:w-[360px] 2xl:w-[400px] shrink-0 border-l border-slate-200/80">
+    <!-- Desktop sidebar (always visible) — Narrower for better grid focus -->
+    <div class="print:hidden hidden lg:flex lg:w-[300px] xl:w-[320px] shrink-0 border-l border-slate-200/50 bg-white">
       <CartSidebar :clients="clients" @openClientModal="showClientModal = true" @orderSubmitted="handleOrderSubmitted" />
     </div>
 
@@ -118,32 +121,47 @@
     <!-- ═══════════════════════════════════════════════════════════ -->
     <!-- QUICK ADD CLIENT MODAL                                      -->
     <!-- ═══════════════════════════════════════════════════════════ -->
-    <div v-if="showClientModal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-      <div class="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl border border-slate-100 scale-in-center">
-        <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+    <div v-if="showClientModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+      <div class="bg-white rounded-[2.5rem] w-full max-w-md overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.5)] border border-slate-100 scale-in-center relative">
+        <div class="absolute inset-x-0 -top-px h-1 bg-gradient-to-r from-transparent via-amber-500/40 to-transparent"></div>
+        
+        <div class="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
           <div>
-            <h3 class="font-black text-xl text-slate-900">Nouveau Client</h3>
-            <p class="text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-widest">Ajout rapide</p>
+            <h3 class="font-black text-2xl text-slate-900 tracking-tight">Nouveau Client</h3>
+            <p class="text-[10px] font-black text-amber-600 mt-1 uppercase tracking-[0.25em]">Enregistrement Rapide</p>
           </div>
-          <button @click="showClientModal = false" class="w-9 h-9 flex items-center justify-center bg-slate-100 rounded-xl text-slate-400 hover:text-slate-900 hover:bg-slate-200 transition-all">
-            <XIcon class="w-4 h-4" />
+          <button @click="showClientModal = false" class="w-12 h-12 flex items-center justify-center bg-white rounded-2xl text-slate-400 hover:text-slate-950 shadow-sm border border-slate-200 transition-all active:scale-95">
+            <XIcon class="w-5 h-5" />
           </button>
         </div>
-        <div class="p-6 space-y-4">
+        
+        <div class="p-8 space-y-6">
           <div>
-            <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5">Nom complet *</label>
-            <input type="text" v-model="newClient.name" class="w-full p-3.5 bg-slate-50 border border-slate-200 focus:bg-white rounded-xl focus:ring-2 focus:ring-brand-500/10 focus:border-brand-500 font-bold transition-all" placeholder="Ex: Hassan Najjar">
+            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2.5 ml-1">Identité Complète *</label>
+            <div class="relative group">
+               <UserIcon class="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-amber-500 transition-colors" />
+               <input type="text" v-model="newClient.name" 
+                 class="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-transparent focus:bg-white rounded-[1.25rem] focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500/30 font-black text-sm text-slate-900 transition-all placeholder:text-slate-300" 
+                 placeholder="Ex: Hassan El Alami">
+            </div>
           </div>
           <div>
-            <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5">Téléphone</label>
-            <input type="text" v-model="newClient.phone" class="w-full p-3.5 bg-slate-50 border border-slate-200 focus:bg-white rounded-xl focus:ring-2 focus:ring-brand-500/10 focus:border-brand-500 font-bold transition-all" placeholder="06...">
+            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2.5 ml-1">Contact Téléphonique</label>
+            <div class="relative group">
+               <svg class="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-amber-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+               <input type="text" v-model="newClient.phone" 
+                 class="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-transparent focus:bg-white rounded-[1.25rem] focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500/30 font-black text-sm text-slate-900 transition-all placeholder:text-slate-300" 
+                 placeholder="06... ou 05...">
+            </div>
           </div>
         </div>
-        <div class="px-6 pb-6 flex justify-end gap-3">
-          <button @click="showClientModal = false" class="px-5 py-2.5 font-black text-slate-500 hover:text-slate-800 transition-colors text-[10px] uppercase tracking-widest">Annuler</button>
-          <button @click="saveNewClient" :disabled="!newClient.name || isSubmittingClient" class="px-6 py-2.5 font-black text-white bg-brand-600 hover:bg-brand-700 rounded-xl transition-all shadow-md disabled:opacity-50 text-[10px] uppercase tracking-widest flex items-center gap-2">
-            <Loader2Icon v-if="isSubmittingClient" class="w-3.5 h-3.5 animate-spin" />
-            Enregistrer
+        
+        <div class="px-8 pb-8 flex items-center gap-4">
+          <button @click="showClientModal = false" class="flex-1 py-4 font-black text-slate-500 hover:text-slate-950 transition-colors text-[10px] uppercase tracking-widest bg-slate-50 rounded-2xl">Annuler</button>
+          <button @click="saveNewClient" :disabled="!newClient.name || isSubmittingClient" 
+            class="flex-[2] py-4 font-black text-slate-950 bg-amber-500 hover:bg-amber-400 rounded-2xl transition-all shadow-xl shadow-amber-500/20 disabled:opacity-30 text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95">
+            <Loader2Icon v-if="isSubmittingClient" class="w-4 h-4 animate-spin" />
+            Créer le Client
           </button>
         </div>
       </div>

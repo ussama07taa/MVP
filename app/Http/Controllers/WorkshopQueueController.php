@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use App\Models\{WorkshopQueue, WorkshopQueueService};
 
 class WorkshopQueueController extends Controller
@@ -33,14 +34,18 @@ class WorkshopQueueController extends Controller
                 $q->where('status', '!=', 'delivered')
                   ->orWhereDate('delivered_at', today());
             })
-            ->orderBy('id');
+            ->orderBy('is_priority', 'desc')
+            ->orderBy('created_at', 'asc');
 
         if (!$includeDelivered) {
             $query->where('status', '!=', 'delivered');
         }
 
         if (!$includeHidden) {
-            $query->where('is_hidden_from_workshop', false);
+            $query->where(function ($q) {
+                $q->where('is_hidden_from_workshop', false)
+                  ->orWhere('status', 'in_progress');
+            });
         }
 
         return $query->get()->values()->map(function ($q, $index) {
@@ -55,6 +60,7 @@ class WorkshopQueueController extends Controller
                 'status'         => $q->status,
                 'notes'          => $q->notes,
                 'is_hidden'      => (bool) $q->is_hidden_from_workshop,
+                'is_priority'    => (bool) $q->is_priority,
                 'services'       => $q->services->map(fn($s) => [
                     'id'            => $s->id,
                     'label'         => $s->label,
@@ -75,6 +81,7 @@ class WorkshopQueueController extends Controller
                 'started_at'        => $q->started_at?->format('H:i'),
                 'done_at_time'      => $q->done_at?->format('H:i'),
                 'delivered_at_time' => $q->delivered_at?->format('H:i'),
+                'tefsil_url'        => $q->tefsil_path ? asset('storage/' . $q->tefsil_path) : null,
             ];
         })->toArray();
     }
@@ -84,10 +91,18 @@ class WorkshopQueueController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
+        $data = $request->all();
+
+        // Handle services being JSON-encoded when using FormData for file uploads
+        if (isset($data['services']) && is_string($data['services'])) {
+            $data['services'] = json_decode($data['services'], true);
+        }
+
+        $validator = Validator::make($data, [
             'client_name'  => 'required|string|max:255',
             'client_phone' => 'nullable|string|max:20',
             'notes'        => 'nullable|string|max:1000',
+            'tefsil_file'  => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
             'services'     => 'required|array|min:1',
             'services.*.label'          => 'required|string|max:100',
             'services.*.material_type'  => 'nullable|string|max:100',
@@ -96,17 +111,31 @@ class WorkshopQueueController extends Controller
             'services.*.unit'           => 'nullable|string|max:20',
         ]);
 
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()->first()], 400);
+        }
+
+        $validData = $validator->validated();
+        $tenantId = $request->user()->tenant_id;
+
         DB::beginTransaction();
         try {
+            $tefsilPath = null;
+            if ($request->hasFile('tefsil_file')) {
+                $tefsilPath = $request->file('tefsil_file')->store('workshop/tefsils', 'public');
+            }
+
             $queue = WorkshopQueue::create([
-                'queue_number' => WorkshopQueue::generateNumber(1),
-                'client_name'  => $request->client_name,
-                'client_phone' => $request->client_phone,
-                'notes'        => $request->notes,
+                'tenant_id'    => $tenantId,
+                'queue_number' => WorkshopQueue::generateNumber($tenantId),
+                'client_name'  => $validData['client_name'],
+                'client_phone' => $validData['client_phone'],
+                'notes'        => $validData['notes'],
                 'status'       => 'waiting',
+                'tefsil_path'  => $tefsilPath,
             ]);
 
-            foreach ($request->services as $s) {
+            foreach ($validData['services'] as $s) {
                 WorkshopQueueService::create([
                     'queue_id'       => $queue->id,
                     'label'          => $s['label'],
@@ -201,5 +230,16 @@ class WorkshopQueueController extends Controller
         if (auth()->user()->role !== 'admin') abort(403);
         WorkshopQueue::findOrFail($id)->delete();
         return response()->json(['success' => true]);
+    }
+
+    public function togglePriority($id)
+    {
+        $queue = WorkshopQueue::findOrFail($id);
+        $queue->update(['is_priority' => !$queue->is_priority]);
+        return response()->json([
+            'success' => true,
+            'is_priority' => (bool)$queue->is_priority,
+            'message' => $queue->is_priority ? 'Mode Express activé !' : 'Mode standard rétabli.'
+        ]);
     }
 }

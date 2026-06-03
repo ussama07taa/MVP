@@ -15,6 +15,9 @@ class Kernel extends ConsoleKernel
         // Run the backup daily at 00:00
         $schedule->command('backup:clean')->daily()->at('01:00'); // Deletes old backups
         $schedule->command('backup:run')->daily()->at('01:30');   // Runs the new backup
+
+        // Process recurring expenses every 1st of the month at 00:05 AM
+        $schedule->command('expenses:process-recurring')->monthlyOn(1, '00:05');
     }
 
     /**

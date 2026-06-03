@@ -31,6 +31,7 @@ Route::middleware(['auth', 'identify.tenant', 'throttle:100,1'])->group(function
     Route::post('/admin/workshop-queue',                   [WorkshopQueueController::class, 'store']);
     Route::post('/admin/workshop-queue/{id}/deliver',      [WorkshopQueueController::class, 'deliver']);
     Route::post('/admin/workshop-queue/{id}/undeliver',    [WorkshopQueueController::class, 'undeliver']);
+    Route::post('/admin/workshop-queue/{id}/toggle-priority', [WorkshopQueueController::class, 'togglePriority']);
 
     Route::middleware('admin')->group(function () {
         Route::get('/admin/dashboard', [DashboardController::class, 'index']);

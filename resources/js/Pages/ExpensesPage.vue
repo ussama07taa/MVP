@@ -14,244 +14,341 @@
           Gérez vos charges opérationnelles (loyer, salaires, abonnements) et variables (réparations, transport) pour un calcul de rentabilité exact.
         </p>
       </div>
-      <div class="flex items-center gap-4 w-full md:w-auto">
-        <!-- Actualiser Button -->
-        <button @click="loadExpenses" 
-          :class="isLoading ? 'opacity-50 pointer-events-none' : ''"
-          class="btn-secondary !p-3"
-          title="Actualiser">
-          <RotateCwIcon :class="isLoading ? 'animate-spin' : 'group-hover:rotate-180'" class="w-5 h-5 transition-transform duration-500" />
-        </button>
+      <div class="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto mt-6 md:mt-0">
+        <!-- GLOBAL MONTH SELECTOR -->
+        <div class="relative group w-full sm:w-auto min-w-[180px]">
+          <CalendarDaysIcon class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-rose-500 z-10" />
+          <input type="month" v-model="selectedMonth" 
+            class="w-full h-12 pl-12 pr-4 bg-slate-900 text-white border-none rounded-2xl text-xs font-black focus:ring-4 focus:ring-rose-500/20 cursor-pointer shadow-lg hover:bg-slate-800 transition-all uppercase tracking-widest">
+        </div>
 
-        <button @click="exportData('expenses')" class="btn-secondary !p-3 font-bold !text-emerald-600" title="Exporter Excel">
-          <FileDownIcon class="w-5 h-5" />
-        </button>
+        <div class="flex items-center gap-3 w-full sm:w-auto">
+            <!-- Actualiser Button -->
+            <button @click="loadExpenses" 
+              :class="isLoading ? 'opacity-50 pointer-events-none' : ''"
+              class="btn-secondary !p-3"
+              title="Actualiser">
+              <RotateCwIcon :class="isLoading ? 'animate-spin' : 'group-hover:rotate-180'" class="w-5 h-5 transition-transform duration-500" />
+            </button>
 
-        <button @click="showForm = !showForm" class="btn-primary flex-1 md:flex-none">
-          <PlusIcon class="w-5 h-5 mr-2 transition-transform duration-300" :class="{'rotate-45': showForm}"/> 
-          <span>{{ showForm ? 'Fermer' : 'Nouvelle Dépense' }}</span>
-        </button>
+            <button @click="exportData('expenses')" class="btn-secondary !p-3 font-bold !text-emerald-600" title="Exporter Excel">
+              <FileDownIcon class="w-5 h-5" />
+            </button>
+
+            <button @click="showForm = !showForm" class="btn-primary flex-1 md:flex-none">
+              <PlusIcon class="w-5 h-5 mr-2 transition-transform duration-300" :class="{'rotate-45': showForm}"/> 
+              <span>{{ showForm ? 'Fermer' : 'Nouvelle Dépense' }}</span>
+            </button>
+        </div>
       </div>
     </header>
 
-    <!-- Stats Summary Cards (Backend Powered) -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <!-- Total -->
-      <div class="card-premium p-6 overflow-hidden group hover:shadow-premium transition-all duration-500">
-        <div class="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 group-hover:scale-110 transition-all duration-500 text-rose-600">
-          <TrendingDownIcon class="w-24 h-24 -mr-8 -mt-8"/>
+    <!-- PRIMARY FINANCIAL CARDS -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <!-- Charges du Mois -->
+      <div class="card-premium p-6 overflow-hidden group hover:shadow-premium transition-all duration-300">
+        <div class="relative z-10">
+          <div class="flex items-center space-x-3 mb-5">
+            <div class="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center text-rose-500 border border-rose-100">
+              <TrendingDownIcon class="w-5 h-5"/>
+            </div>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Charges (Ce Mois)</p>
+          </div>
+          <p class="text-3xl font-black text-slate-900 tracking-tight">{{ formatMoney(stats.total_this_month) }} <span class="text-sm text-slate-400">DH</span></p>
+          <div class="flex items-center mt-3 text-xs font-black uppercase tracking-wider" :class="stats.trend > 0 ? 'text-rose-500' : (stats.trend < 0 ? 'text-emerald-500' : 'text-slate-400')">
+            <TrendingUpIcon v-if="stats.trend > 0" class="w-3.5 h-3.5 mr-1"/>
+            <TrendingDownIcon v-else-if="stats.trend < 0" class="w-3.5 h-3.5 mr-1"/>
+            <span>{{ stats.trend > 0 ? '+' : '' }}{{ stats.trend }}% vs mois dernier</span>
+          </div>
         </div>
-        <div class="relative z-10 flex flex-col h-full justify-between">
-          <div class="flex items-center space-x-3 mb-6">
-            <div class="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center text-rose-500 border border-rose-100 shadow-sm">
+      </div>
+
+      <!-- Revenu Total -->
+      <div class="card-premium p-6 overflow-hidden group hover:shadow-premium transition-all duration-300">
+        <div class="relative z-10">
+          <div class="flex items-center space-x-3 mb-5">
+            <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500 border border-blue-100">
+              <CircleDollarSignIcon class="w-5 h-5"/>
+            </div>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Revenu Total</p>
+          </div>
+          <p class="text-3xl font-black text-slate-900 tracking-tight">{{ formatMoney(stats.total_revenue) }} <span class="text-sm text-slate-400">DH</span></p>
+          <p class="mt-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Factures + Ventes POS</p>
+        </div>
+      </div>
+
+      <!-- BÉNÉFICE NET (Le Juge de Paix) -->
+      <div class="relative rounded-3xl p-6 overflow-hidden group transition-all duration-300 border"
+           :class="stats.net_profit >= 0 
+             ? 'bg-gradient-to-br from-slate-900 to-slate-800 border-slate-700 shadow-[0_8px_30px_rgb(0,0,0,0.15)]' 
+             : 'bg-gradient-to-br from-rose-900 to-rose-800 border-rose-700 shadow-[0_8px_30px_rgb(200,0,0,0.15)]'">
+        <div class="relative z-10">
+          <div class="flex items-center space-x-3 mb-5">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg"
+                 :class="stats.net_profit >= 0 ? 'bg-emerald-500 text-white' : 'bg-white text-rose-600'">
               <ActivityIcon class="w-5 h-5"/>
             </div>
-            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total (Ce Mois)</p>
+            <p class="text-[10px] font-black uppercase tracking-widest" :class="stats.net_profit >= 0 ? 'text-slate-400' : 'text-rose-300'">Bénéfice Net</p>
           </div>
-          <div>
-            <p class="text-3xl font-black text-slate-900 tracking-tight">{{ formatMoney(stats.total_this_month) }} <span class="text-lg font-bold text-slate-400">DH</span></p>
-            <div class="flex items-center mt-3 text-xs font-black uppercase tracking-wider" :class="stats.trend > 0 ? 'text-rose-500' : (stats.trend < 0 ? 'text-emerald-500' : 'text-slate-400')">
-              <TrendingUpIcon v-if="stats.trend > 0" class="w-3.5 h-3.5 mr-1"/>
-              <TrendingDownIcon v-else-if="stats.trend < 0" class="w-3.5 h-3.5 mr-1"/>
-              <span>{{ stats.trend > 0 ? '+' : '' }}{{ stats.trend }}% vs mois dernier</span>
+          <p class="text-3xl font-black tracking-tight" :class="stats.net_profit >= 0 ? 'text-white' : 'text-white'">{{ formatMoney(stats.net_profit) }} <span class="text-sm opacity-50">DH</span></p>
+          <div class="flex items-center gap-2 mt-3">
+            <div class="h-1.5 flex-1 bg-white/10 rounded-full overflow-hidden">
+              <div class="h-full rounded-full transition-all duration-1000"
+                   :class="stats.net_profit >= 0 ? 'bg-emerald-400' : 'bg-rose-400'"
+                   :style="`width: ${stats.total_revenue > 0 ? Math.max(0, Math.min(100, (stats.net_profit / stats.total_revenue) * 100)) : 0}%`"></div>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Fixed -->
-      <div class="relative bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-slate-800 overflow-hidden group hover:shadow-[0_8px_40px_rgb(0,0,0,0.2)] transition-all duration-500">
-        <div class="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 group-hover:scale-110 transition-all duration-500 text-white">
-          <ReceiptIcon class="w-24 h-24 -mr-8 -mt-8"/>
-        </div>
-        <div class="relative z-10 flex flex-col h-full justify-between">
-          <div class="flex items-center space-x-3 mb-6">
-            <div class="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center text-blue-400 border border-white/5">
-              <ReceiptIcon class="w-5 h-5"/>
-            </div>
-            <p class="text-sm font-bold text-slate-400 uppercase tracking-wider">Charges Fixes</p>
-          </div>
-          <div>
-            <p class="text-4xl font-black text-white tracking-tight">{{ formatMoney(stats.total_fixed) }} <span class="text-xl font-bold text-slate-500">DH</span></p>
-            <p class="mt-3 text-sm font-medium text-slate-400">Loyers, salaires, abonnements</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Variable -->
-      <div class="relative bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 overflow-hidden group hover:shadow-[0_8px_40px_rgb(0,0,0,0.08)] transition-all duration-500">
-        <div class="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 group-hover:scale-110 transition-all duration-500 text-amber-600">
-          <WalletIcon class="w-24 h-24 -mr-8 -mt-8"/>
-        </div>
-        <div class="relative z-10 flex flex-col h-full justify-between">
-          <div class="flex items-center space-x-3 mb-6">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-100 to-amber-50 flex items-center justify-center text-amber-500 shadow-inner">
-              <WalletIcon class="w-5 h-5"/>
-            </div>
-            <p class="text-sm font-bold text-slate-500 uppercase tracking-wider">Charges Variables</p>
-          </div>
-          <div>
-            <p class="text-4xl font-black text-slate-900 tracking-tight">{{ formatMoney(stats.total_variable) }} <span class="text-xl font-bold text-slate-400">DH</span></p>
-            <p class="mt-3 text-sm font-medium text-slate-400">Imprévus, réparations, transport</p>
+            <span class="text-[10px] font-black opacity-50 text-white">{{ stats.total_revenue > 0 ? Math.round((stats.net_profit / stats.total_revenue) * 100) : 0 }}%</span>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- ANALYTICS PROGRESS BAR -->
-    <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mt-6 mb-2">
-        <div class="flex justify-between items-center mb-2">
-            <h4 class="text-xs font-black text-slate-500 uppercase tracking-wider">Répartition des Dépenses (Ce Mois)</h4>
-            <span class="text-xs font-bold text-slate-400">Total: {{ formatMoney(stats.total_this_month) }} DH</span>
+    <!-- SECONDARY STATS ROW -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <!-- Annuel -->
+      <div class="card-premium p-5 flex items-center gap-4 group hover:shadow-sm transition-all">
+        <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-500 border border-emerald-100">
+          <CalendarDaysIcon class="w-5 h-5"/>
         </div>
-        <div class="w-full h-3 bg-slate-100 rounded-full flex overflow-hidden">
-            <!-- Fixed Expenses Bar (Slate-800) -->
-            <div class="bg-slate-800 h-full transition-all duration-500" :style="{ width: statsPercent.fixed + '%' }"></div>
-            <!-- Variable Expenses Bar (Amber-400) -->
-            <div class="bg-amber-400 h-full transition-all duration-500" :style="{ width: statsPercent.variable + '%' }"></div>
+        <div>
+          <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Annuel ({{ selectedMonth?.split('-')[0] }})</p>
+          <p class="text-lg font-black text-slate-800 tracking-tight">{{ formatMoney(stats.total_year) }} <span class="text-[9px] text-slate-400">DH</span></p>
         </div>
-        <div class="flex justify-between text-[10px] font-bold mt-2 uppercase">
-            <span class="text-slate-600"><span class="inline-block w-2 h-2 rounded-full bg-slate-800 mr-1"></span>Fixes: {{ statsPercent.fixed }}%</span>
-            <span class="text-amber-600"><span class="inline-block w-2 h-2 rounded-full bg-amber-400 mr-1"></span>Variables: {{ statsPercent.variable }}%</span>
+      </div>
+      <!-- Fixes -->
+      <div class="card-premium p-5 flex items-center gap-4 group hover:shadow-sm transition-all">
+        <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500 border border-blue-100">
+          <WalletIcon class="w-5 h-5"/>
         </div>
+        <div>
+          <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Charges Fixes</p>
+          <p class="text-lg font-black text-slate-800 tracking-tight">{{ formatMoney(stats.total_fixed) }} <span class="text-[9px] text-slate-400">DH</span></p>
+        </div>
+      </div>
+      <!-- Variables -->
+      <div class="card-premium p-5 flex items-center gap-4 group hover:shadow-sm transition-all">
+        <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-500 border border-amber-100">
+          <ActivityIcon class="w-5 h-5"/>
+        </div>
+        <div>
+          <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Charges Variables</p>
+          <p class="text-lg font-black text-slate-800 tracking-tight">{{ formatMoney(stats.total_variable) }} <span class="text-[9px] text-slate-400">DH</span></p>
+        </div>
+      </div>
     </div>
 
-    <!-- Add Form (Animated Panel) -->
-    <transition enter-active-class="transition-all ease-out duration-300" enter-from-class="opacity-0 -translate-y-8 scale-95" enter-to-class="opacity-100 translate-y-0 scale-100" leave-active-class="transition-all ease-in duration-200" leave-from-class="opacity-100 translate-y-0 scale-100" leave-to-class="opacity-0 -translate-y-8 scale-95">
-      <div v-if="showForm" class="bg-white rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] border border-slate-200 overflow-hidden relative z-20">
-        <div class="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-rose-500 via-orange-500 to-amber-500"></div>
-        <div class="p-8 sm:p-10">
-          <h3 class="text-2xl font-black text-slate-800 mb-8 flex items-center">
-            <PlusCircleIcon class="w-7 h-7 mr-3 text-rose-500"/> Enregistrer une dépense
-          </h3>
-          
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-6">
-            <div class="lg:col-span-2">
-              <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2.5">Titre / Motif <span class="text-rose-500">*</span></label>
-              <input type="text" v-model="form.title" placeholder="Ex: Paiement Loyer, Achat fourniture..." 
-                class="w-full h-14 rounded-2xl border-slate-200 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 bg-slate-50/50 hover:bg-slate-50 focus:bg-white transition-all text-slate-800 font-medium px-5">
-            </div>
-            
-            <div class="lg:col-span-2">
-              <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2.5">Catégorie <span class="text-rose-500">*</span></label>
-              <div class="relative">
-                <transition name="fade" mode="out-in">
-                  <!-- Select Mode -->
-                  <div v-if="!isAddingNewCategory" class="flex gap-3 h-14">
-                    <select v-model="form.category" class="input-premium flex-1">
-                      <optgroup v-for="(cats, groupName) in availableCategories" :key="groupName" :label="groupName">
-                        <option v-for="cat in cats" :key="cat" :value="cat">{{ cat }}</option>
-                      </optgroup>
-                      <optgroup v-if="customCategories.length" label="Catégories Personnalisées">
-                        <option v-for="cat in customCategories" :key="cat" :value="cat">{{ cat }}</option>
-                      </optgroup>
-                    </select>
-                    <button @click="isAddingNewCategory = true; form.category = ''" 
-                      class="w-14 h-14 flex-shrink-0 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-all group" title="Créer une catégorie">
-                      <PlusIcon class="w-6 h-6 group-hover:scale-110 transition-transform"/>
-                    </button>
-                  </div>
-                  <!-- Input Mode -->
-                  <div v-else class="flex gap-3 h-14">
-                    <input type="text" v-model="form.category" placeholder="Nouvelle catégorie..." ref="newCatInput"
-                      class="flex-1 rounded-2xl border-rose-200 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 bg-rose-50/30 text-rose-900 font-bold px-5 placeholder-rose-300">
-                    <button @click="isAddingNewCategory = false; form.category = availableCategories[0]" 
-                      class="w-14 h-14 flex-shrink-0 rounded-2xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-400 hover:text-slate-600 flex items-center justify-center transition-all group" title="Annuler">
-                      <XIcon class="w-6 h-6 group-hover:scale-110 transition-transform"/>
-                    </button>
-                  </div>
-                </transition>
-              </div>
-            </div>
-
-            <div class="lg:col-span-2">
-              <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2.5">Date de la dépense <span class="text-rose-500">*</span></label>
-              <input type="date" v-model="form.expense_date" 
-                class="w-full h-14 rounded-2xl border-slate-200 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 bg-slate-50/50 hover:bg-slate-50 focus:bg-white transition-all text-slate-800 font-medium px-5">
-            </div>
-
-            <div class="lg:col-span-2">
-              <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2.5">Montant (DH) <span class="text-rose-500">*</span></label>
-              <div class="relative">
-                <input type="number" v-model="form.amount" placeholder="0.00" 
-                  class="w-full h-14 rounded-2xl border-slate-200 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 bg-slate-50/50 hover:bg-slate-50 focus:bg-white transition-all text-rose-600 font-black text-xl px-5 pr-16">
-                <div class="absolute inset-y-0 right-0 pr-5 flex items-center pointer-events-none">
-                  <span class="text-slate-400 font-bold text-sm">DH</span>
+    <!-- ANALYTICS SECTION -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <!-- History Trend Chart -->
+        <div class="lg:col-span-8 bg-white rounded-3xl p-8 border border-slate-100 shadow-md h-full min-h-[400px] flex flex-col">
+            <div class="flex justify-between items-center mb-10">
+                <div>
+                   <h3 class="text-lg font-black text-slate-800 tracking-tight uppercase tracking-widest flex items-center gap-3">
+                     <TrendingUpIcon class="w-5 h-5 text-rose-500" />
+                     Analyse des Tendances
+                   </h3>
+                   <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1 italic">Evolution mensuelle sur les 12 derniers mois</p>
                 </div>
-              </div>
+                <div class="h-10 px-4 bg-slate-50 border border-slate-100 rounded-xl flex items-center">
+                    <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Somme Mensuelle (DH)</span>
+                </div>
             </div>
             
-            <div class="lg:col-span-4 mt-2">
-              <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2.5">Notes (Optionnel)</label>
-              <textarea v-model="form.notes" rows="2" placeholder="Informations supplémentaires..."
-                class="w-full rounded-2xl border-slate-200 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 bg-slate-50/50 hover:bg-slate-50 focus:bg-white transition-all text-slate-800 font-medium p-5"></textarea>
+            <div class="flex-1 min-h-[250px] relative">
+              <Line :data="chartData" :options="chartOptions" />
             </div>
-            
-            <!-- File Upload Zone -->
-            <div class="lg:col-span-4 mt-2">
-                <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2.5">Facture / Reçu (Optionnel)</label>
-                
-                <div class="border-2 border-dashed rounded-2xl p-6 text-center transition-colors" 
-                     :class="form.attachment ? 'border-rose-500 bg-rose-50' : 'border-slate-200 hover:border-rose-400 bg-slate-50/50 hover:bg-slate-50'">
-                    
-                    <input type="file" id="expense_file" class="hidden" @change="handleFileUpload" accept="image/*,.pdf">
-                    
-                    <div v-if="!form.attachment" class="flex flex-col items-center justify-center">
-                        <UploadCloudIcon class="w-10 h-10 text-slate-300 mb-3" />
-                        <p class="text-sm text-slate-600 font-bold mb-1">Glissez-déposez votre facture ici</p>
-                        <p class="text-[10px] font-bold text-slate-400 mb-4 uppercase tracking-widest">Formats: JPG, PNG, PDF (Max: 5MB)</p>
-                        <button type="button" @click="triggerFileInput" class="px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 shadow-sm transition-colors">
-                            Parcourir les fichiers
-                        </button>
-                    </div>
+        </div>
 
-                    <!-- File Selected State -->
-                    <div v-else class="flex items-center justify-between bg-white p-3 rounded-xl border border-rose-200 shadow-sm">
-                        <div class="flex items-center space-x-4">
-                            <div class="w-12 h-12 bg-rose-100 text-rose-600 rounded-xl flex items-center justify-center">
-                                <component :is="getFileIconComponent(form.attachment.name)" class="w-6 h-6" />
-                            </div>
-                            <div class="text-left">
-                                <p class="text-sm font-bold text-slate-800 truncate max-w-[200px]">{{ form.attachment.name }}</p>
-                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{ (form.attachment.size / 1024 / 1024).toFixed(2) }} MB</p>
+        <!-- Category Distribution -->
+        <div class="lg:col-span-4 bg-white rounded-3xl p-8 border border-slate-100 shadow-md h-full flex flex-col">
+            <div class="mb-10">
+               <h3 class="text-lg font-black text-slate-800 tracking-tight uppercase tracking-widest flex items-center gap-3">
+                 <PieChartIcon class="w-5 h-5 text-amber-500" />
+                 Répartition
+               </h3>
+               <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1 italic">Détails des catégories ce mois</p>
+            </div>
+
+            <div class="flex-1 flex flex-col items-center justify-center relative min-h-[200px]">
+                <Doughnut v-if="categoryChartData.datasets[0].data.length > 0" :data="categoryChartData" :options="categoryChartOptions" />
+                <div v-else class="text-center py-10 opacity-30">
+                    <RotateCwIcon class="w-12 h-12 mx-auto mb-4 animate-spin" />
+                    <p class="text-xs font-bold uppercase">Analyse en cours...</p>
+                </div>
+            </div>
+
+            <div class="mt-8 space-y-2 max-h-[140px] overflow-y-auto custom-scrollbar pr-2">
+                <div v-for="(cat, idx) in categoriesData" :key="idx" class="flex items-center justify-between group">
+                    <div class="flex items-center gap-2">
+                        <div class="w-2.5 h-2.5 rounded-full" :style="{ backgroundColor: getChartColor(idx) }"></div>
+                        <span class="text-[10px] font-black text-slate-600 truncate uppercase">{{ cat.category }}</span>
+                    </div>
+                    <span class="text-[10px] font-black text-slate-400">{{ formatMoney(cat.total) }} DH</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Form (HIGH-PERFORMANCE MASTER CINEMA-GLASS MODAL) -->
+    <TransitionRoot as="template" :show="showForm">
+      <Dialog as="div" class="relative z-[100]" @close="showForm = false">
+        <!-- Backdrop: Standard Blur for High Performance -->
+        <TransitionChild as="template" enter="ease-out duration-300" enter-from="opacity-0" enter-to="opacity-100" leave="ease-in duration-200" leave-from="opacity-100" leave-to="opacity-0">
+          <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-md transition-opacity" />
+        </TransitionChild>
+
+        <div class="fixed inset-0 z-[101] overflow-y-auto overflow-x-hidden">
+          <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-6">
+            <TransitionChild as="template" enter="ease-out duration-300" enter-from="opacity-0 scale-95 translate-y-4" enter-to="opacity-100 scale-100 translate-y-0" leave="ease-in duration-200" leave-from="opacity-100 scale-100 translate-y-0" leave-to="opacity-0 scale-95 translate-y-4">
+              <DialogPanel class="relative transform overflow-hidden rounded-[2rem] bg-white/95 backdrop-blur-sm text-left shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] transition-all w-full max-w-2xl border border-slate-200">
+                
+                <div class="relative px-8 py-10 sm:px-12 sm:pb-12">
+                  <!-- Header: Clear & Direct -->
+                  <div class="flex items-start justify-between mb-10">
+                    <div>
+                      <DialogTitle class="text-4xl font-black text-slate-900 tracking-tighter leading-tight">
+                        Nouvelle <span class="text-transparent bg-clip-text bg-gradient-to-br from-rose-500 to-orange-600">Dépense</span>
+                      </DialogTitle>
+                      <p class="mt-1 text-[10px] font-black text-slate-400 uppercase tracking-widest">Enregistrement financier sécurisé</p>
+                    </div>
+                    <button @click="showForm = false" class="p-3 rounded-2xl bg-slate-50 border border-slate-100 text-slate-400 hover:text-rose-500 transition-all">
+                      <XIcon class="w-6 h-6" />
+                    </button>
+                  </div>
+
+                  <div class="space-y-8">
+                    <!-- Section 1: Essentials -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="space-y-6">
+                            <label class="flex items-center text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">
+                                <ReceiptIcon class="w-4 h-4 mr-2 text-rose-500" />
+                                Détails & Date
+                            </label>
+                            <div class="space-y-4">
+                                <input type="text" v-model="form.title" placeholder="Titre de la dépense..." 
+                                    class="w-full h-14 rounded-2xl border-slate-200 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 text-slate-800 font-bold px-5 bg-slate-50/50">
+                                <input type="date" v-model="form.expense_date" 
+                                    class="w-full h-14 rounded-2xl border-slate-200 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 text-slate-800 font-bold px-5 bg-slate-50/50 uppercase">
                             </div>
                         </div>
-                        <button type="button" @click="form.attachment = null" class="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors">
-                            <XIcon class="w-5 h-5" />
-                        </button>
+
+                        <div class="space-y-6">
+                            <label class="flex items-center text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">
+                                <CircleDollarSignIcon class="w-4 h-4 mr-2 text-rose-500" />
+                                Montant & Catégorie
+                            </label>
+                            <div class="space-y-4">
+                                <div class="relative">
+                                    <input type="number" v-model="form.amount" placeholder="0.00" 
+                                        class="w-full h-14 rounded-2xl border-slate-200 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 text-rose-600 font-black text-xl px-5 pr-14">
+                                    <span class="absolute inset-y-0 right-6 flex items-center text-slate-300 font-black text-xs">DH</span>
+                                </div>
+                                <div class="relative">
+                                  <transition name="fade" mode="out-in">
+                                    <div v-if="!isAddingNewCategory" class="flex gap-2">
+                                      <select v-model="form.category" class="flex-1 h-14 rounded-2xl border-slate-200 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 text-slate-800 font-bold px-5 bg-slate-50/50">
+                                        <optgroup v-for="(cats, groupName) in availableCategories" :key="groupName" :label="groupName">
+                                          <option v-for="cat in cats" :key="cat" :value="cat">{{ cat }}</option>
+                                        </optgroup>
+                                        <optgroup v-if="customCategories.length" label="Perso">
+                                          <option v-for="cat in customCategories" :key="cat" :value="cat">{{ cat }}</option>
+                                        </optgroup>
+                                      </select>
+                                      <button @click="isAddingNewCategory = true; form.category = ''" 
+                                        class="w-14 h-14 rounded-2xl bg-slate-900 text-white flex items-center justify-center hover:bg-rose-500 transition-colors shadow-sm">
+                                        <PlusIcon class="w-6 h-6"/>
+                                      </button>
+                                    </div>
+                                    <div v-else class="flex gap-2">
+                                      <input type="text" v-model="form.category" placeholder="Nouvelle..." ref="newCatInput"
+                                        class="flex-1 h-14 rounded-2xl border-rose-200 bg-rose-50 text-rose-900 font-black px-5">
+                                      <button @click="isAddingNewCategory = false; form.category = availableCategories[0]" 
+                                        class="w-14 h-14 rounded-2xl bg-white border border-slate-200 text-slate-400 flex items-center justify-center hover:text-rose-500 transition-all">
+                                        <XIcon class="w-6 h-6"/>
+                                      </button>
+                                    </div>
+                                  </transition>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+
+                    <!-- Recurring -->
+                    <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-center">
+                        <label class="flex items-center cursor-pointer group">
+                            <div class="relative">
+                                <input type="checkbox" v-model="form.is_recurring" class="sr-only">
+                                <div class="block w-12 h-7 bg-slate-200 rounded-full transition-all group-hover:bg-slate-300" :class="{'bg-emerald-500': form.is_recurring}"></div>
+                                <div class="absolute left-1 top-1 bg-white w-5 h-5 rounded-full transition-transform shadow-sm" :class="{'translate-x-5': form.is_recurring}"></div>
+                            </div>
+                            <div class="ml-4">
+                                <span class="block text-sm font-black text-slate-700">Dépense récurrente</span>
+                                <span class="block text-[9px] font-bold text-slate-400 uppercase tracking-widest">Générer chaque mois</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <!-- Additional Details -->
+                    <div class="space-y-6">
+                        <label class="flex items-center text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">
+                            <FileTextIcon class="w-4 h-4 mr-2 text-emerald-500" />
+                            Notes & Justificatif
+                        </label>
+                        <textarea v-model="form.notes" rows="2" placeholder="Notes pour l'audit..."
+                            class="w-full rounded-2xl border-slate-200 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 text-slate-800 font-medium p-5 bg-slate-50/50"></textarea>
+                        
+                        <div class="border-2 border-dashed rounded-3xl p-8 flex flex-col items-center justify-center transition-all bg-slate-50/50" 
+                             :class="form.attachment ? 'border-emerald-500 bg-emerald-50/10' : 'border-slate-200 hover:border-emerald-400 cursor-pointer'"
+                             @click="!form.attachment && triggerFileInput()">
+                            
+                            <input type="file" id="expense_file" class="hidden" @change="handleFileUpload" accept="image/*,.pdf">
+                            
+                            <div v-if="!form.attachment" class="flex items-center space-x-6">
+                                <div class="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-slate-300 shadow-sm">
+                                    <PlusCircleIcon class="w-8 h-8" />
+                                </div>
+                                <div class="text-left">
+                                    <p class="text-xs font-black text-slate-700">Scan du reçu / Facture (Max 5MB)</p>
+                                    <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">PDF ou Image</p>
+                                </div>
+                            </div>
+
+                            <div v-else class="w-full flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-emerald-50">
+                                <div class="flex items-center space-x-4">
+                                    <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
+                                        <component :is="getFileIconComponent(form.attachment.name)" class="w-6 h-6" />
+                                    </div>
+                                    <div class="text-left">
+                                        <p class="text-xs font-black text-slate-800 truncate max-w-[240px]">{{ form.attachment.name }}</p>
+                                        <p class="text-[9px] font-bold text-emerald-500 uppercase">{{ (form.attachment.size / 1024 / 1024).toFixed(2) }} MB</p>
+                                    </div>
+                                </div>
+                                <button type="button" @click.stop="form.attachment = null" class="p-2 text-slate-400 hover:text-rose-500 transition-colors">
+                                    <XIcon class="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                  </div>
+
+                  <!-- Actions -->
+                  <div class="mt-12 flex gap-4">
+                    <button @click="showForm = false" class="flex-1 h-16 rounded-2xl text-xs font-black text-slate-400 hover:bg-slate-50 transition-all uppercase tracking-widest">
+                        Annuler
+                    </button>
+                    <button @click="saveExpense" :disabled="isSaving" 
+                        class="flex-[2] h-16 rounded-2xl bg-slate-900 text-white font-black shadow-xl transition-all hover:bg-slate-800 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3">
+                        <ReceiptIcon class="w-6 h-6 text-rose-500" />
+                        <span class="tracking-widest uppercase text-xs">{{ isSaving ? 'SYNCHRONISATION...' : 'VALIDER LA DÉPENSE' }}</span>
+                    </button>
+                  </div>
                 </div>
-            </div>
-          </div>
-
-          <div class="mt-8 pt-6 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center">
-            <!-- SMART FEATURE: Recurring Toggle -->
-            <div class="mb-6 md:mb-0">
-                <label class="flex items-center cursor-pointer group">
-                    <div class="relative">
-                        <input type="checkbox" v-model="form.is_recurring" class="sr-only">
-                        <div class="block w-14 h-8 bg-slate-200 rounded-full transition-colors duration-300" :class="{'bg-emerald-500': form.is_recurring}"></div>
-                        <div class="absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform duration-300 shadow-sm" :class="{'translate-x-6': form.is_recurring}"></div>
-                    </div>
-                    <div class="ml-4">
-                        <span class="block text-sm font-black text-slate-700 flex items-center">
-                          Répéter chaque mois 
-                          <RotateCwIcon class="w-4 h-4 text-emerald-500 ml-2" v-if="form.is_recurring" />
-                        </span>
-                        <span class="block text-[10px] font-bold text-slate-400 mt-0.5">Idéal pour le Loyer, l'Internet et les Salaires.</span>
-                    </div>
-                </label>
-            </div>
-
-            <button @click="saveExpense" :disabled="isSaving" 
-              class="px-8 py-4 bg-gradient-to-r from-rose-500 to-orange-500 text-white font-black rounded-2xl shadow-lg shadow-rose-500/30 hover:shadow-xl hover:shadow-rose-500/40 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all duration-200 flex items-center disabled:opacity-50">
-              <ReceiptIcon class="w-5 h-5 mr-3" />
-              {{ isSaving ? 'Enregistrement...' : 'Valider la Dépense' }}
-            </button>
+              </DialogPanel>
+            </TransitionChild>
           </div>
         </div>
-      </div>
-    </transition>
+      </Dialog>
+    </TransitionRoot>
 
     <!-- Data Table -->
     <div class="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 overflow-hidden">
@@ -262,8 +359,15 @@
         </h2>
         
         <!-- FILTERS -->
-        <div class="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-            <div class="flex bg-slate-100 p-1 rounded-xl w-full sm:w-auto">
+        <div class="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
+            <!-- Search Input -->
+            <div class="relative w-full md:w-64">
+                <SearchIcon class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input type="text" v-model="searchQuery" placeholder="Rechercher dépense..." 
+                  class="w-full h-11 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-rose-500 outline-none transition-all">
+            </div>
+
+            <div class="flex bg-slate-100 p-1 rounded-xl w-full md:w-auto">
                 <button @click="activeFilter = 'ALL'" :class="{'bg-white shadow-sm text-slate-800': activeFilter === 'ALL', 'text-slate-500 hover:text-slate-700': activeFilter !== 'ALL'}" class="flex-1 px-4 py-1.5 rounded-lg text-xs font-bold transition-all">
                     Toutes
                 </button>
@@ -274,7 +378,6 @@
                     Variables
                 </button>
             </div>
-            <input type="month" v-model="selectedMonth" class="p-2 w-full sm:w-auto text-xs font-bold border border-slate-200 rounded-xl bg-slate-50 text-slate-600 focus:ring-2 focus:ring-orange-500 outline-none">
         </div>
       </div>
       
@@ -418,19 +521,44 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue';
+import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import axios from 'axios';
+import { 
+  Dialog, DialogPanel, DialogTitle, TransitionRoot, TransitionChild 
+} from '@headlessui/vue';
 import { useToast } from '@/composables/useToast';
 const toast = useToast();
 import { 
   ReceiptIcon, PlusIcon, PlusCircleIcon, Trash2Icon, XIcon, EyeIcon, PrinterIcon,
   TrendingDownIcon, TrendingUpIcon, WalletIcon, ActivityIcon, RotateCwIcon,
-  UploadCloudIcon, FileIcon, FileImageIcon, FileTextIcon, DownloadIcon, FileDownIcon
+  UploadCloudIcon, FileIcon, FileImageIcon, FileTextIcon, DownloadIcon, FileDownIcon,
+  BarChart3Icon, PieChartIcon, SearchIcon, CalendarDaysIcon, CircleDollarSignIcon
 } from 'lucide-vue-next';
+
+import {
+  Chart as ChartJS,
+  Title,
+  Tooltip,
+  Legend,
+  LineElement,
+  LinearScale,
+  PointElement,
+  CategoryScale,
+  ArcElement
+} from 'chart.js';
+import { Line, Doughnut } from 'vue-chartjs';
+
+ChartJS.register(
+  Title, Tooltip, Legend,
+  LineElement, LinearScale, PointElement,
+  CategoryScale, ArcElement
+);
 
 // State
 const expenses = ref([]);
-const stats = ref({ total_this_month: 0, total_fixed: 0, total_variable: 0, trend: 0 });
+const stats = ref({ total_this_month: 0, total_fixed: 0, total_variable: 0, total_year: 0, trend: 0, total_revenue: 0, net_profit: 0 });
+const historyData = ref([]);
+const categoriesData = ref([]);
 const showForm = ref(false);
 const isAddingNewCategory = ref(false);
 const isSaving = ref(false);
@@ -439,6 +567,7 @@ const newCatInput = ref(null);
 
 // 1. Filter & Modal State
 const activeFilter = ref('ALL');
+const searchQuery = ref('');
 const selectedMonth = ref(new Date().toISOString().slice(0, 7)); // YYYY-MM
 const isModalOpen = ref(false);
 const selectedExpense = ref(null);
@@ -528,6 +657,16 @@ const filteredExpenses = computed(() => {
         result = result.filter(exp => exp.expense_date.startsWith(selectedMonth.value));
     }
 
+    // Search Query
+    if (searchQuery.value.trim()) {
+        const q = searchQuery.value.toLowerCase();
+        result = result.filter(exp => 
+            exp.title.toLowerCase().includes(q) || 
+            exp.category.toLowerCase().includes(q) ||
+            (exp.notes && exp.notes.toLowerCase().includes(q))
+        );
+    }
+
     // Filter by Type
     if (activeFilter.value !== 'ALL') {
         result = result.filter(exp => {
@@ -569,14 +708,110 @@ const getCategoryClasses = (category) => {
 const loadExpenses = async () => {
   isLoading.value = true;
   try {
-    const res = await axios.get('/api/admin/expenses');
+    const res = await axios.get('/api/admin/expenses', {
+        params: { month: selectedMonth.value }
+    });
     expenses.value = res.data.expenses;
     stats.value = res.data.stats;
+    historyData.value = res.data.history;
+    categoriesData.value = res.data.categories;
   } catch (error) {
     console.error("Erreur chargement dépenses", error);
   } finally {
     isLoading.value = false;
   }
+};
+
+// Reactivate dashboard on month change
+watch(selectedMonth, () => {
+    loadExpenses();
+});
+
+// --- CHART COMPUTATIONS ---
+const chartData = computed(() => ({
+  labels: historyData.value.map(h => h.month),
+  datasets: [{
+    label: 'Dépenses Totales',
+    data: historyData.value.map(h => h.total),
+    borderColor: '#f43f5e',
+    backgroundColor: 'rgba(244, 63, 94, 0.1)',
+    borderWidth: 4,
+    fill: true,
+    tension: 0.4,
+    pointRadius: 6,
+    pointHoverRadius: 8,
+    pointBackgroundColor: '#fff',
+    pointBorderColor: '#f43f5e',
+    pointBorderWidth: 3
+  }]
+}));
+
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      backgroundColor: '#0f172a',
+      padding: 12,
+      titleFont: { size: 12, weight: 'bold' },
+      bodyFont: { size: 14, weight: 'black' },
+      callbacks: {
+        label: (context) => ` ${formatMoney(context.raw)} DH`
+      }
+    }
+  },
+  scales: {
+    y: { 
+      beginAtZero: true, 
+      grid: { display: true, color: 'rgba(148, 163, 184, 0.1)', drawBorder: false },
+      ticks: { font: { weight: 'bold', size: 10 }, color: '#94a3b8' }
+    },
+    x: { 
+      grid: { display: false },
+      ticks: { font: { weight: 'bold', size: 10 }, color: '#94a3b8' }
+    }
+  }
+};
+
+const categoryChartData = computed(() => {
+  const labels = categoriesData.value.map(c => c.category);
+  const data = categoriesData.value.map(c => c.total);
+  
+  return {
+    labels: labels,
+    datasets: [{
+      data: data,
+      backgroundColor: labels.map((_, i) => getChartColor(i)),
+      borderWidth: 0,
+      hoverOffset: 15
+    }]
+  };
+});
+
+const categoryChartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  cutout: '75%',
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      backgroundColor: '#0f172a',
+      padding: 12,
+      bodyFont: { size: 12, weight: 'black' },
+      callbacks: {
+        label: (context) => ` ${context.label}: ${formatMoney(context.raw)} DH`
+      }
+    }
+  }
+};
+
+const getChartColor = (idx) => {
+  const colors = [
+    '#f43f5e', '#f59e0b', '#3b82f6', '#10b981', '#8b5cf6', 
+    '#ec4899', '#06b6d4', '#f97316', '#6366f1', '#14b8a6'
+  ];
+  return colors[idx % colors.length];
 };
 
 const saveExpense = async () => {
@@ -661,10 +896,26 @@ onMounted(() => loadExpenses());
 
 <style scoped>
 .fade-enter-active, .fade-leave-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .fade-enter-from, .fade-leave-to {
   opacity: 0;
-  transform: scale(0.98);
+  transform: scale(0.95) translateY(10px);
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.animate-shimmer {
+  animation: shimmer 3s infinite linear;
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.animate-spin-slow {
+  animation: spin-slow 8s infinite linear;
 }
 </style>

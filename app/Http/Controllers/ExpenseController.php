@@ -3,29 +3,51 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Expense;
+use App\Models\Order;
+use App\Models\Invoice;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class ExpenseController extends Controller {
-    public function index() {
-        $expenses = Expense::withoutGlobalScopes()->orderBy('expense_date', 'desc')->get();
+    public function index(Request $request) {
+        $targetMonth = $request->query('month'); // YYYY-MM
         
-        $startOfMonth = Carbon::now()->startOfMonth();
-        $startOfLastMonth = Carbon::now()->subMonth()->startOfMonth();
-        $endOfLastMonth = Carbon::now()->subMonth()->endOfMonth();
+        $now = $targetMonth ? Carbon::parse($targetMonth)->endOfMonth() : Carbon::now();
+        $startOfMonth = (clone $now)->startOfMonth();
+        $endOfMonth = (clone $now)->endOfMonth();
+        $startOfLastMonth = (clone $startOfMonth)->subMonth()->startOfMonth();
+        $endOfLastMonth = (clone $startOfMonth)->subMonth()->endOfMonth();
 
-        $thisMonth = Expense::withoutGlobalScopes()->where('expense_date', '>=', $startOfMonth);
+        // All expenses for the table
+        $expenses = Expense::withoutGlobalScopes()->orderBy('expense_date', 'desc')->get();
+
+        // Stats queries - SCRICT BOUNDARIES
+        $thisMonth = Expense::withoutGlobalScopes()->whereBetween('expense_date', [$startOfMonth, $endOfMonth]);
         $lastMonth = Expense::withoutGlobalScopes()->whereBetween('expense_date', [$startOfLastMonth, $endOfLastMonth]);
 
         $totalThisMonth = (clone $thisMonth)->sum('amount');
         $totalLastMonth = (clone $lastMonth)->sum('amount');
 
+        // REVENUE CALCULATION (Invoices & POS Orders)
+        $revenueInvoices = Invoice::withoutGlobalScopes()
+            ->where('type', 'invoice')
+            ->whereNotNull('validated_at')
+            ->whereBetween('validated_at', [$startOfMonth, $endOfMonth])
+            ->sum('total');
+            
+        $revenuePOS = Order::withoutGlobalScopes()
+            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+            ->sum('total_sell_price');
+            
+        $totalRevenue = $revenueInvoices + $revenuePOS;
+        $netProfit = $totalRevenue - $totalThisMonth;
+
+        // FIXED CHARGE LOGIC (Grouped)
         $fixedCategories = ['Charge Fixe (Mensuel)', 'Loyer', 'Salaire', '🏠 Loyer (K-ra)', '👥 Salaires (Kheddama)'];
-        $totalFixed = (clone $thisMonth)->whereIn('category', $fixedCategories)
-            ->orWhere(function($query) use ($startOfMonth) {
-                $query->withoutGlobalScopes()->where('expense_date', '>=', $startOfMonth)
-                      ->where('category', 'LIKE', '%fixe%');
+        $totalFixed = (clone $thisMonth)->where(function($query) use ($fixedCategories) {
+                $query->whereIn('category', $fixedCategories)
+                      ->orWhere('category', 'LIKE', '%fixe%');
             })->sum('amount');
 
         $totalVariable = $totalThisMonth - $totalFixed;
@@ -35,15 +57,48 @@ class ExpenseController extends Controller {
             $trend = (($totalThisMonth - $totalLastMonth) / $totalLastMonth) * 100;
         }
 
+        // Analytical History (Last 12 Months)
+        $history = [];
+        for ($i = 11; $i >= 0; $i--) {
+            $m = (clone $now)->subMonths($i);
+            $history[] = [
+                'month' => $m->format('M'),
+                'label' => $m->translatedFormat('F Y'),
+                'total' => Expense::withoutGlobalScopes()
+                    ->whereMonth('expense_date', $m->month)
+                    ->whereYear('expense_date', $m->year)
+                    ->sum('amount')
+            ];
+        }
+
+        // Yearly Total (Current Year as of target date)
+        $totalYear = Expense::withoutGlobalScopes()
+            ->whereYear('expense_date', $now->year)
+            ->where('expense_date', '<=', $endOfMonth)
+            ->sum('amount');
+
+        // Category Breakdown (This Month)
+        $categories = DB::table('expenses')
+            ->whereBetween('expense_date', [$startOfMonth, $endOfMonth])
+            ->select('category', DB::raw('sum(amount) as total'))
+            ->groupBy('category')
+            ->orderBy('total', 'desc')
+            ->get();
+
         return response()->json([
             'expenses' => $expenses,
             'stats' => [
                 'total_this_month' => $totalThisMonth,
                 'total_fixed' => $totalFixed,
                 'total_variable' => $totalVariable,
+                'total_year' => $totalYear,
                 'trend' => round($trend, 1),
-                'total_last_month' => $totalLastMonth
-            ]
+                'total_last_month' => $totalLastMonth,
+                'total_revenue' => $totalRevenue,
+                'net_profit' => $netProfit
+            ],
+            'history' => $history,
+            'categories' => $categories
         ]);
     }
     

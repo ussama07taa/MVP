@@ -29,7 +29,8 @@ class StoreOrderRequest extends FormRequest
             'items.*.custom_canto_service_price' => 'nullable|numeric|min:0',
             'items.*.base_canto_price' => 'nullable|numeric|min:0',
             'send_to_workshop' => 'nullable|boolean',
-            'workshop_notes' => 'nullable|string|max:1000'
+            'workshop_notes' => 'nullable|string|max:1000',
+            'tefsil_file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
         ];
     }
 }

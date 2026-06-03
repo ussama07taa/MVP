@@ -1,44 +1,51 @@
 <template>
-  <div class="min-h-screen bg-[#f8fafc] p-4 md:p-10 font-sans selection:bg-brand-500 selection:text-white">
+  <div class="min-h-screen bg-[#f8fafc] p-4 md:p-10 font-sans selection:bg-amber-500 selection:text-white">
     
-    <!-- Premium Header -->
-    <header class="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-12 relative">
-      <div class="relative z-10">
-        <div class="flex items-center gap-3 mb-2">
-          <div class="w-10 h-10 bg-brand-600 rounded-2xl flex items-center justify-center shadow-lg shadow-brand-500/20">
-            <ActivityIcon class="w-6 h-6 text-white animate-pulse" />
+    <!-- Premium Hero Header (Glassmorphic) -->
+    <header class="sticky top-0 z-[40] -mx-4 md:-mx-10 px-4 md:px-10 py-6 mb-12 bg-[#FAFAF9]/80 backdrop-blur-3xl border-b border-slate-200/40 flex flex-col md:flex-row md:items-center justify-between gap-8">
+      <div class="relative">
+        <div class="flex items-center gap-4 mb-1">
+          <div class="w-12 h-12 bg-slate-950 rounded-[1.25rem] flex items-center justify-center shadow-xl shadow-slate-900/20 group relative overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-br from-amber-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <ActivityIcon class="w-6 h-6 text-amber-500 relative z-10 animate-pulse" />
           </div>
-          <h1 class="text-5xl font-black text-slate-900 tracking-tight">Atelier <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-indigo-600">Pro</span></h1>
+          <div>
+            <h1 class="text-4xl font-black text-slate-900 tracking-tighter leading-none mb-1">Tableau <span class="text-amber-600">Atelier</span></h1>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.25em] flex items-center gap-2">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span>
+              Flux opérationnel en temps réel
+            </p>
+          </div>
         </div>
-        <p class="text-sm font-bold text-slate-400 ml-1 flex items-center gap-2">
-          Suivi opérationnel et file d'attente en temps réel
-        </p>
       </div>
       
-      <button @click="showAddModal = true" class="group relative z-10 px-10 py-5 bg-slate-900 rounded-[2.5rem] overflow-hidden transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-slate-900/20">
-        <div class="absolute inset-0 bg-gradient-to-r from-brand-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-        <div class="relative flex items-center gap-4 text-white uppercase tracking-[0.2em] font-black text-xs">
-          <PlusIcon class="w-6 h-6 transition-transform group-hover:rotate-90 duration-500" />
-          Nouveau Client
-        </div>
-      </button>
-      
-      <!-- Decorative Background Blur -->
-      <div class="absolute -top-20 -left-20 w-64 h-64 bg-brand-200/30 blur-[100px] rounded-full"></div>
+      <div class="flex items-center gap-4">
+        <button @click="fetchQueue(true)" class="w-12 h-12 bg-white rounded-2xl text-slate-400 hover:text-amber-600 border border-slate-200 flex items-center justify-center transition-all hover:rotate-180 active:scale-90 shadow-sm">
+          <RefreshCwIcon :class="{'animate-spin': isLoading}" class="w-5 h-5" />
+        </button>
+        
+        <button @click="showAddModal = true" class="group relative px-8 py-4 bg-slate-950 rounded-2xl overflow-hidden transition-all hover:scale-[1.02] active:scale-95 shadow-xl shadow-slate-900/10">
+          <div class="absolute inset-0 bg-gradient-to-r from-amber-600 to-amber-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+          <div class="relative flex items-center gap-3 text-white uppercase tracking-widest font-black text-[10px]">
+            <PlusIcon class="w-5 h-5 transition-transform group-hover:rotate-90 duration-300" />
+            Nouveau Ticket
+          </div>
+        </button>
+      </div>
     </header>
 
-    <!-- Stats Cards (Glassmorphism) -->
+    <!-- Master Stats Board -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
       <div v-for="stat in stats" :key="stat.label" 
-        class="relative group overflow-hidden bg-white/60 backdrop-blur-xl border border-white/40 p-8 rounded-[3rem] shadow-premium hover:shadow-2xl transition-all duration-500">
-        <div class="flex items-center justify-between mb-6">
-          <div :class="stat.bg" class="w-14 h-14 rounded-[1.5rem] flex items-center justify-center shadow-inner transition-transform group-hover:scale-110">
-            <component :is="stat.icon" :class="stat.color" class="w-7 h-7" />
+        class="relative group bg-white rounded-[2.5rem] p-8 border border-slate-200/60 hover:border-amber-500/30 hover:shadow-2xl transition-all duration-500 overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-br from-amber-500/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+        <div class="flex items-center justify-between mb-4 relative z-10">
+          <div :class="stat.bg" class="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm border border-black/5 group-hover:scale-110 transition-transform">
+            <component :is="stat.icon" :class="stat.color" class="w-6 h-6" />
           </div>
-          <span class="text-4xl font-black text-slate-900 tracking-tighter">{{ stat.value }}</span>
+          <span class="text-5xl font-black text-slate-950 tracking-tighter">{{ stat.value }}</span>
         </div>
-        <p class="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">{{ stat.label }}</p>
-        <div class="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-transparent via-slate-200 to-transparent w-full opacity-50"></div>
+        <p class="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] relative z-10">{{ stat.label }}</p>
       </div>
     </div>
 
@@ -52,121 +59,136 @@
             <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Mise à jour en direct</span>
           </div>
         </div>
-        <button @click="fetchQueue" class="w-14 h-14 bg-white rounded-2xl text-slate-400 hover:text-brand-600 shadow-sm border border-slate-100 flex items-center justify-center transition-all hover:rotate-180 active:scale-90">
+        <button @click="fetchQueue" class="w-14 h-14 bg-white rounded-2xl text-slate-400 hover:text-amber-600 shadow-sm border border-slate-100 flex items-center justify-center transition-all hover:rotate-180 active:scale-90">
           <RefreshCwIcon :class="{'animate-spin': isLoading}" class="w-6 h-6" />
         </button>
       </div>
 
       <div class="p-4 md:p-8">
-        <!-- Tabbed Navigation -->
-        <div class="flex gap-4 mb-8 border-b border-slate-100 pb-2 overflow-x-auto scrollbar-none">
-          <button @click="activeTab = 'active'" class="flex items-center gap-2 pb-3 px-4 font-black text-[11px] uppercase tracking-[0.15em] transition-all relative shrink-0"
-            :class="activeTab === 'active' ? 'text-brand-600' : 'text-slate-400 hover:text-slate-600'">
-            <ClipboardListIcon class="w-4 h-4" />
-            File Active ({{ activeQueue.length }})
-            <span v-if="activeTab === 'active'" class="absolute bottom-0 left-0 right-0 h-1 bg-brand-600 rounded-full animate-in zoom-in"></span>
+        <!-- Tabded Navigation (Premium Glass Pills) -->
+        <div class="flex gap-4 mb-8 bg-slate-100/50 p-1.5 rounded-2xl w-fit border border-slate-200/50">
+          <button @click="activeTab = 'active'" 
+            class="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-[11px] uppercase tracking-widest transition-all duration-300"
+            :class="activeTab === 'active' ? 'bg-slate-950 text-white shadow-lg' : 'text-slate-500 hover:text-slate-900 hover:bg-white'">
+            <ClipboardListIcon class="w-4 h-4" :class="activeTab === 'active' ? 'text-amber-500' : 'text-slate-400'" />
+            Active ({{ activeQueue.length }})
           </button>
-          <button @click="activeTab = 'delivered'" class="flex items-center gap-2 pb-3 px-4 font-black text-[11px] uppercase tracking-[0.15em] transition-all relative shrink-0"
-            :class="activeTab === 'delivered' ? 'text-brand-600' : 'text-slate-400 hover:text-slate-600'">
-            <PackageCheckIcon class="w-4 h-4" />
-            Livrées Aujourd'hui ({{ deliveredQueue.length }})
-            <span v-if="activeTab === 'delivered'" class="absolute bottom-0 left-0 right-0 h-1 bg-brand-600 rounded-full animate-in zoom-in"></span>
+          <button @click="activeTab = 'delivered'" 
+            class="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-[11px] uppercase tracking-widest transition-all duration-300"
+            :class="activeTab === 'delivered' ? 'bg-slate-950 text-white shadow-lg' : 'text-slate-500 hover:text-slate-900 hover:bg-white'">
+            <PackageCheckIcon class="w-4 h-4" :class="activeTab === 'delivered' ? 'text-amber-500' : 'text-slate-400'" />
+            Livrées ({{ deliveredQueue.length }})
           </button>
         </div>
 
-        <div class="grid grid-cols-1 gap-6">
-          <!-- Job Row (3D Style) -->
+        <!-- Queue List -->
+        <TransitionGroup name="list" tag="div" class="grid grid-cols-1 gap-6">
+          <!-- Job Row (Premium Ticket Style) -->
           <div v-for="job in (activeTab === 'active' ? activeQueue : deliveredQueue)" :key="job.id" 
-            class="group relative bg-white border border-slate-100 rounded-[3rem] p-8 transition-all hover:shadow-xl hover:translate-x-2 duration-500 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+            class="group relative bg-white border border-slate-200/50 rounded-[2.5rem] p-6 transition-all hover:shadow-2xl hover:border-amber-500/20 duration-500 flex flex-col lg:flex-row lg:items-center justify-between gap-6 overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-br from-amber-500/[0.01] to-transparent pointer-events-none"></div>
             
             <!-- Position & 3D Ticket -->
-            <div class="flex items-center gap-8">
-              <div class="relative">
-                <!-- 3D Look Ticket -->
-                <div class="w-20 h-24 bg-slate-900 rounded-3xl flex flex-col items-center justify-center shadow-2xl transform transition-transform group-hover:rotate-6">
-                   <div class="text-[10px] font-black text-brand-400 uppercase mb-1">Queue</div>
-                   <div class="text-xl font-black text-white tracking-tighter">{{ job.queue_number }}</div>
-                   <div class="absolute -left-2 top-1/2 -translate-y-1/2 w-4 h-8 bg-[#f8fafc] rounded-full border-r border-slate-100/10"></div>
-                   <div class="absolute -right-2 top-1/2 -translate-y-1/2 w-4 h-8 bg-[#f8fafc] rounded-full border-l border-slate-100/10"></div>
+            <div class="flex items-center gap-6 relative z-10">
+              <div class="relative shrink-0">
+                <!-- Premium 3D Ticket -->
+                <div class="w-20 h-24 bg-slate-950 rounded-2xl flex flex-col items-center justify-center shadow-xl transform transition-transform group-hover:rotate-3 group-hover:scale-105 duration-500 relative overflow-hidden">
+                   <div class="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent"></div>
+                   <div class="text-[9px] font-black text-amber-500/80 uppercase tracking-[0.2em] mb-1">Queue</div>
+                   <div class="text-2xl font-black text-white tracking-tighter">{{ job.queue_number }}</div>
+                   <!-- Ticket Holes -->
+                   <div class="absolute -left-1.5 top-1/2 -translate-y-1/2 w-3 h-6 bg-[#f8fafc] rounded-full border border-slate-200/20 shadow-inner"></div>
+                   <div class="absolute -right-1.5 top-1/2 -translate-y-1/2 w-3 h-6 bg-[#f8fafc] rounded-full border border-slate-200/20 shadow-inner"></div>
                 </div>
-                <div class="absolute -bottom-2 -right-2 w-10 h-10 bg-brand-600 rounded-2xl flex items-center justify-center text-white text-xs font-black shadow-lg border-4 border-white">
+                <div class="absolute -bottom-1 -right-1 w-9 h-9 bg-amber-500 rounded-xl flex items-center justify-center text-slate-950 text-[10px] font-black shadow-lg border-4 border-white">
                   #{{ job.position }}
                 </div>
               </div>
 
-              <div>
-                <h3 class="text-2xl font-black text-slate-900 mb-3 tracking-tight">{{ job.client_name }}</h3>
-                <div class="flex flex-wrap gap-2">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-2">
+                  <h3 class="text-xl font-black text-slate-900 tracking-tight truncate">{{ job.client_name }}</h3>
+                  <div class="flex gap-1.5 flex-wrap">
+                    <span v-if="job.is_priority" class="px-2 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[8px] font-black rounded-lg shadow-lg shadow-amber-500/20 uppercase tracking-widest flex items-center gap-1">
+                      <ZapIcon class="w-2.5 h-2.5 fill-white" /> Urgent
+                    </span>
+                    <span v-if="job.is_new" class="px-2 py-0.5 bg-slate-950 text-white text-[8px] font-black rounded-lg animate-pulse uppercase tracking-widest border border-slate-800">Nouveau</span>
+                  </div>
+                </div>
+                <div class="flex flex-wrap gap-1.5">
                   <div v-for="s in job.services" :key="s.id" 
-                    class="flex items-center gap-3 px-4 py-2 rounded-2xl text-xs font-black border transition-all duration-300"
-                    :class="s.is_done ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-200'">
-                    <span class="w-5 h-5 flex items-center justify-center rounded-lg bg-white/50">{{ (s.quantity) }}</span>
-                    <span>{{ s.label }}</span>
+                    class="flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all duration-300"
+                    :class="s.is_done ? 'bg-emerald-50/50 text-emerald-600 border-emerald-100/50 opacity-60' : 'bg-slate-50 text-slate-500 border-slate-200/50 group-hover:border-slate-300'">
+                    <span class="w-4 h-4 flex items-center justify-center rounded-md bg-white border border-slate-100 shadow-sm font-black text-[8px]">{{ s.quantity }}</span>
+                    <span class="uppercase tracking-tight">{{ s.label }}</span>
                   </div>
                 </div>
               </div>
             </div>
 
             <!-- Progression & Status Center -->
-            <div class="flex flex-col items-center gap-4 flex-1 lg:max-w-xs">
-              <div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden shadow-inner p-0.5">
-                <div class="h-full rounded-full transition-all duration-1000 ease-out flex items-center justify-end pr-2"
-                  :class="job.all_done ? 'bg-gradient-to-r from-emerald-400 to-emerald-600' : 'bg-gradient-to-r from-brand-400 to-brand-600'"
+            <div class="flex flex-col items-center gap-3 flex-1 lg:max-w-[240px] relative z-10">
+              <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden shadow-inner flex items-center px-0.5 relative">
+                <div class="h-1 rounded-full transition-all duration-1000 ease-out shadow-[0_0_10px_rgba(245,158,11,0.5)]"
+                  :class="job.all_done ? 'bg-emerald-500' : 'bg-amber-500'"
                   :style="{ width: (job.services_done / job.services_total * 100) + '%' }">
-                  <div class="w-1 h-1 bg-white/50 rounded-full"></div>
                 </div>
               </div>
-              <div class="flex flex-wrap items-center justify-center gap-3">
-                <!-- Status Badge -->
-                <span :class="statusClasses(job.status)" class="flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-wider border shadow-sm transition-all duration-300">
-                  <span class="w-2 h-2 rounded-full" :class="{'bg-amber-500 animate-pulse': job.status === 'waiting', 'bg-blue-500 animate-pulse': job.status === 'in_progress', 'bg-emerald-500': job.status === 'done', 'bg-slate-400': job.status === 'delivered'}"></span>
+              <div class="flex flex-wrap items-center justify-center gap-2">
+                <span :class="statusClasses(job.status)" class="px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-[0.1em] border shadow-sm transition-all">
                   {{ statusLabel(job.status) }}
                 </span>
                 
-                <!-- Arrival Badge -->
-                <span class="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-200/80 text-slate-700 rounded-2xl text-xs font-black shadow-sm">
-                  <ClockIcon class="w-4 h-4 text-slate-400" />
-                  <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest mr-0.5">Reçu à</span>
-                  <span>{{ job.waiting_since }}</span>
+                <span class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200/40 text-slate-500 rounded-xl text-[9px] font-black shadow-sm">
+                  <ClockIcon class="w-3 h-3 text-slate-400" />
+                  {{ job.waiting_since }}
                 </span>
                 
-                <!-- Waiting Badge -->
-                <span class="flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-black border shadow-sm transition-all duration-300"
-                  :class="job.waiting_minutes > 60 ? 'bg-rose-50 border-rose-200/60 text-rose-600' : 'bg-brand-50/50 border-brand-200/40 text-brand-600'">
-                  <HourglassIcon :class="job.waiting_minutes > 60 ? 'text-rose-500 animate-pulse' : 'text-brand-500'" class="w-4 h-4" />
-                  <span class="text-[9px] font-black uppercase tracking-widest mr-0.5" :class="job.waiting_minutes > 60 ? 'text-rose-400' : 'text-brand-400'">Attente</span>
-                  <span>{{ formatWaiting(job.waiting_minutes) }}</span>
+                <span v-if="job.status !== 'delivered'" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-black border shadow-sm"
+                  :class="job.waiting_minutes > 60 ? 'bg-rose-50 border-rose-100 text-rose-500' : 'bg-slate-50 border-slate-200/40 text-slate-400'">
+                  <HourglassIcon :class="{'animate-pulse': job.waiting_minutes > 45}" class="w-3 h-3" />
+                  {{ formatWaiting(job.waiting_minutes) }}
                 </span>
               </div>
             </div>
 
             <!-- Actions Right -->
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2 relative z-10">
               <button v-if="job.status === 'done'" @click="deliverJob(job)" 
-                class="relative h-16 px-8 bg-emerald-600 text-white rounded-[2rem] font-black uppercase tracking-widest text-[11px] overflow-hidden transition-all hover:scale-105 active:scale-95 shadow-xl shadow-emerald-600/20 group/btn">
-                <div class="absolute inset-0 bg-white/20 translate-y-full group-hover/btn:translate-y-0 transition-transform"></div>
-                <span class="relative flex items-center gap-3">
-                  <PackageCheckIcon class="w-5 h-5" /> Livrer le Travail
-                </span>
+                class="h-12 px-5 bg-emerald-600 text-white rounded-xl font-black uppercase tracking-widest text-[9px] transition-all hover:scale-105 active:scale-95 shadow-lg shadow-emerald-600/20">
+                LIVRER
+              </button>
+
+              <button @click="togglePriority(job)" 
+                class="w-12 h-12 rounded-xl flex items-center justify-center transition-all active:scale-90 shadow-sm border"
+                :class="job.is_priority 
+                  ? 'bg-amber-500 border-amber-400 text-white shadow-amber-500/30' 
+                  : 'bg-white border-slate-200 text-slate-300 hover:text-amber-500 hover:border-amber-200'"
+                :title="job.is_priority ? 'Désactiver Mode Express' : 'Activer Mode Express (Urgent)'">
+                <ZapIcon class="w-5 h-5" :class="{ 'fill-current': job.is_priority }" />
               </button>
               
-              <!-- Cancel Delivery Button -->
               <button v-if="job.status === 'delivered'" @click="undeliverJob(job)" 
-                class="relative h-16 px-8 bg-slate-900 text-white rounded-[2rem] font-black uppercase tracking-widest text-[11px] overflow-hidden transition-all hover:scale-105 active:scale-95 shadow-xl shadow-slate-900/20 group/btn">
-                <span class="relative flex items-center gap-3">
-                  <ArrowLeftIcon class="w-5 h-5" /> Annuler livraison
-                </span>
+                class="h-12 px-5 bg-slate-900 text-white rounded-xl font-black uppercase tracking-widest text-[9px] transition-all hover:scale-105 active:scale-95 shadow-lg">
+                ANNULER
               </button>
 
-              <button @click="openJobDetails(job)" class="w-16 h-16 bg-white border border-slate-100 text-brand-600 rounded-[2rem] flex items-center justify-center transition-all hover:bg-brand-50 hover:border-brand-200 active:scale-90 shadow-sm" title="Dossier Client & Factures">
-                <EyeIcon class="w-6 h-6" />
-              </button>
+                <a v-if="job.tefsil_url" :href="job.tefsil_url" target="_blank"
+                  class="w-12 h-12 bg-amber-50 border border-amber-200 text-amber-600 hover:bg-amber-100 rounded-xl flex items-center justify-center transition-all active:scale-90 shadow-sm"
+                  title="Voir Plan SketchCut">
+                  <FileTextIcon class="w-5 h-5" />
+                </a>
 
-              <button @click="deleteJob(job)" class="w-16 h-16 bg-white border border-slate-100 text-slate-400 rounded-[2rem] flex items-center justify-center transition-all hover:bg-rose-50 hover:text-rose-500 hover:border-rose-100 active:scale-90 shadow-sm">
-                <Trash2Icon class="w-6 h-6" />
+                <button @click="openJobDetails(job)" class="w-12 h-12 bg-white border border-slate-200 text-slate-400 hover:text-amber-600 hover:border-amber-500/30 rounded-xl flex items-center justify-center transition-all active:scale-90 shadow-sm">
+                  <EyeIcon class="w-5 h-5" />
+                </button>
+
+              <button @click="deleteJob(job)" class="w-12 h-12 bg-white border border-slate-100 text-slate-300 hover:text-rose-500 rounded-xl flex items-center justify-center transition-all active:scale-90">
+                <Trash2Icon class="w-5 h-5" />
               </button>
             </div>
           </div>
+        </TransitionGroup>
 
           <!-- Empty Active State -->
           <div v-if="!isLoading && activeTab === 'active' && activeQueue.length === 0" class="py-20 text-center animate-in fade-in duration-500">
@@ -185,36 +207,35 @@
             <h3 class="text-2xl font-black text-slate-400">Aucune commande livrée aujourd'hui</h3>
             <p class="text-sm font-bold text-slate-300 mt-2">Les commandes livrées aux clients s'afficheront ici dans l'historique du jour.</p>
           </div>
-        </div>
       </div>
     </div>
 
-    <!-- ADD CLIENT MODAL (PREMIUM GLASS) -->
+    <!-- ADD CLIENT MODAL (PREMIUM LIQUID GLASS) -->
     <Transition name="scale">
-      <div v-if="showAddModal" class="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/75">
-        <div class="bg-white border border-slate-100 w-full max-w-2xl rounded-[3rem] shadow-[0_30px_70px_rgba(0,0,0,0.2)] overflow-hidden">
-          <div class="p-10 border-b border-slate-100/50 flex items-center justify-between">
+      <div v-if="showAddModal" class="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm">
+        <div class="bg-white/90 backdrop-blur-3xl border border-white/40 w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in duration-300">
+          <div class="p-8 border-b border-slate-100/50 flex items-center justify-between bg-slate-50/50">
             <div>
-              <h3 class="text-3xl font-black text-slate-900 tracking-tight">Ajouter à la Queue</h3>
-              <p class="text-xs font-black text-slate-400 uppercase tracking-widest mt-1">Nouveau ticket opérationnel</p>
+              <h3 class="text-2xl font-black text-slate-900 tracking-tighter uppercase leading-none mb-1">Nouveau <span class="text-amber-600">Ticket</span></h3>
+              <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Atelier Opérationnel</p>
             </div>
-            <button @click="showAddModal = false" class="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400 hover:text-slate-900 transition-all">
-              <XIcon class="w-6 h-6" />
+            <button @click="showAddModal = false" class="w-10 h-10 bg-white shadow-sm rounded-xl flex items-center justify-center text-slate-400 hover:text-rose-500 transition-all active:scale-90">
+              <XIcon class="w-5 h-5" />
             </button>
           </div>
 
-          <form @submit.prevent="submitJob" class="p-10 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
-            <div class="space-y-3 relative">
-              <label class="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Client *</label>
-              <div class="relative">
-                <UserIcon class="w-5 h-5 absolute left-5 top-1/2 transform -translate-y-1/2 text-slate-400" />
-                <input type="text" v-model="clientSearch" @input="onClientInput" @focus="showClientDropdown = true" @blur="setTimeout(() => showClientDropdown = false, 200)" required placeholder="Chercher ou taper le nom..."
-                  class="w-full pl-14 pr-5 py-5 bg-white/50 border border-slate-200 rounded-3xl font-bold text-lg focus:ring-8 focus:ring-brand-500/10 focus:border-brand-500 transition-all shadow-inner">
+          <form @submit.prevent="submitJob" class="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+            <div class="space-y-2 relative">
+              <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Client Détails</label>
+              <div class="relative group">
+                <UserIcon class="w-5 h-5 absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-amber-500 transition-colors pointer-events-none" />
+                <input type="text" v-model="clientSearch" @input="onClientInput" @focus="showClientDropdown = true" @blur="onClientBlur" required placeholder="Nom du client / Téléphone..."
+                  class="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-lg focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500/30 transition-all outline-none">
               </div>
               <!-- Autocomplete Dropdown -->
               <div v-if="showClientDropdown && filteredClients.length > 0" class="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto">
                 <button v-for="c in filteredClients" :key="c.id" type="button" @mousedown.prevent="selectClient(c)"
-                  class="w-full px-5 py-4 flex items-center justify-between hover:bg-brand-50 transition-colors text-left border-b border-slate-50 last:border-b-0">
+                  class="w-full px-5 py-4 flex items-center justify-between hover:bg-amber-50 transition-colors text-left border-b border-slate-50 last:border-b-0">
                   <div>
                     <span class="font-black text-slate-900 text-sm">{{ c.name }}</span>
                     <span v-if="c.phone" class="ml-2 text-xs text-slate-400 font-bold">{{ c.phone }}</span>
@@ -230,7 +251,7 @@
                 <label class="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Services & Quantités *</label>
                 <div class="flex gap-2">
                    <button v-for="q in [5, 10, 20]" :key="q" @click.prevent="defaultQty = q" type="button"
-                     :class="defaultQty === q ? 'bg-brand-600 text-white shadow-lg' : 'bg-slate-100 text-slate-500'"
+                     :class="defaultQty === q ? 'bg-amber-600 text-white shadow-lg' : 'bg-slate-100 text-slate-500'"
                      class="w-8 h-8 rounded-lg text-[10px] font-black transition-all">
                      {{ q }}
                    </button>
@@ -240,10 +261,10 @@
               <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <button v-for="s in quickServices" :key="s" type="button" 
                   @click="toggleFormService(s)"
-                  :class="isServiceSelected(s) ? 'bg-brand-600 text-white scale-105 shadow-xl shadow-brand-500/30 ring-4 ring-brand-500/20' : 'bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-200'"
+                  :class="isServiceSelected(s) ? 'bg-amber-600 text-white scale-105 shadow-xl shadow-amber-500/30 ring-4 ring-amber-500/20' : 'bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-200'"
                   class="p-5 rounded-3xl text-xs font-black transition-all duration-300 relative group overflow-hidden">
                   {{ s }}
-                  <div v-if="isServiceSelected(s)" class="absolute -top-1 -right-1 w-6 h-6 bg-white text-brand-600 rounded-full flex items-center justify-center border-2 border-brand-600 animate-in zoom-in">
+                  <div v-if="isServiceSelected(s)" class="absolute -top-1 -right-1 w-6 h-6 bg-white text-amber-600 rounded-full flex items-center justify-center border-2 border-amber-600 animate-in zoom-in">
                     <CheckIcon class="w-3 h-3" />
                   </div>
                 </button>
@@ -253,7 +274,7 @@
               <div class="bg-slate-50 p-6 rounded-[2.5rem] border border-slate-100">
                 <div class="flex gap-3 mb-4">
                   <input type="text" v-model="customService" placeholder="Autre tâche..." 
-                    class="flex-1 p-4 bg-white border border-slate-200 rounded-2xl font-bold text-sm focus:ring-4 focus:ring-brand-500/10">
+                    class="flex-1 p-4 bg-white border border-slate-200 rounded-2xl font-bold text-sm focus:ring-4 focus:ring-amber-500/10">
                   <input type="number" v-model="customQty" class="w-20 p-4 bg-white border border-slate-200 rounded-2xl font-bold text-sm text-center">
                   <button @click.prevent="addCustomService" class="w-14 h-14 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 transition-all active:scale-90">
                     <PlusIcon class="w-6 h-6 mx-auto" />
@@ -266,11 +287,11 @@
                      <div class="flex flex-col gap-4 flex-1">
                         <div class="flex items-center gap-4">
                            <div class="flex items-center bg-slate-100 rounded-xl overflow-hidden p-1 shadow-inner">
-                              <button @click.prevent="s.quantity = Math.max(1, s.quantity - 1)" class="w-10 h-10 flex items-center justify-center text-slate-500 hover:bg-white hover:text-brand-600 transition-all rounded-lg">
+                              <button @click.prevent="s.quantity = Math.max(1, s.quantity - 1)" class="w-10 h-10 flex items-center justify-center text-slate-500 hover:bg-white hover:text-amber-600 transition-all rounded-lg">
                                  <span class="text-2xl font-black">-</span>
                               </button>
-                              <input type="number" v-model="s.quantity" class="w-16 text-center font-black text-brand-600 bg-transparent border-none focus:ring-0">
-                              <button @click.prevent="s.quantity++" class="w-10 h-10 flex items-center justify-center text-slate-500 hover:bg-white hover:text-brand-600 transition-all rounded-lg">
+                              <input type="number" v-model="s.quantity" class="w-16 text-center font-black text-amber-600 bg-transparent border-none focus:ring-0">
+                              <button @click.prevent="s.quantity++" class="w-10 h-10 flex items-center justify-center text-slate-500 hover:bg-white hover:text-amber-600 transition-all rounded-lg">
                                  <span class="text-2xl font-black">+</span>
                               </button>
                            </div>
@@ -280,11 +301,11 @@
                         <div class="flex gap-3">
                            <div class="flex-1 space-y-1">
                               <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Matière</p>
-                              <input type="text" v-model="s.material_type" placeholder="Ex: MDF" class="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold focus:ring-4 focus:ring-brand-500/10">
+                              <input type="text" v-model="s.material_type" placeholder="Ex: MDF" class="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold focus:ring-4 focus:ring-amber-500/10">
                            </div>
                            <div class="flex-1 space-y-1">
                               <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Couleur / Décor</p>
-                              <input type="text" v-model="s.material_color" placeholder="Ex: Blanc" class="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold focus:ring-4 focus:ring-brand-500/10">
+                              <input type="text" v-model="s.material_color" placeholder="Ex: Blanc" class="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold focus:ring-4 focus:ring-amber-500/10">
                            </div>
                         </div>
                      </div>
@@ -297,13 +318,21 @@
             </div>
 
             <div class="space-y-3">
+              <label class="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Plan de Découpe (SketchCut PDF)</label>
+              <div class="relative group">
+                <input type="file" @change="onFileChange" accept=".pdf,.jpg,.jpeg,.png"
+                  class="w-full p-5 bg-white border border-slate-200 rounded-3xl font-bold text-xs file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-[10px] file:font-black file:bg-amber-600 file:text-white hover:file:bg-amber-700 transition-all cursor-pointer">
+              </div>
+            </div>
+
+            <div class="space-y-3">
               <label class="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">Notes Internes</label>
               <textarea v-model="form.notes" rows="3" placeholder="Ex: Livraison urgente, bois fragile..."
-                class="w-full p-5 bg-white/50 border border-slate-200 rounded-3xl font-bold focus:ring-8 focus:ring-brand-500/10 resize-none shadow-inner"></textarea>
+                class="w-full p-5 bg-white/50 border border-slate-200 rounded-3xl font-bold focus:ring-8 focus:ring-amber-500/10 resize-none shadow-inner"></textarea>
             </div>
 
             <button type="submit" :disabled="isSubmitting" class="w-full relative py-6 bg-slate-900 rounded-[2.5rem] overflow-hidden group shadow-2xl shadow-slate-900/40 active:scale-95 transition-all">
-              <div class="absolute inset-0 bg-gradient-to-r from-brand-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              <div class="absolute inset-0 bg-gradient-to-r from-amber-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"></div>
               <span class="relative text-white font-black uppercase tracking-[0.3em] text-xs">
                 <span v-if="!isSubmitting">Confirmer le Ticket</span>
                 <Loader2Icon v-else class="w-6 h-6 animate-spin mx-auto" />
@@ -316,22 +345,27 @@
 
     <!-- JOB DOSSIER & CRM SLIDE-OVER (CRM VIEW) -->
     <Transition name="slide-right">
-      <div v-if="selectedJobDossier" class="fixed inset-y-0 right-0 z-50 w-full max-w-2xl bg-slate-50 shadow-2xl flex flex-col border-l border-slate-200" style="transform: translateX(0);">
-        <!-- Drawer Header -->
-        <div class="bg-white px-8 py-6 border-b border-slate-100 flex justify-between items-center z-10">
-          <div class="flex items-center gap-4">
-             <div class="w-12 h-12 bg-brand-50 rounded-2xl flex items-center justify-center text-brand-600 font-black text-xl">
+      <div v-if="selectedJobDossier" class="fixed inset-y-0 right-0 z-50 w-full max-w-xl bg-[#FAFAF9] shadow-[-20px_0_50px_rgba(0,0,0,0.1)] flex flex-col border-l border-slate-200">
+        <!-- Drawer Header (Premium) -->
+        <div class="bg-white px-8 py-8 border-b border-slate-100 flex justify-between items-start z-10 relative overflow-hidden">
+          <div class="absolute inset-0 bg-gradient-to-br from-amber-500/[0.03] to-transparent pointer-events-none"></div>
+          <div class="flex items-start gap-5 relative z-10">
+             <div class="w-16 h-16 bg-slate-950 rounded-2xl flex items-center justify-center text-amber-500 font-black text-3xl shadow-xl shadow-slate-900/10">
                {{ selectedJobDossier.client_name.charAt(0) }}
              </div>
              <div>
-               <h2 class="text-2xl font-black text-slate-900">{{ selectedJobDossier.client_name }}</h2>
-               <p class="text-slate-500 font-bold text-sm flex items-center mt-1">
-                 <PhoneIcon class="w-3.5 h-3.5 mr-1 text-slate-400" /> {{ selectedJobDossier.client_phone || 'Pas de téléphone' }}
-               </p>
+               <h2 class="text-3xl font-black text-slate-900 tracking-tight leading-tight">{{ selectedJobDossier.client_name }}</h2>
+               <div class="flex items-center gap-4 mt-2">
+                 <p class="text-slate-400 font-bold text-[11px] flex items-center uppercase tracking-widest">
+                   <PhoneIcon class="w-3.5 h-3.5 mr-1.5 text-amber-500" /> {{ selectedJobDossier.client_phone || 'N/A' }}
+                 </p>
+                 <span class="w-1 h-1 rounded-full bg-slate-200"></span>
+                 <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ selectedJobDossier.queue_number }}</p>
+               </div>
              </div>
           </div>
-          <button @click="selectedJobDossier = null" class="p-2 bg-slate-100 text-slate-500 rounded-xl hover:bg-slate-200 transition-colors">
-            <XIcon class="w-6 h-6" />
+          <button @click="selectedJobDossier = null" class="w-10 h-10 bg-slate-50 text-slate-400 rounded-xl hover:text-rose-500 hover:bg-rose-50 transition-all active:scale-95">
+            <XIcon class="w-5 h-5 mx-auto" />
           </button>
         </div>
 
@@ -358,7 +392,7 @@
               </div>
               <div class="text-center">
                 <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Attente</p>
-                <p class="text-lg font-black text-brand-600">{{ formatWaiting(selectedJobDossier.waiting_minutes) }}</p>
+                <p class="text-lg font-black text-amber-600">{{ formatWaiting(selectedJobDossier.waiting_minutes) }}</p>
               </div>
             </div>
 
@@ -399,7 +433,7 @@
           <!-- CRM Lookup (Financial Details) -->
           <div class="space-y-6">
             <h3 class="text-lg font-black text-slate-800 flex items-center">
-              <CreditCardIcon class="w-5 h-5 mr-2 text-brand-500" /> Informations Client (ERP)
+              <CreditCardIcon class="w-5 h-5 mr-2 text-amber-500" /> Informations Client (ERP)
             </h3>
 
             <div v-if="isFetchingClientHistory" class="py-12 text-center text-slate-400">
@@ -516,7 +550,7 @@ import {
   UsersIcon, HourglassIcon, CheckIcon, PackageCheckIcon,
   LayersIcon, InfoIcon, ClipboardListIcon, ArrowLeftIcon,
   EyeIcon, PhoneIcon, CalendarIcon, CreditCardIcon,
-  UserIcon, FileTextIcon, PrinterIcon
+  UserIcon, FileTextIcon, PrinterIcon, ZapIcon
 } from 'lucide-vue-next';
 
 const queue = ref([]);
@@ -552,6 +586,12 @@ const onClientInput = () => {
   form.value.client_name = clientSearch.value;
   form.value.client_phone = '';
   showClientDropdown.value = true;
+};
+
+const onClientBlur = () => {
+  setTimeout(() => {
+    showClientDropdown.value = false;
+  }, 200);
 };
 
 const fetchClients = async () => {
@@ -683,8 +723,13 @@ const form = ref({
   client_name: '',
   client_phone: '',
   services: [],
-  notes: ''
+  notes: '',
+  tefsil_file: null
 });
+
+const onFileChange = (e) => {
+  form.value.tefsil_file = e.target.files[0];
+};
 
 const quickServices = ['Découpe', 'Pose Canto', 'Ponçage', 'Finition', 'Assemblage', 'Perçage'];
 
@@ -694,8 +739,6 @@ const stats = computed(() => [
   { label: 'Prêts', value: queue.value.filter(j => j.status === 'done').length, icon: CheckCircleIcon, bg: 'bg-emerald-100/50', color: 'text-emerald-600' },
   { label: 'Total Journée', value: queue.value.length, icon: UsersIcon, bg: 'bg-slate-900', color: 'text-white' }
 ]);
-
-
 
 const isServiceSelected = (label) => form.value.services.some(s => s.label === label);
 
@@ -723,10 +766,23 @@ const addCustomService = () => {
 const submitJob = async () => {
   if (form.value.services.length === 0) return toast.warning('Veuillez ajouter au moins une tâche.');
   isSubmitting.value = true;
+  
   try {
-    await axios.post('/api/admin/workshop-queue', form.value);
+    const formData = new FormData();
+    formData.append('client_name', form.value.client_name);
+    formData.append('client_phone', form.value.client_phone);
+    formData.append('notes', form.value.notes);
+    formData.append('services', JSON.stringify(form.value.services));
+    if (form.value.tefsil_file) {
+      formData.append('tefsil_file', form.value.tefsil_file);
+    }
+
+    await axios.post('/api/admin/workshop-queue', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    
     showAddModal.value = false;
-    form.value = { client_name: '', client_phone: '', services: [], notes: '' };
+    form.value = { client_name: '', client_phone: '', services: [], notes: '', tefsil_file: null };
     clientSearch.value = '';
     fetchQueue();
   } catch (error) {
@@ -753,6 +809,19 @@ const undeliverJob = async (job) => {
     fetchQueue();
   } catch (error) {
     toast.error('Erreur lors de l\'annulation de la livraison.');
+  }
+};
+
+const togglePriority = async (job) => {
+  try {
+    const res = await axios.post(`/api/admin/workshop-queue/${job.id}/toggle-priority`);
+    if (res.data.success) {
+      job.is_priority = res.data.is_priority;
+      toast.success(res.data.message);
+      fetchQueue(); // Refresh to re-sort
+    }
+  } catch (e) {
+    toast.error('Erreur lors du changement de priorité');
   }
 };
 

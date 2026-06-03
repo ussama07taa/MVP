@@ -385,7 +385,7 @@
                 </div>
                 <div class="mt-3 flex items-center justify-between">
                    <div class="h-1.5 flex-1 bg-white/5 rounded-full overflow-hidden mr-3">
-                      <div class="h-full bg-indigo-500 rounded-full" style="width: 65%"></div>
+                      <div class="h-full bg-indigo-500 rounded-full transition-all duration-1000" :style="`width: ${creditRatioPercent}%`"></div>
                    </div>
                    <span class="text-[10px] font-bold text-indigo-400 tracking-tighter">Liquidité potentielle</span>
                 </div>
@@ -402,7 +402,7 @@
                 </div>
                 <div class="mt-3 flex items-center justify-between">
                    <div class="h-1.5 flex-1 bg-white/5 rounded-full overflow-hidden mr-3">
-                      <div class="h-full bg-rose-500 rounded-full" style="width: 40%"></div>
+                      <div class="h-full bg-rose-500 rounded-full transition-all duration-1000" :style="`width: ${100 - creditRatioPercent}%`"></div>
                    </div>
                    <span class="text-[10px] font-bold text-rose-400 tracking-tighter">Engagement court terme</span>
                 </div>
@@ -424,6 +424,48 @@
                </div>
             </div>
           </div>
+
+          <!-- OPEX Intelligence Widget -->
+          <Link v-if="userRole === 'admin'" href="/admin/charges" class="block group">
+            <div class="bg-white rounded-3xl border border-slate-200/60 shadow-[0_8px_32px_rgb(0,0,0,0.05)] p-7 hover:shadow-lg transition-all duration-300">
+              <div class="flex justify-between items-center mb-5">
+                <div class="flex items-center gap-3">
+                  <div class="w-10 h-10 bg-rose-50 rounded-xl flex items-center justify-center border border-rose-100 group-hover:scale-110 transition-transform">
+                    <TrendingDownIcon class="w-5 h-5 text-rose-500" />
+                  </div>
+                  <div>
+                    <h3 class="text-sm font-black text-slate-800 tracking-tight">Charges OPEX</h3>
+                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Ce mois</p>
+                  </div>
+                </div>
+                <ArrowUpRightIcon class="w-4 h-4 text-slate-300 group-hover:text-rose-500 transition-colors" />
+              </div>
+
+              <div class="flex items-baseline gap-2 mb-4">
+                <span class="text-3xl font-black text-slate-900 tabular-nums tracking-tighter">{{ formatDH(stats.total_expenses) }}</span>
+                <span class="text-sm font-bold text-slate-400">DH</span>
+              </div>
+
+              <!-- OPEX Health Bar -->
+              <div class="space-y-2">
+                <div class="flex justify-between text-[10px] font-black uppercase tracking-wider">
+                  <span class="text-slate-400">Impact sur marge brute</span>
+                  <span :class="opexRatio > 60 ? 'text-rose-500' : 'text-emerald-500'">{{ opexRatio }}%</span>
+                </div>
+                <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div class="h-full rounded-full transition-all duration-1000" 
+                       :class="opexRatio > 60 ? 'bg-gradient-to-r from-rose-400 to-rose-600' : 'bg-gradient-to-r from-emerald-400 to-emerald-500'"
+                       :style="`width: ${Math.min(100, opexRatio)}%`"></div>
+                </div>
+                <p v-if="opexRatio > 60" class="text-[9px] font-black text-rose-500 uppercase tracking-widest flex items-center gap-1">
+                  <AlertTriangleIcon class="w-3 h-3" /> Charges élevées — Optimisation recommandée
+                </p>
+                <p v-else class="text-[9px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-1">
+                  <ShieldCheckIcon class="w-3 h-3" /> Charges maîtrisées
+                </p>
+              </div>
+            </div>
+          </Link>
 
           <!-- Revenue Breakdown (Admin only) -->
           <div v-if="userRole === 'admin'" class="bg-gradient-to-br from-slate-900 via-[#0f1f3d] to-slate-900 rounded-3xl border border-slate-700/50 shadow-[0_20px_50px_rgba(0,0,0,0.25)] p-7 relative overflow-hidden">
@@ -600,6 +642,14 @@ const materialsPct = computed(() => {
   const rev = Number(props.stats?.revenue_today || 0);
   if (rev === 0) return 0;
   return ((Number(props.stats?.materials_revenue_today || 0) / rev) * 100).toFixed(1);
+});
+
+// OPEX Health Ratio (expenses as % of gross profit)
+const opexRatio = computed(() => {
+  const gross = Number(props.stats?.gross_profit || 0);
+  if (gross <= 0) return 0;
+  const expenses = Number(props.stats?.total_expenses || 0);
+  return Math.round((expenses / gross) * 100);
 });
 
 // ===== Charts =====
