@@ -1,472 +1,613 @@
 <template>
   <ToastNotification />
   <InvoiceTemplate v-if="printData" v-bind="printData" />
-  <div class="flex h-screen bg-surface font-sans overflow-hidden shadow-none print:hidden">
+  <div class="flex h-screen bg-surface font-sans overflow-hidden print:hidden">
 
     <!-- ===== MOBILE OVERLAY ===== -->
     <transition name="fade">
-      <div v-if="isMobileMenuOpen" 
-           class="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-sm md:hidden"
+      <div v-if="isMobileMenuOpen"
+           class="fixed inset-0 z-40 bg-slate-900/70 backdrop-blur-sm md:hidden"
            @click="isMobileMenuOpen = false">
       </div>
     </transition>
 
     <!-- ===== SIDEBAR ===== -->
     <transition name="slide">
-      <div class="fixed inset-y-0 left-0 z-50 w-72 bg-[#0f172a] text-white flex flex-col shadow-2xl
-                  md:relative md:translate-x-0 md:flex border-r border-slate-800/40"
-           :class="isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'">
+      <aside
+        class="fixed inset-y-0 left-0 z-50 flex flex-col
+               md:relative md:translate-x-0
+               border-r border-white/5 transition-all duration-300 ease-in-out"
+        :class="[
+          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
+          isSidebarCollapsed ? 'w-20' : 'w-[268px]'
+        ]"
+        style="background: linear-gradient(160deg, #0f172a 0%, #1a1040 60%, #0f172a 100%);">
 
-        <!-- Logo & Close btn (mobile) -->
-        <div class="p-8 flex items-center justify-between">
-          <div class="flex items-center space-x-4">
-            <div class="relative group">
-              <div class="absolute -inset-1 bg-gradient-to-tr from-brand-600 to-indigo-600 rounded-2xl blur opacity-25 group-hover:opacity-75 transition duration-1000"></div>
-              <div class="relative w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-premium overflow-hidden p-1.5">
-                 <img src="/assets/logo.png" alt="Logo" class="w-full h-full object-contain">
+        <!-- Decorative top glow -->
+        <div class="absolute top-0 left-0 right-0 h-64 pointer-events-none overflow-hidden rounded-b-3xl">
+          <div class="absolute -top-20 -left-10 w-60 h-60 bg-brand-600/20 rounded-full blur-3xl"></div>
+          <div class="absolute -top-10 right-0 w-40 h-40 bg-violet-600/10 rounded-full blur-3xl"></div>
+        </div>
+
+        <!-- ===== LOGO HEADER ===== -->
+        <div class="relative z-10 px-5 pt-6 pb-5 flex items-center justify-between border-b border-white/5 overflow-hidden">
+          <div class="flex items-center gap-3 transition-opacity duration-300" :class="isSidebarCollapsed ? 'opacity-0 invisible w-0' : 'opacity-100 visible w-full'">
+            <!-- Logo mark -->
+            <div class="relative">
+              <div class="absolute -inset-1 bg-gradient-to-tr from-brand-500 to-violet-500 rounded-xl blur opacity-50"></div>
+              <div class="relative w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg overflow-hidden p-1">
+                <img src="/assets/logo.png" alt="Logo" class="w-full h-full object-contain">
               </div>
             </div>
-            <div>
-              <h2 class="text-2xl font-black tracking-tighter text-white leading-none">{{ companyShortName }}</h2>
-              <p class="text-[9px] font-black text-brand-500 uppercase tracking-[0.3em] mt-1">ERP PRO</p>
+            <!-- Brand text -->
+            <div class="min-w-0">
+              <h2 class="text-base font-bold text-white leading-none tracking-tight font-heading truncate">{{ companyShortName }}</h2>
+              <p class="text-[9px] font-semibold tracking-[0.25em] uppercase mt-0.5"
+                 style="color: #818cf8;">ERP PRO</p>
             </div>
           </div>
-          <!-- Close button on mobile -->
-          <button @click="isMobileMenuOpen = false" class="md:hidden p-2 text-slate-400 hover:text-white transition-colors rounded-xl hover:bg-slate-800">
-            <XIcon class="w-5 h-5" />
+          <!-- Collapse Toggle (Desktop) -->
+          <button @click="toggleSidebar"
+                  class="hidden md:flex items-center justify-center p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-all"
+                  :class="isSidebarCollapsed ? 'mx-auto' : ''">
+            <ChevronRightIcon class="w-5 h-5 transition-transform duration-500" :class="isSidebarCollapsed ? '' : 'rotate-180'" />
+          </button>
+          <!-- Mobile close -->
+          <button @click="isMobileMenuOpen = false"
+                  class="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all">
+            <XIcon class="w-4 h-4" />
           </button>
         </div>
 
-        <!-- Nav Links -->
-        <nav class="flex-1 px-4 py-8 space-y-2 overflow-y-auto custom-scrollbar" @click="closeMobileOnNav">
-          <!-- Worker ONLY sees the mobile execution board -->
+        <!-- ===== NAVIGATION ===== -->
+        <nav class="flex-1 px-3 py-4 overflow-y-auto sidebar-scrollbar space-y-0.5" @click="closeMobileOnNav">
+
+          <!-- Worker view -->
           <template v-if="userRole === 'worker'">
-            <div class="pt-4 pb-2 px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Atelier</div>
-            <Link href="/admin/atelier" class="nav-link" :class="{ 'nav-link-active': $page.url === '/admin/atelier' }">
-              <UserCheckIcon class="w-5 h-5 mr-3 text-emerald-400" /> Atelier (Mobile)
-            </Link>
+            <SidebarSection label="Atelier" :collapsed="isSidebarCollapsed" />
+            <SidebarLink href="/admin/atelier" :active="$page.url === '/admin/atelier'" :collapsed="isSidebarCollapsed">
+              <UserCheckIcon class="w-4 h-4" />
+              Atelier (Mobile)
+            </SidebarLink>
           </template>
 
-          <!-- Admins & Cashiers see administrative tools -->
+          <!-- Admin / Cashier view -->
           <template v-if="userRole === 'admin' || userRole === 'cashier'">
-            <Link href="/admin/dashboard" class="nav-link" :class="{ 'nav-link-active': $page.url === '/admin/dashboard' }">
-              <LayoutGridIcon class="w-5 h-5 mr-3" /> Tableau de Bord
-            </Link>
-            
-            <div class="pt-4 pb-2 px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Opérations</div>
-            <Link href="/admin/invoices" class="nav-link" :class="{ 'nav-link-active': $page.url === '/admin/invoices' }">
-              <ReceiptIcon class="w-5 h-5 mr-3" /> Factures & Devis
-            </Link>
-            <Link href="/admin/orders" class="nav-link" :class="{ 'nav-link-active': $page.url === '/admin/orders' }">
-              <FileTextIcon class="w-5 h-5 mr-3" /> Ventes (POS)
-            </Link>
-            <a href="/pos" class="nav-link text-amber-400 hover:text-amber-300">
-              <PlusCircleIcon class="w-5 h-5 mr-3" /> Ouvrir la Caisse
+
+            <!-- Dashboard -->
+            <SidebarLink href="/admin/dashboard" :active="$page.url === '/admin/dashboard'" featured :collapsed="isSidebarCollapsed">
+              <LayoutGridIcon class="w-4 h-4" />
+              Tableau de Bord
+            </SidebarLink>
+
+            <SidebarSection label="Opérations" :collapsed="isSidebarCollapsed" />
+
+            <SidebarLink href="/admin/invoices" :active="$page.url === '/admin/invoices'" :collapsed="isSidebarCollapsed">
+              <ReceiptIcon class="w-4 h-4" />
+              Factures &amp; Devis
+            </SidebarLink>
+            <SidebarLink href="/admin/orders" :active="$page.url === '/admin/orders'" :collapsed="isSidebarCollapsed">
+              <FileTextIcon class="w-4 h-4" />
+              Ventes (POS)
+            </SidebarLink>
+
+            <!-- Caisse CTA special -->
+            <a href="/pos"
+               class="group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold mt-1 mb-1 transition-all duration-200 cursor-pointer overflow-hidden"
+               :class="isSidebarCollapsed ? 'justify-center' : ''"
+               style="background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(217,119,6,0.08)); border: 1px solid rgba(245,158,11,0.25); color: #fbbf24;">
+              <div class="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
+                   style="background: rgba(245,158,11,0.2);">
+                <PlusCircleIcon class="w-3.5 h-3.5 text-amber-400" />
+              </div>
+              <span v-if="!isSidebarCollapsed">Ouvrir la Caisse</span>
+              <ZapIcon v-if="!isSidebarCollapsed" class="w-3.5 h-3.5 ml-auto opacity-60 group-hover:opacity-100 transition-opacity" />
             </a>
-            <Link href="/admin/workshop-queue" class="nav-link" :class="{ 'nav-link-active': $page.url === '/admin/workshop-queue' }">
-              <ClipboardListIcon class="w-5 h-5 mr-3 text-indigo-400" /> File d'attente (Admin)
-            </Link>
-            <Link href="/admin/atelier" class="nav-link" :class="{ 'nav-link-active': $page.url === '/admin/atelier' }">
-              <UserCheckIcon class="w-5 h-5 mr-3 text-emerald-400" /> Atelier (Mobile)
-            </Link>
-            <Link href="/admin/workshop-stats" class="nav-link" :class="{ 'nav-link-active': $page.url === '/admin/workshop-stats' }">
-              <BarChart3Icon class="w-5 h-5 mr-3 text-amber-400" /> Stats Atelier
-            </Link>
+
+            <SidebarLink href="/admin/workshop-queue" :active="$page.url === '/admin/workshop-queue'" :collapsed="isSidebarCollapsed">
+              <ClipboardListIcon class="w-4 h-4" />
+              File d'attente
+            </SidebarLink>
+            <SidebarLink href="/admin/atelier" :active="$page.url === '/admin/atelier'" :collapsed="isSidebarCollapsed">
+              <UserCheckIcon class="w-4 h-4" />
+              Atelier Mobile
+            </SidebarLink>
+            <SidebarLink href="/admin/workshop-stats" :active="$page.url === '/admin/workshop-stats'" :collapsed="isSidebarCollapsed">
+              <BarChart3Icon class="w-4 h-4" />
+              Stats Atelier
+            </SidebarLink>
 
             <template v-if="userRole === 'admin'">
-              <div class="pt-4 pb-2 px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Inventaire & Achats</div>
-              
-              <div class="space-y-1">
-                <button @click="stockMenuOpen = !stockMenuOpen" class="w-full flex items-center justify-between px-4 py-3 text-slate-400 rounded-xl font-bold text-sm transition-all duration-200 hover:bg-slate-800 hover:text-white" :class="{ 'bg-slate-800 text-white': stockMenuOpen || isStockActive }">
-                  <div class="flex items-center">
-                    <LayersIcon class="w-5 h-5 mr-3" :class="{ 'text-brand-400': isStockActive }" />
-                    <span :class="{ 'text-white': isStockActive }">Gestion de Stock</span>
-                  </div>
-                  <ChevronDownIcon class="w-4 h-4 transition-transform duration-300" :class="{ 'rotate-180': stockMenuOpen }" />
-                </button>
-                <div v-show="stockMenuOpen" class="pl-12 pr-2 py-2 space-y-1">
-                  <Link href="/admin/stock-mdf" class="nav-sub-link" :class="{ 'nav-sub-link-active': $page.url === '/admin/stock-mdf' }">Stock MDF / LATI</Link>
-                  <Link href="/admin/stock-canto" class="nav-sub-link" :class="{ 'nav-sub-link-active': $page.url === '/admin/stock-canto' }">Stock Bandchant</Link>
-                </div>
-              </div>
+              <SidebarSection label="Inventaire &amp; Achats" :collapsed="isSidebarCollapsed" />
 
-              <div class="space-y-1 mt-1">
-                <button @click="achatsMenuOpen = !achatsMenuOpen" class="w-full flex items-center justify-between px-4 py-3 text-slate-400 rounded-xl font-bold text-sm transition-all duration-200 hover:bg-slate-800 hover:text-white" :class="{ 'bg-slate-800 text-white': achatsMenuOpen || isAchatsActive }">
-                  <div class="flex items-center">
-                    <TruckIcon class="w-5 h-5 mr-3" :class="{ 'text-brand-400': isAchatsActive }" />
-                    <span :class="{ 'text-white': isAchatsActive }">Achats & Fournisseurs</span>
-                  </div>
-                  <ChevronDownIcon class="w-4 h-4 transition-transform duration-300" :class="{ 'rotate-180': achatsMenuOpen }" />
-                </button>
-                <div v-show="achatsMenuOpen" class="pl-12 pr-2 py-2 space-y-1">
-                  <Link href="/admin/achats" class="nav-sub-link" :class="{ 'nav-sub-link-active': $page.url === '/admin/achats' }">Réception Achats</Link>
-                  <Link href="/admin/achats-historique" class="nav-sub-link" :class="{ 'nav-sub-link-active': $page.url === '/admin/achats-historique' }">Historique des Achats</Link>
-                  <Link href="/admin/fournisseurs" class="nav-sub-link" :class="{ 'nav-sub-link-active': $page.url === '/admin/fournisseurs' }">Fournisseurs & Dettes</Link>
-                </div>
-              </div>
+              <!-- Stock submenu -->
+              <SidebarGroup icon="layers" label="Gestion de Stock"
+                            :open="stockMenuOpen" :active="isStockActive"
+                            :collapsed="isSidebarCollapsed"
+                            @toggle="stockMenuOpen = !stockMenuOpen">
+                <SidebarSubLink href="/admin/stock-mdf"   :active="$page.url === '/admin/stock-mdf'">Stock MDF / LATI</SidebarSubLink>
+                <SidebarSubLink href="/admin/stock-canto" :active="$page.url === '/admin/stock-canto'">Stock Bandchant</SidebarSubLink>
+              </SidebarGroup>
+
+              <!-- Achats submenu -->
+              <SidebarGroup icon="truck" label="Achats &amp; Fournisseurs"
+                            :open="achatsMenuOpen" :active="isAchatsActive"
+                            :collapsed="isSidebarCollapsed"
+                            @toggle="achatsMenuOpen = !achatsMenuOpen">
+                <SidebarSubLink href="/admin/achats"            :active="$page.url === '/admin/achats'">Réception Achats</SidebarSubLink>
+                <SidebarSubLink href="/admin/achats-historique" :active="$page.url === '/admin/achats-historique'">Historique des Achats</SidebarSubLink>
+                <SidebarSubLink href="/admin/fournisseurs"      :active="$page.url === '/admin/fournisseurs'">Fournisseurs &amp; Dettes</SidebarSubLink>
+              </SidebarGroup>
             </template>
 
-            <div class="pt-4 pb-2 px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Relation Client</div>
-            <Link href="/admin/clients" class="nav-link" :class="{ 'nav-link-active': $page.url === '/admin/clients' }">
-              <UsersIcon class="w-5 h-5 mr-3" /> Clients & Crédits
-            </Link>
-            
-            <template v-if="userRole === 'admin'">
-              <div class="pt-4 pb-2 px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Ressources Humaines</div>
-              <div class="space-y-1">
-                <button @click="hrMenuOpen = !hrMenuOpen" class="w-full flex items-center justify-between px-4 py-3 text-slate-400 rounded-xl font-bold text-sm transition-all duration-200 hover:bg-slate-800 hover:text-white" :class="{ 'bg-slate-800 text-white': hrMenuOpen || isHrActive }">
-                  <div class="flex items-center">
-                    <HardHatIcon class="w-5 h-5 mr-3" :class="{ 'text-brand-400': isHrActive }" />
-                    <span :class="{ 'text-white': isHrActive }">Gestion du Personnel</span>
-                  </div>
-                  <ChevronDownIcon class="w-4 h-4 transition-transform duration-300" :class="{ 'rotate-180': hrMenuOpen }" />
-                </button>
-                <div v-show="hrMenuOpen" class="pl-12 pr-2 py-2 space-y-1">
-                  <Link href="/admin/employees" class="nav-sub-link" :class="{ 'nav-sub-link-active': $page.url === '/admin/employees' }">Équipe & Salaf</Link>
-                  <Link href="/admin/attendance" class="nav-sub-link" :class="{ 'nav-sub-link-active': $page.url === '/admin/attendance' }">Pointage Quotidien</Link>
-                  <Link href="/admin/payroll" class="nav-sub-link" :class="{ 'nav-sub-link-active': $page.url === '/admin/payroll' }">Paie Hebdomadaire</Link>
-                </div>
-              </div>
-              <Link href="/admin/charges" class="nav-link" :class="{ 'nav-link-active': $page.url === '/admin/charges' }">
-                <ReceiptIcon class="w-5 h-5 mr-3" /> Charges & Dépenses
-              </Link>
+            <SidebarSection label="Relation Client" :collapsed="isSidebarCollapsed" />
+            <SidebarLink href="/admin/clients" :active="$page.url === '/admin/clients'" :collapsed="isSidebarCollapsed">
+              <UsersIcon class="w-4 h-4" />
+              Clients &amp; Crédits
+            </SidebarLink>
 
-              <div class="pt-4 pb-2 px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Configuration & Rapports</div>
-              <Link href="/admin/services" class="nav-link" :class="{ 'nav-link-active': $page.url === '/admin/services' }">
-                <SettingsIcon class="w-5 h-5 mr-3" /> Services & Tarifs
-              </Link>
-              <Link href="/admin/settings" class="nav-link" :class="{ 'nav-link-active': $page.url === '/admin/settings' }">
-                <SlidersIcon class="w-5 h-5 mr-3" /> Paramètres
-              </Link>
-              <Link href="/admin/statistiques" class="nav-link" :class="{ 'nav-link-active': $page.url === '/admin/statistiques' }">
-                <PieChartIcon class="w-5 h-5 mr-3" /> Statistiques & Arbah
-              </Link>
-              <Link href="/admin/reports" class="nav-link" :class="{ 'nav-link-active': $page.url === '/admin/reports' }">
-                <FileTextIcon class="w-5 h-5 mr-3 text-violet-400" /> Rapports PDF
-              </Link>
-              <Link href="/admin/system-logs" class="nav-link" :class="{ 'nav-link-active': $page.url === '/admin/system-logs' }">
-                <ActivityIcon class="w-5 h-5 mr-3" /> Audit & Activités
-              </Link>
-              <Link href="/admin/users" class="nav-link" :class="{ 'nav-link-active': $page.url === '/admin/users' }">
-                <ShieldIcon class="w-5 h-5 mr-3" /> Utilisateurs & Accès
-              </Link>
-              <Link href="/admin/backups" class="nav-link" :class="{ 'nav-link-active': $page.url === '/admin/backups' }">
-                <DatabaseIcon class="w-5 h-5 mr-3 text-emerald-400" /> Sauvegardes
-              </Link>
+            <template v-if="userRole === 'admin'">
+              <SidebarSection label="Ressources Humaines" :collapsed="isSidebarCollapsed" />
+
+              <!-- HR submenu -->
+              <SidebarGroup icon="hardhat" label="Gestion du Personnel"
+                            :open="hrMenuOpen" :active="isHrActive"
+                            :collapsed="isSidebarCollapsed"
+                            @toggle="hrMenuOpen = !hrMenuOpen">
+                <SidebarSubLink href="/admin/employees"  :active="$page.url === '/admin/employees'">Équipe &amp; Salaf</SidebarSubLink>
+                <SidebarSubLink href="/admin/attendance" :active="$page.url === '/admin/attendance'">Pointage Quotidien</SidebarSubLink>
+                <SidebarSubLink href="/admin/payroll"    :active="$page.url === '/admin/payroll'">Paie Hebdomadaire</SidebarSubLink>
+              </SidebarGroup>
+
+              <SidebarLink href="/admin/charges" :active="$page.url === '/admin/charges'" :collapsed="isSidebarCollapsed">
+                <ReceiptIcon class="w-4 h-4" />
+                Charges &amp; Dépenses
+              </SidebarLink>
+
+              <SidebarSection label="Configuration" :collapsed="isSidebarCollapsed" />
+              <SidebarLink href="/admin/services"   :active="$page.url === '/admin/services'" :collapsed="isSidebarCollapsed">
+                <SettingsIcon class="w-4 h-4" />
+                Services &amp; Tarifs
+              </SidebarLink>
+              <SidebarLink href="/admin/settings"   :active="$page.url === '/admin/settings'" :collapsed="isSidebarCollapsed">
+                <SlidersIcon class="w-4 h-4" />
+                Paramètres
+              </SidebarLink>
+              <SidebarLink href="/admin/statistiques" :active="$page.url === '/admin/statistiques'" :collapsed="isSidebarCollapsed">
+                <PieChartIcon class="w-4 h-4" />
+                Statistiques
+              </SidebarLink>
+              <SidebarLink href="/admin/reports"    :active="$page.url === '/admin/reports'" :collapsed="isSidebarCollapsed">
+                <FileTextIcon class="w-4 h-4" style="color: #a78bfa;" />
+                Rapports PDF
+              </SidebarLink>
+              <SidebarLink href="/admin/system-logs" :active="$page.url === '/admin/system-logs'" :collapsed="isSidebarCollapsed">
+                <ActivityIcon class="w-4 h-4" />
+                Audit &amp; Activités
+              </SidebarLink>
+              <SidebarLink href="/admin/users"      :active="$page.url === '/admin/users'" :collapsed="isSidebarCollapsed">
+                <ShieldIcon class="w-4 h-4" />
+                Utilisateurs
+              </SidebarLink>
+              <SidebarLink href="/admin/backups"    :active="$page.url === '/admin/backups'" :collapsed="isSidebarCollapsed">
+                <DatabaseIcon class="w-4 h-4" style="color: #34d399;" />
+                Sauvegardes
+              </SidebarLink>
             </template>
           </template>
         </nav>
-        
-        <!-- Footer User -->
-        <div class="p-6 bg-[#020617]/50 border-t border-slate-800/50 flex items-center group cursor-pointer hover:bg-slate-800/30 transition-all">
-           <div class="relative">
-              <img class="h-11 w-11 rounded-2xl bg-slate-800 flex-shrink-0 border-2 border-slate-700/50 group-hover:border-brand-500 transition-colors" 
-                   :src="'https://ui-avatars.com/api/?name=' + authUser.name + '&background=0D8ABC&color=fff'" alt="User">
-              <span class="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-[#0f172a] rounded-full shadow-lg"></span>
-           </div>
-           <div class="ml-4 overflow-hidden flex-1">
-             <p class="text-sm font-black text-white truncate group-hover:text-brand-400 transition-colors">{{ authUser.name }}</p>
-             <p class="text-[10px] font-black text-slate-500 truncate uppercase tracking-widest">{{ authUser.role }}</p>
-           </div>
-           <ChevronRightIcon class="w-4 h-4 text-slate-600 group-hover:text-white transition-all transform group-hover:translate-x-1" />
+
+        <!-- ===== USER FOOTER ===== -->
+        <div class="relative z-10 p-3 border-t border-white/5">
+          <!-- Logout row -->
+          <div class="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5 transition-all cursor-pointer group overflow-hidden">
+            <!-- Avatar -->
+            <div class="relative shrink-0">
+              <img
+                class="h-9 w-9 rounded-xl object-cover border-2 border-white/10 group-hover:border-brand-500/50 transition-colors"
+                :src="'https://ui-avatars.com/api/?name=' + authUser.name + '&background=4F46E5&color=fff&bold=true'"
+                :alt="authUser.name">
+              <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 border-2 border-[#0f172a] rounded-full"></span>
+            </div>
+            <!-- Info -->
+            <div class="flex-1 min-w-0 transition-opacity duration-300" :class="isSidebarCollapsed ? 'opacity-0 invisible w-0' : 'opacity-100 visible w-full'">
+              <p class="text-sm font-semibold text-white truncate leading-tight">{{ authUser.name }}</p>
+              <p class="text-[10px] font-medium text-slate-500 uppercase tracking-wider">{{ authUser.role }}</p>
+            </div>
+            <!-- Logout -->
+            <button @click.stop="logout"
+                    class="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all"
+                    :class="isSidebarCollapsed ? 'hidden' : ''"
+                    title="Déconnexion">
+              <LogOutIcon class="w-4 h-4" />
+            </button>
+          </div>
         </div>
-      </div>
+
+      </aside>
     </transition>
-    
-    <!-- ===== MAIN CONTENT AREA ===== -->
+
+    <!-- ===== MAIN CONTENT ===== -->
     <div class="flex-1 flex flex-col overflow-hidden relative min-w-0">
-      <!-- TopBar -->
-      <header class="bg-white/70 backdrop-blur-2xl border-b border-slate-200/60 px-6 py-4 flex justify-between items-center z-20 sticky top-0">
-        <!-- Hamburger (mobile only) -->
-        <button @click="isMobileMenuOpen = true" 
-                class="md:hidden p-3 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-all active:scale-95">
+
+      <!-- Top Bar -->
+      <header class="bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-5 py-3.5 flex justify-between items-center z-20 sticky top-0">
+        <!-- Hamburger (mobile) -->
+        <button @click="isMobileMenuOpen = true"
+                class="md:hidden p-2.5 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-all active:scale-95">
           <MenuIcon class="w-5 h-5" />
         </button>
 
+        <!-- Page Name -->
         <div class="flex flex-col">
-           <h2 class="text-xl font-black text-slate-900 tracking-tight">{{ pageName }}</h2>
-           <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest hidden sm:block">Tableau de Bord / {{ pageName }}</p>
+          <h2 class="text-base font-bold text-slate-900 leading-tight font-heading">{{ pageName }}</h2>
+          <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest hidden sm:block">
+            Dashboard / {{ pageName }}
+          </p>
         </div>
-        
-        <div class="flex items-center space-x-4">
-           <!-- Notifications Dropdown -->
-           <div class="relative" ref="notificationRef">
-              <div @click="isNotificationsOpen = !isNotificationsOpen" 
-                   class="bg-slate-100/50 p-3 rounded-2xl text-slate-500 hover:text-brand-600 hover:bg-white hover:shadow-premium transition-all cursor-pointer border border-transparent hover:border-slate-100 relative group">
-                 <BellIcon class="w-5 h-5 transition-transform group-hover:rotate-12" />
-                 <span v-if="notifications.length > 0" class="absolute top-2 right-2 w-2.5 h-2.5 bg-rose-500 border-2 border-white rounded-full animate-bounce"></span>
-              </div>
 
-              <!-- Dropdown Content -->
-              <transition name="fade-slide">
-                 <div v-if="isNotificationsOpen" class="absolute right-0 mt-4 w-80 bg-white rounded-[32px] shadow-2xl border border-slate-100 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200">
-                    <div class="p-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
-                       <h4 class="text-sm font-black text-slate-900 uppercase tracking-widest">Alertes Système</h4>
-                       <span v-if="notifications.length > 0" class="px-2 py-1 bg-brand-50 text-brand-600 text-[10px] font-black rounded-lg">{{ notifications.length }}</span>
+        <!-- Right actions -->
+        <div class="flex items-center gap-3">
+          <!-- Search Trigger (Desktop) -->
+          <button @click="searchRef?.open()" 
+                  class="hidden md:flex items-center gap-3 px-4 py-2 rounded-xl bg-slate-100/60 border border-transparent 
+                         hover:bg-white hover:border-slate-200 hover:shadow-sm text-slate-400 hover:text-slate-600 transition-all cursor-pointer">
+            <SearchIcon class="w-4 h-4" />
+            <span class="text-xs font-bold uppercase tracking-widest">Rechercher...</span>
+            <span class="text-[9px] font-black border border-slate-200 px-1.5 py-0.5 rounded-lg opacity-40">Ctrl K</span>
+          </button>
+
+          <!-- Notifications -->
+          <div class="relative" ref="notificationRef">
+            <button @click="isNotificationsOpen = !isNotificationsOpen"
+                    class="relative p-2.5 rounded-xl text-slate-500 bg-slate-100/60 border border-transparent
+                           hover:bg-white hover:border-slate-200 hover:text-brand-600 hover:shadow-sm
+                           transition-all duration-200 cursor-pointer">
+              <BellIcon class="w-4.5 h-4.5 w-5 h-5" />
+              <span v-if="notifications.length > 0"
+                    class="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 border-2 border-white rounded-full animate-pulse"></span>
+            </button>
+
+            <transition name="fade-slide">
+              <div v-if="isNotificationsOpen"
+                   class="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-50">
+                <div class="px-5 py-4 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
+                  <h4 class="text-xs font-bold text-slate-900 uppercase tracking-widest font-heading">Alertes Système</h4>
+                  <span v-if="notifications.length > 0"
+                        class="px-2 py-0.5 bg-brand-50 text-brand-600 text-[10px] font-bold rounded-lg border border-brand-100">
+                    {{ notifications.length }}
+                  </span>
+                </div>
+                <div class="max-h-72 overflow-y-auto custom-scrollbar">
+                  <div v-for="note in notifications" :key="note.id"
+                       class="px-5 py-4 hover:bg-slate-50 border-b border-slate-50 transition-colors cursor-pointer">
+                    <div class="flex gap-3">
+                      <div :class="note.colorClass" class="w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center">
+                        <component :is="note.icon" class="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p class="text-xs font-semibold text-slate-800">{{ note.title }}</p>
+                        <p class="text-[10px] text-slate-500 mt-0.5 leading-relaxed">{{ note.message }}</p>
+                      </div>
                     </div>
-                    <div class="max-h-[350px] overflow-y-auto custom-scrollbar">
-                       <div v-for="note in notifications" :key="note.id" class="p-5 hover:bg-slate-50 border-b border-slate-50 transition-colors cursor-pointer group">
-                          <div class="flex gap-4">
-                             <div :class="note.colorClass" class="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center shadow-sm">
-                                <component :is="note.icon" class="w-5 h-5" />
-                             </div>
-                             <div>
-                                <p class="text-xs font-black text-slate-800 group-hover:text-brand-600 transition-colors">{{ note.title }}</p>
-                                <p class="text-[10px] text-slate-500 mt-1 font-medium leading-relaxed">{{ note.message }}</p>
-                             </div>
-                          </div>
-                       </div>
-                       <div v-if="notifications.length === 0" class="p-12 text-center text-slate-300">
-                          <BellIcon class="w-12 h-12 mx-auto mb-3 opacity-20" />
-                          <p class="text-xs font-bold uppercase tracking-widest">Aucune notification</p>
-                       </div>
-                    </div>
-                    <div v-if="notifications.length > 0" class="p-4 bg-slate-50 text-center border-t border-slate-100">
-                       <button @click="notifications = []" class="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-rose-500 transition-colors">Tout effacer</button>
-                    </div>
-                 </div>
-              </transition>
-           </div>
-           <div class="h-8 w-px bg-slate-200 mx-2"></div>
-           
-           <button @click="logout" class="p-3 text-slate-400 hover:text-rose-500 transition-colors" title="Déconnexion">
-              <LogOutIcon class="w-5 h-5" />
-           </button>
+                  </div>
+                  <div v-if="notifications.length === 0" class="py-10 text-center text-slate-300">
+                    <BellIcon class="w-10 h-10 mx-auto mb-2 opacity-30" />
+                    <p class="text-xs font-semibold uppercase tracking-widest">Aucune notification</p>
+                  </div>
+                </div>
+                <div v-if="notifications.length > 0" class="p-3 bg-slate-50 text-center border-t border-slate-100">
+                  <button @click="notifications = []" class="text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-rose-500 transition-colors cursor-pointer">
+                    Tout effacer
+                  </button>
+                </div>
+              </div>
+            </transition>
+          </div>
+
+          <div class="h-6 w-px bg-slate-200 mx-1"></div>
+
+          <!-- User mini pill -->
+          <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 cursor-default">
+            <img :src="'https://ui-avatars.com/api/?name=' + authUser.name + '&background=4F46E5&color=fff&bold=true&size=32'"
+                 class="w-6 h-6 rounded-lg" :alt="authUser.name">
+            <span class="text-sm font-semibold text-slate-700 hidden sm:block">{{ authUser.name.split(' ')[0] }}</span>
+          </div>
         </div>
       </header>
-      
+
       <!-- Page Content -->
-      <main class="flex-1 overflow-x-hidden overflow-y-auto bg-surface p-4 md:p-6 lg:p-10">
-        <slot />
+      <main class="flex-1 overflow-x-hidden overflow-y-auto bg-surface p-4 md:p-6">
+        <transition name="page-fade" mode="out-in">
+          <slot :key="url" />
+        </transition>
       </main>
     </div>
+
+    <!-- Modals & Globals -->
+    <QuickSearch ref="searchRef" />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, h, resolveComponent } from 'vue';
 import axios from 'axios';
-import { usePage, router } from '@inertiajs/vue3';
+import { usePage, router, Link } from '@inertiajs/vue3';
 import InvoiceTemplate from '@/Components/Print/InvoiceTemplate.vue';
+import ToastNotification from '@/Components/ToastNotification.vue';
+import QuickSearch from '@/Components/QuickSearch.vue';
 
+const searchRef = ref(null);
+const pageProps = usePage();
+const url = computed(() => pageProps.url);
+
+// ─── Print handler ──────────────────────────────────────────────
 const printData = ref(null);
-
 const handleGlobalPrint = (event) => {
   printData.value = event.detail;
-  setTimeout(() => {
-    window.print();
-    // Clear after print to stop it showing on screen
-    setTimeout(() => {
-      printData.value = null;
-    }, 500);
-  }, 300);
+  setTimeout(() => { window.print(); setTimeout(() => { printData.value = null; }, 500); }, 300);
 };
-import { 
-  LayoutGridIcon, FileTextIcon, PlusCircleIcon, LayersIcon, 
+
+// ─── Icons ──────────────────────────────────────────────────────
+import {
+  LayoutGridIcon, FileTextIcon, PlusCircleIcon, LayersIcon,
   UsersIcon, SettingsIcon, BellIcon, HardHatIcon, TruckIcon, ReceiptIcon,
   PieChartIcon, SlidersIcon, ChevronDownIcon, ActivityIcon, ShieldIcon,
-  MenuIcon, XIcon, LogOutIcon, ChevronRightIcon, ClipboardListIcon, UserCheckIcon, BarChart3Icon, DatabaseIcon
+  MenuIcon, XIcon, LogOutIcon, ChevronRightIcon, ClipboardListIcon,
+  UserCheckIcon, BarChart3Icon, DatabaseIcon, ZapIcon, SearchIcon
 } from 'lucide-vue-next';
 
-const page = usePage();
-const hrMenuOpen = ref(false);
-const stockMenuOpen = ref(false);
-const achatsMenuOpen = ref(false);
-const isMobileMenuOpen = ref(false);
-const isNotificationsOpen = ref(false);
-const notifications = ref([]);
+// ─── Inline sub-components ──────────────────────────────────────
 
-const isHrActive = computed(() => {
-  return page.url.includes('/admin/employees') || 
-         page.url.includes('/admin/attendance') || 
-         page.url.includes('/admin/payroll');
-});
-
-const isStockActive = computed(() => {
-  return page.url.includes('/admin/stock-mdf') || 
-         page.url.includes('/admin/stock-canto');
-});
-
-const isAchatsActive = computed(() => {
-  return page.url.includes('/admin/achats') || 
-         page.url.includes('/admin/fournisseurs');
-});
-
-const pageName = computed(() => {
-  const mappings = {
-    '/admin/dashboard': 'Tableau de Bord',
-    '/admin/invoices': 'Factures & Devis',
-    '/admin/orders': 'Ventes (POS)',
-    '/admin/stock-mdf': 'Stock MDF / LATI',
-    '/admin/stock-canto': 'Stock Bandchant',
-    '/admin/achats': 'Réception Achats',
-    '/admin/achats-historique': 'Historique des Achats',
-    '/admin/fournisseurs': 'Fournisseurs & Dettes',
-    '/admin/clients': 'Clients & Crédits',
-    '/admin/employees': 'Équipe & Salaf',
-    '/admin/attendance': 'Pointage Quotidien',
-    '/admin/payroll': 'Paie Hebdomadaire',
-    '/admin/charges': 'Charges & Dépenses',
-    '/admin/services': 'Services & Tarifs',
-    '/admin/settings': 'Paramètres',
-    '/admin/statistiques': 'Statistiques & Arbah',
-    '/admin/system-logs': 'Audit & Activités',
-    '/admin/users': 'Utilisateurs & Accès',
-    '/admin/workshop-queue': 'Tableau de l\'Atelier',
-    '/admin/workshop-stats': 'Stats Atelier',
-    '/admin/backups': 'Sauvegardes',
-    '/admin/atelier': 'Atelier Mobile'
-  };
-  return mappings[page.url] || 'Administration';
-});
-
-// Auto-open menus if active route is inside them
-if (isHrActive.value) hrMenuOpen.value = true;
-if (isStockActive.value) stockMenuOpen.value = true;
-if (isAchatsActive.value) achatsMenuOpen.value = true;
-
-// Close mobile menu when a nav link is clicked
-const closeMobileOnNav = (e) => {
-  if (e.target.closest('a')) {
-    isMobileMenuOpen.value = false;
+/** Section label */
+const SidebarSection = {
+  props: ['label', 'collapsed'],
+  setup(props) {
+    return () => h('div', {
+      class: [
+        'px-3 pt-5 pb-1.5 text-[9px] font-bold uppercase tracking-[0.2em] select-none transition-opacity duration-300',
+        props.collapsed ? 'opacity-0 invisible h-0 py-0' : 'opacity-50'
+      ].join(' '),
+      style: 'color: rgb(148,163,184)'
+    }, props.label)
   }
 };
 
-const authUser = computed(() => page.props.auth.user || { name: 'Utilisateur', role: 'cashier' });
-const userRole = computed(() => authUser.value.role);
-const companyShortName = computed(() => {
-  const s = page.props.settings || {};
-  return s.company_name || 'Mon Entreprise';
-});
+/** Nav link */
+const SidebarLink = {
+  props: { href: String, active: Boolean, featured: Boolean, collapsed: Boolean },
+  setup(props, { slots }) {
+    return () => h(Link, {
+      href: props.href,
+      class: [
+        'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer group',
+        props.active
+          ? 'text-white bg-brand-600 shadow-lg'
+          : props.featured
+            ? 'text-slate-300 hover:text-white hover:bg-white/8'
+            : 'text-slate-400 hover:text-slate-200 hover:bg-white/6',
+      ].join(' '),
+      style: props.active ? 'box-shadow: 0 4px 14px rgba(79,70,229,0.4)' : ''
+    }, () => {
+      const children = slots.default?.() ?? [];
+      const icon  = children[0];             // First child = icon VNode
+      const label = children.slice(1);       // Rest = text node(s)
+      return [
+        h('div', {
+          class: [
+            'w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-colors duration-200',
+            props.active ? 'bg-white/20' : 'bg-white/5 group-hover:bg-white/10'
+          ].join(' ')
+        }, [icon]),
+        h('span', { 
+          class: [
+            'flex-1 truncate transition-all duration-300',
+            props.collapsed ? 'opacity-0 invisible w-0' : 'opacity-100 visible'
+          ].join(' ')
+        }, label)
+      ];
+    })
+  }
+};
 
-// Notifications logic (Fetch low stock etc)
+/** Collapsible group */
+const SidebarGroup = {
+  props: { label: String, open: Boolean, active: Boolean, icon: String, collapsed: Boolean },
+  emits: ['toggle'],
+  setup(props, { slots, emit }) {
+    const iconMap = { layers: LayersIcon, truck: TruckIcon, hardhat: HardHatIcon };
+    return () => {
+      const IconComponent = iconMap[props.icon] ?? LayersIcon;
+      return h('div', { class: 'space-y-0.5' }, [
+        h('button', {
+          onClick: () => emit('toggle'),
+          class: [
+            'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer group',
+            props.active || props.open ? 'text-slate-200 bg-white/8' : 'text-slate-400 hover:text-slate-200 hover:bg-white/6'
+          ].join(' ')
+        }, [
+          h('div', {
+            class: [
+              'w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-colors duration-200',
+              props.active || props.open ? 'bg-white/20' : 'bg-white/5 group-hover:bg-white/10'
+            ].join(' ')
+          }, [h(IconComponent, { class: 'w-3.5 h-3.5' })]),
+          h('span', { 
+            class: [
+              'flex-1 text-left truncate transition-all duration-300',
+              props.collapsed ? 'opacity-0 invisible w-0' : 'opacity-100 visible'
+            ].join(' ')
+          }, props.label),
+          h(ChevronDownIcon, {
+            class: [
+              'w-3.5 h-3.5 text-slate-500 transition-all duration-300', 
+              props.open ? 'rotate-180' : '',
+              props.collapsed ? 'opacity-0 invisible w-0' : 'opacity-100 visible'
+            ].join(' ')
+          })
+        ]),
+        props.open && !props.collapsed
+          ? h('div', { class: 'pl-3 pr-1 pb-1 space-y-0.5' }, slots.default?.())
+          : null
+      ]);
+    };
+  }
+};
+
+/** Sub nav link */
+const SidebarSubLink = {
+  props: { href: String, active: Boolean },
+  setup(props, { slots }) {
+    return () => h(Link, {
+      href: props.href,
+      class: [
+        'flex items-center gap-2.5 pl-4 pr-3 py-2 rounded-xl text-xs font-medium transition-all duration-200 cursor-pointer relative',
+        props.active
+          ? 'text-brand-300 bg-brand-600/15 border border-brand-500/20'
+          : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+      ].join(' ')
+    }, () => [
+      h('span', {
+        class: ['w-1.5 h-1.5 rounded-full shrink-0 transition-colors', props.active ? 'bg-brand-400' : 'bg-slate-600'].join(' ')
+      }),
+      slots.default?.()
+    ])
+  }
+};
+
+// ─── State ──────────────────────────────────────────────────────
+const page = usePage();
+const hrMenuOpen    = ref(false);
+const stockMenuOpen = ref(false);
+const achatsMenuOpen = ref(false);
+const isSidebarCollapsed = ref(localStorage.getItem('sidebarCollapsed') === 'true');
+const toggleSidebar = () => {
+  isSidebarCollapsed.value = !isSidebarCollapsed.value;
+  localStorage.setItem('sidebarCollapsed', isSidebarCollapsed.value);
+};
+
+const isMobileMenuOpen  = ref(false);
+const isNotificationsOpen = ref(false);
+const notifications = ref([]);
+const notificationRef = ref(null);
+
+// ─── Computed ───────────────────────────────────────────────────
+const authUser    = computed(() => page.props.auth.user || { name: 'Utilisateur', role: 'cashier' });
+const userRole    = computed(() => authUser.value.role);
+const companyShortName = computed(() => (page.props.settings || {}).company_name || 'Mon Entreprise');
+
+const isHrActive = computed(() =>
+  ['/admin/employees', '/admin/attendance', '/admin/payroll'].some(p => page.url.includes(p)));
+const isStockActive = computed(() =>
+  ['/admin/stock-mdf', '/admin/stock-canto'].some(p => page.url.includes(p)));
+const isAchatsActive = computed(() =>
+  ['/admin/achats', '/admin/fournisseurs'].some(p => page.url.includes(p)));
+
+const pageName = computed(() => ({
+  '/admin/dashboard':        'Tableau de Bord',
+  '/admin/invoices':         'Factures & Devis',
+  '/admin/orders':           'Ventes (POS)',
+  '/admin/stock-mdf':        'Stock MDF / LATI',
+  '/admin/stock-canto':      'Stock Bandchant',
+  '/admin/achats':           'Réception Achats',
+  '/admin/achats-historique':'Historique des Achats',
+  '/admin/fournisseurs':     'Fournisseurs & Dettes',
+  '/admin/clients':          'Clients & Crédits',
+  '/admin/employees':        'Équipe & Salaf',
+  '/admin/attendance':       'Pointage Quotidien',
+  '/admin/payroll':          'Paie Hebdomadaire',
+  '/admin/charges':          'Charges & Dépenses',
+  '/admin/services':         'Services & Tarifs',
+  '/admin/settings':         'Paramètres',
+  '/admin/statistiques':     'Statistiques',
+  '/admin/system-logs':      'Audit & Activités',
+  '/admin/users':            'Utilisateurs & Accès',
+  '/admin/workshop-queue':   "Tableau de l'Atelier",
+  '/admin/workshop-stats':   'Stats Atelier',
+  '/admin/backups':          'Sauvegardes',
+  '/admin/atelier':          'Atelier Mobile',
+  '/admin/reports':          'Rapports PDF',
+}[page.url] || 'Administration'));
+
+// ─── Auto-open menus ─────────────────────────────────────────────
+if (isHrActive.value)     hrMenuOpen.value = true;
+if (isStockActive.value)  stockMenuOpen.value = true;
+if (isAchatsActive.value) achatsMenuOpen.value = true;
+
+// ─── Mobile close ────────────────────────────────────────────────
+const closeMobileOnNav = (e) => {
+  if (e.target.closest('a')) isMobileMenuOpen.value = false;
+};
+
+// ─── Notifications ───────────────────────────────────────────────
 const fetchNotifications = async () => {
   try {
-    // Note: In a full Inertia app, you might share these via props too
-    const res = await axios.get('/api/admin/dashboard'); 
+    const res = await axios.get('/api/admin/dashboard');
     const lowStock = res.data.low_stock_count || 0;
-    
     notifications.value = [];
     if (lowStock > 0) {
       notifications.value.push({
         id: 1,
         title: 'Alerte Stock Bas',
-        message: `Il y a ${lowStock} produits qui atteignent le seuil critique.`,
+        message: `${lowStock} produit(s) atteignent le seuil critique.`,
         icon: LayersIcon,
         colorClass: 'bg-amber-100 text-amber-600'
       });
     }
-  } catch (e) { console.error(e); }
+  } catch (e) { /* silent */ }
 };
 
+// Close notif on outside click
+const handleClickOutside = (e) => {
+  if (notificationRef.value && !notificationRef.value.contains(e.target)) {
+    isNotificationsOpen.value = false;
+  }
+};
+
+// ─── Logout ──────────────────────────────────────────────────────
 const logout = () => {
-  if (confirm('Voulez-vous vraiment vous déconnecter ?')) {
-    router.post('/logout');
-  }
+  if (confirm('Voulez-vous vraiment vous déconnecter ?')) router.post('/logout');
 };
 
+// ─── Lifecycle ───────────────────────────────────────────────────
 onMounted(() => {
-  if (userRole.value === 'admin' || userRole.value === 'cashier') {
-    fetchNotifications();
-  }
+  if (userRole.value === 'admin' || userRole.value === 'cashier') fetchNotifications();
   window.addEventListener('global-print', handleGlobalPrint);
+  document.addEventListener('click', handleClickOutside);
 });
-
 onUnmounted(() => {
   window.removeEventListener('global-print', handleGlobalPrint);
+  document.removeEventListener('click', handleClickOutside);
 });
 </script>
 
 <style scoped>
-
-.nav-link {
-  display: flex;
-  align-items: center;
-  padding: 0.75rem 1rem;
-  color: #94a3b8;
-  border-radius: 0.75rem;
-  font-weight: 700;
-  font-size: 0.875rem;
-  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+.page-fade-enter-active, .page-fade-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
-.nav-link:hover {
-  background-color: #1e293b;
-  color: #ffffff;
-}
-.nav-link-active {
-  background-color: #0284c7;
-  color: #ffffff;
-  box-shadow: 0 10px 15px -3px rgba(12, 74, 110, 0.2), 0 4px 6px -4px rgba(12, 74, 110, 0.2);
-}
-.nav-sub-link {
-  display: block;
-  padding: 0.625rem 1rem;
-  color: #94a3b8;
-  border-radius: 0.75rem;
-  font-weight: 700;
-  font-size: 0.75rem;
-  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-}
-.nav-sub-link:hover {
-  background-color: #1e293b;
-  color: #ffffff;
-}
-.nav-sub-link::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 0.375rem;
-  height: 0.375rem;
-  border-radius: 9999px;
-  background-color: #334155;
-  transition: background-color 150ms;
-}
-.nav-sub-link:hover::before {
-  background-color: #64748b;
-}
-.nav-sub-link-active {
-  color: #ffffff;
-  background-color: rgba(30, 41, 59, 0.5);
-}
-.nav-sub-link-active::before {
-  background-color: #0ea5e9;
-  box-shadow: 0 0 8px rgba(14, 165, 233, 0.5);
+.page-fade-enter-from, .page-fade-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
 }
 
-/* Sidebar slide transition (mobile) */
-.slide-enter-active, .slide-leave-active {
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.slide-enter-from, .slide-leave-to {
-  transform: translateX(-100%);
-}
+/* Sidebar slide (mobile) */
+.slide-enter-active, .slide-leave-active { transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); }
+.slide-enter-from, .slide-leave-to { transform: translateX(-100%); }
 
 /* Overlay fade */
-.fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
+.fade-enter-active, .fade-leave-active { transition: opacity 0.25s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 
-/* Page transitions */
-.page-enter-active, .page-leave-active { transition: all 0.3s ease; }
-.page-enter-from { opacity: 0; transform: translateY(10px); }
-.page-leave-to { opacity: 0; transform: translateY(-10px); }
+/* Notification dropdown */
+.fade-slide-enter-active, .fade-slide-leave-active { transition: all 0.2s cubic-bezier(0.4,0,0.2,1); }
+.fade-slide-enter-from { opacity: 0; transform: translateY(-8px) scale(0.96); }
+.fade-slide-leave-to   { opacity: 0; transform: translateY(-8px) scale(0.96); }
 
-.custom-scrollbar::-webkit-scrollbar { width: 4px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
 
-/* Notification Slide transition */
-.fade-slide-enter-active, .fade-slide-leave-active {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.fade-slide-enter-from {
-  opacity: 0;
-  transform: translateY(-10px) scale(0.95);
-}
-.fade-slide-leave-to {
-  opacity: 0;
-  transform: translateY(-10px) scale(0.95);
-}
+/* Subtle hover bg for dark sidebar */
+.hover\:bg-white\/8:hover  { background-color: rgba(255,255,255,0.08); }
+.hover\:bg-white\/6:hover  { background-color: rgba(255,255,255,0.06); }
+.bg-white\/8  { background-color: rgba(255,255,255,0.08); }
+.bg-white\/5  { background-color: rgba(255,255,255,0.05); }
+.bg-white\/10 { background-color: rgba(255,255,255,0.10); }
 </style>

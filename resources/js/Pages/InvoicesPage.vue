@@ -5,70 +5,75 @@
     <header class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
       <div>
         <h1 class="text-3xl font-black text-slate-900 tracking-tight">Factures & Devis</h1>
-        <p class="text-sm font-bold text-slate-400 mt-1">Gestion complète de la facturation</p>
+        <p class="text-sm font-bold text-slate-400 mt-1 uppercase tracking-widest">Gestion complète de la facturation</p>
       </div>
       <div class="flex items-center gap-3">
-        <button @click="openCreateModal('quote')" class="group bg-gradient-to-r from-amber-500 to-orange-500 text-white px-5 py-3 rounded-2xl font-black shadow-lg shadow-amber-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center text-sm">
-          <FileTextIcon class="w-5 h-5 mr-2 group-hover:rotate-12 transition-transform duration-300" /> Nouveau Devis
+        <button @click="openCreateModal('quote')" class="btn-warning">
+          <FileTextIcon class="w-5 h-5 mr-2" /> Nouveau Devis
         </button>
-        <button @click="openCreateModal('invoice')" class="group bg-gradient-to-r from-brand-600 to-indigo-600 text-white px-5 py-3 rounded-2xl font-black shadow-lg shadow-brand-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center text-sm">
-          <PlusIcon class="w-5 h-5 mr-2 group-hover:rotate-90 transition-transform duration-300" /> Nouvelle Facture
+        <button @click="openCreateModal('invoice')" class="btn-primary">
+          <PlusIcon class="w-5 h-5 mr-2" /> Nouvelle Facture
         </button>
       </div>
     </header>
 
+    <!-- KPI Loading State -->
+    <div v-if="isLoading" class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <SkeletonLoader v-for="i in 3" :key="i" type="button" class="!w-full !h-24" />
+    </div>
+
     <!-- Summary Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-      <div class="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 flex items-center gap-4">
+    <div v-else class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <div class="card-premium p-4 flex items-center gap-4">
         <div class="w-11 h-11 bg-amber-50 rounded-xl flex items-center justify-center border border-amber-100">
           <ClockIcon class="w-5 h-5 text-amber-600" />
         </div>
         <div>
           <p class="text-2xl font-black text-slate-900">{{ summary.pending_quotes }}</p>
-          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Devis en attente</p>
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">En attente</p>
         </div>
       </div>
-      <div class="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 flex items-center gap-4">
+      <div class="card-premium p-4 flex items-center gap-4">
         <div class="w-11 h-11 bg-rose-50 rounded-xl flex items-center justify-center border border-rose-100">
           <AlertTriangleIcon class="w-5 h-5 text-rose-500" />
         </div>
         <div>
           <p class="text-2xl font-black text-slate-900">{{ summary.expired_quotes }}</p>
-          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Devis expirés</p>
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Expirés</p>
         </div>
       </div>
-      <div class="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 flex items-center gap-4">
+      <div class="card-premium p-4 flex items-center gap-4">
         <div class="w-11 h-11 bg-blue-50 rounded-xl flex items-center justify-center border border-blue-100">
           <BanknoteIcon class="w-5 h-5 text-blue-600" />
         </div>
         <div>
           <p class="text-2xl font-black text-slate-900">{{ summary.unpaid_invoices }}</p>
-          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Factures impayées</p>
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Impayées</p>
         </div>
       </div>
     </div>
 
     <!-- Filters -->
-    <div class="flex flex-wrap gap-3 mb-6">
+    <div class="flex flex-wrap gap-2 mb-6">
       <button v-for="f in filters" :key="f.value" @click="activeFilter = f.value"
-        :class="activeFilter === f.value ? 'bg-brand-600 text-white shadow-lg shadow-brand-200' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'"
-        class="px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-widest transition-all">
+        :class="activeFilter === f.value ? 'bg-brand-600 text-white shadow-lg shadow-brand-200' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'"
+        class="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">
         {{ f.label }}
       </button>
     </div>
 
     <!-- Loading -->
-    <div v-if="isLoading" class="space-y-4 animate-pulse">
-      <div v-for="i in 5" :key="i" class="bg-white h-20 rounded-2xl border border-slate-100"></div>
+    <div v-if="isLoading" class="space-y-4">
+      <SkeletonLoader v-for="i in 5" :key="i" type="list-item" class="!w-full !h-20" />
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="filteredInvoices.length === 0" class="bg-white rounded-3xl border border-slate-200/50 shadow-sm p-16 text-center">
-      <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
-        <FileTextIcon class="w-10 h-10 text-slate-300" />
-      </div>
-      <p class="text-xl font-black text-slate-700">Aucun document trouvé</p>
-      <p class="text-sm text-slate-400 mt-2">Créez votre première facture ou devis.</p>
+    <div v-else-if="filteredInvoices.length === 0">
+      <EmptyState icon="FileTextIcon" 
+                  title="Aucun document trouvé" 
+                  message="Créez votre première facture ou devis pour commencer."
+                  class="py-16"
+                  :showPlus="false" />
     </div>
 
     <!-- Invoice List -->
@@ -127,7 +132,7 @@
                 <ArrowRightCircleIcon class="w-4 h-4" />
               </button>
               <!-- Common actions -->
-              <button @click.stop="duplicateInvoice(inv)" title="Dupliquer"
+              <button v-if="userRole === 'admin'" @click.stop="duplicateInvoice(inv)" title="Dupliquer"
                 class="w-8 h-8 bg-indigo-50 hover:bg-indigo-100 text-indigo-500 rounded-lg flex items-center justify-center transition-colors">
                 <CopyIcon class="w-4 h-4" />
               </button>
@@ -139,7 +144,7 @@
                 class="w-8 h-8 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center transition-colors">
                 <MessageCircleIcon class="w-4 h-4" />
               </button>
-              <button @click.stop="deleteInvoice(inv)" title="Supprimer"
+              <button v-if="userRole === 'admin'" @click.stop="deleteInvoice(inv)" title="Supprimer"
                 class="w-8 h-8 bg-rose-50 hover:bg-rose-100 text-rose-500 rounded-lg flex items-center justify-center transition-colors">
                 <Trash2Icon class="w-4 h-4" />
               </button>
@@ -350,9 +355,14 @@ import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
 import { usePage } from '@inertiajs/vue3';
 import { useToast } from '@/composables/useToast';
+import SkeletonLoader from '@/Components/SkeletonLoader.vue';
+import EmptyState from '@/Components/EmptyState.vue';
+
 const toast = useToast();
 const page = usePage();
-import { FileTextIcon, PlusIcon, XIcon, Trash2Icon, PrinterIcon, ArrowRightCircleIcon, Loader2Icon, CheckCircleIcon, XCircleIcon, CopyIcon, ClockIcon, AlertTriangleIcon, BanknoteIcon, ShieldCheckIcon, PackageIcon, MessageCircleIcon } from 'lucide-vue-next';
+const authUser = computed(() => page.props.auth.user);
+const userRole = computed(() => authUser.value?.role);
+import { FileTextIcon, PlusIcon, XIcon, Trash2Icon, PrinterIcon, ArrowRightCircleIcon, Loader2Icon, CheckCircleIcon, XCircleIcon, CopyIcon, ClockIcon, AlertTriangleIcon, BanknoteIcon, ShieldCheckIcon, PackageIcon, MessageCircleIcon, FileSearchIcon } from 'lucide-vue-next';
 
 const invoices = ref([]);
 const clients = ref([]);

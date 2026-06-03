@@ -43,7 +43,7 @@ class UserController extends Controller
     {
         if ($request->user()->role !== 'admin') abort(403);
 
-        $user = User::where('tenant_id', $request->user()->tenant_id)->findOrFail($id);
+        $user = User::findOrFail($id);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -73,7 +73,7 @@ class UserController extends Controller
     {
         if ($request->user()->role !== 'admin') abort(403);
 
-        $user = User::where('tenant_id', $request->user()->tenant_id)->findOrFail($id);
+        $user = User::findOrFail($id);
         
         // Prevent deleting oneself
         if ($request->user()->id === $user->id) {

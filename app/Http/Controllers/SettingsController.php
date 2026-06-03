@@ -27,7 +27,7 @@ class SettingsController extends Controller
             'logo'                => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 
-        $tenantId = auth()->user()->tenant_id;
+        $tenantId = 1;
 
         unset($validated['logo']);
         $settings = Setting::firstOrNew(['tenant_id' => 1]);
@@ -52,7 +52,7 @@ class SettingsController extends Controller
      */
     protected function currentTenantSettings(): Setting
     {
-        $tenantId = auth()->user()->tenant_id;
+        $tenantId = 1;
 
         $settings = Setting::first();
         if ($settings) {

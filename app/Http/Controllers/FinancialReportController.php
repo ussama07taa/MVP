@@ -14,12 +14,10 @@ class FinancialReportController extends Controller
     {
         if ($request->user()->role !== 'admin') abort(403);
         
-        $tenant_id = auth()->user()->tenant_id;
-        
         $month = $request->query('month', \Carbon\Carbon::now()->month);
         $year = $request->query('year', \Carbon\Carbon::now()->year);
 
-        $coreStats = $service->getMonthlyStats($month, $year, $tenant_id);
+        $coreStats = $service->getMonthlyStats($month, $year, 1);
         
         // Additional breakdowns (kept here because they are UI-specific or too detailed for the base service)
         // Revenue Breakdown by Item Type

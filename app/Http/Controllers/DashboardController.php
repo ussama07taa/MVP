@@ -8,40 +8,48 @@ use Carbon\Carbon;
 
 class DashboardController extends Controller {
     public function index(Request $request) {
-        // This Month's Stats
-        $startOfMonth = Carbon::now()->startOfMonth();
-        $ordersThisMonth = Order::withoutGlobalScopes()->where('created_at', '>=', $startOfMonth)->get();
-        $invoicesThisMonth = \App\Models\Invoice::withoutGlobalScopes()->where('type', 'invoice')->whereNotNull('validated_at')->where('validated_at', '>=', $startOfMonth)->get();
+        $period = $request->get('period', 'month');
+
+        // Determine Start Date based on period
+        $startDate = match ($period) {
+            'day'   => Carbon::now()->startOfDay(),
+            'week'  => Carbon::now()->startOfWeek(),
+            default => Carbon::now()->startOfMonth(),
+        };
+
+        // This Period's Stats
+        $ordersThisPeriod = Order::withoutGlobalScopes()->where('created_at', '>=', $startDate)->get();
+        $invoicesThisPeriod = \App\Models\Invoice::withoutGlobalScopes()->where('type', 'invoice')->whereNotNull('validated_at')->where('validated_at', '>=', $startDate)->get();
         
-        $ordersThisMonthIds = $ordersThisMonth->pluck('id');
+        $ordersThisPeriodIds = $ordersThisPeriod->pluck('id');
         
         // Revenue from POS + Invoices
-        $posRevenue = $ordersThisMonth->sum('total_sell_price');
-        $invoiceRevenue = $invoicesThisMonth->sum('total');
-        $revenueThisMonth = $posRevenue + $invoiceRevenue;
+        $posRevenue = $ordersThisPeriod->sum('total_sell_price');
+        $invoiceRevenue = $invoicesThisPeriod->sum('total');
+        $revenueThisPeriod = $posRevenue + $invoiceRevenue;
 
         // Cost (COGS)
-        $posCost = $ordersThisMonth->sum('total_cost_price');
-        $invoiceCost = \App\Models\InvoiceItem::whereIn('invoice_id', $invoicesThisMonth->pluck('id'))->selectRaw('SUM(unit_cost * quantity) as total_cost')->value('total_cost') ?? 0;
-        $costThisMonth = $posCost + $invoiceCost;
+        $posCost = $ordersThisPeriod->sum('total_cost_price');
+        $invoiceCost = \App\Models\InvoiceItem::whereIn('invoice_id', $invoicesThisPeriod->pluck('id'))->selectRaw('SUM(unit_cost * quantity) as total_cost')->value('total_cost') ?? 0;
+        $costThisPeriod = $posCost + $invoiceCost;
 
-        $profitThisMonth = $revenueThisMonth - $costThisMonth;
+        $profitThisPeriod = $revenueThisPeriod - $costThisPeriod;
 
-        $servicesRevenueThisMonth = 0;
-        if($ordersThisMonthIds->count() > 0) {
-            $servicesRevenueThisMonth = OrderLine::withoutGlobalScopes()->whereIn('order_id', $ordersThisMonthIds)
+        $servicesRevenueThisPeriod = 0;
+        if($ordersThisPeriodIds->count() > 0) {
+            $servicesRevenueThisPeriod = OrderLine::withoutGlobalScopes()->whereIn('order_id', $ordersThisPeriodIds)
                                               ->where('item_type', Service::class)
                                               ->sum('total_line_sell');
         }
         // Add service revenue from invoices (category = service)
-        $invoiceServicesRevenue = \App\Models\InvoiceItem::whereIn('invoice_id', $invoicesThisMonth->pluck('id'))
+        $invoiceServicesRevenue = \App\Models\InvoiceItem::whereIn('invoice_id', $invoicesThisPeriod->pluck('id'))
                                               ->where('category', 'service')
                                               ->sum('total');
-        $servicesRevenueThisMonth += $invoiceServicesRevenue;
+        $servicesRevenueThisPeriod += $invoiceServicesRevenue;
 
-        $materialsRevenueThisMonth = $revenueThisMonth - $servicesRevenueThisMonth;
+        $materialsRevenueThisPeriod = $revenueThisPeriod - $servicesRevenueThisPeriod;
 
-        $marginPercent = $revenueThisMonth > 0 ? ($profitThisMonth / $revenueThisMonth) * 100 : 0;
+        $marginPercent = $revenueThisPeriod > 0 ? ($profitThisPeriod / $revenueThisPeriod) * 100 : 0;
 
         // Last Month's Stats
         $startOfLastMonth = Carbon::now()->subMonth()->startOfMonth();
@@ -52,8 +60,8 @@ class DashboardController extends Controller {
         
         $growthPercent = 0;
         if ($revenueLastMonth > 0) {
-            $growthPercent = (($revenueThisMonth - $revenueLastMonth) / $revenueLastMonth) * 100;
-        } else if ($revenueThisMonth > 0) {
+            $growthPercent = (($revenueThisPeriod - $revenueLastMonth) / $revenueLastMonth) * 100;
+        } else if ($revenueThisPeriod > 0) {
             $growthPercent = 100;
         }
 
@@ -62,24 +70,24 @@ class DashboardController extends Controller {
 
         // === OPERATING EXPENSES (Ce mois) ===
         // 1. All operating expenses (salaries, rent, utilities, etc.)
-        $totalExpensesThisMonth = \App\Models\Expense::withoutGlobalScopes()->where('expense_date', '>=', $startOfMonth)
+        $totalExpensesThisPeriod = \App\Models\Expense::withoutGlobalScopes()->where('expense_date', '>=', $startDate)
             ->sum('amount');
         
         // 2. Gross Purchases (for display only — NOT subtracted from profit, since
         //    material costs are already accounted for in COGS via total_cost_price)
-        $grossPurchasesThisMonth = \App\Models\Purchase::withoutGlobalScopes()->where('created_at', '>=', $startOfMonth)->sum('total_amount');
+        $grossPurchasesThisPeriod = \App\Models\Purchase::withoutGlobalScopes()->where('created_at', '>=', $startDate)->sum('total_amount');
 
         // 3. Purchase Returns / Supplier Refunds (for display)
-        $supplierReturnsThisMonth = \App\Models\PurchaseReturn::withoutGlobalScopes()->where('created_at', '>=', $startOfMonth)->sum('refund_amount');
+        $supplierReturnsThisPeriod = \App\Models\PurchaseReturn::withoutGlobalScopes()->where('created_at', '>=', $startDate)->sum('refund_amount');
 
         // 4. Customer Returns (Order Refunds)
-        $customerReturnsThisMonth = OrderReturn::withoutGlobalScopes()->where('created_at', '>=', $startOfMonth)->sum('total_refunded');
+        $customerReturnsThisPeriod = OrderReturn::withoutGlobalScopes()->where('created_at', '>=', $startDate)->sum('total_refunded');
 
         // Net Profit = Gross Profit - Operating Expenses - Customer Returns
         // NOTE: Purchases are NOT subtracted here because material costs are already
         // included in total_cost_price (COGS) when each order is created.
-        $netProfitThisMonth = $profitThisMonth - $totalExpensesThisMonth - $customerReturnsThisMonth;
-        $netMarginPercent = $revenueThisMonth > 0 ? ($netProfitThisMonth / $revenueThisMonth) * 100 : 0;
+        $netProfitThisPeriod = $profitThisPeriod - $totalExpensesThisPeriod - $customerReturnsThisPeriod;
+        $netMarginPercent = $revenueThisPeriod > 0 ? ($netProfitThisPeriod / $revenueThisPeriod) * 100 : 0;
 
         // Global Atelier Stats
         $totalUnpaidCredit = Client::withoutGlobalScopes()->sum('total_credit');
@@ -128,19 +136,22 @@ class DashboardController extends Controller {
 
         return \Inertia\Inertia::render('DashboardApp', [
             'stats' => [
-                'revenue_today'           => round($revenueThisMonth, 2),
-                'services_revenue_today'  => round($servicesRevenueThisMonth, 2),
-                'materials_revenue_today' => round($materialsRevenueThisMonth, 2),
-                'profit_today'            => round($netProfitThisMonth, 2), 
-                'gross_profit'            => round($profitThisMonth, 2),
-                'total_expenses'          => round($totalExpensesThisMonth, 2),
-                'gross_purchases'         => round($grossPurchasesThisMonth, 2),
-                'supplier_returns'        => round($supplierReturnsThisMonth, 2),
-                'customer_returns'        => round($customerReturnsThisMonth, 2),
+                'revenue_today'           => round($revenueThisPeriod, 2),
+                'services_revenue_today'  => round($servicesRevenueThisPeriod, 2),
+                'materials_revenue_today' => round($materialsRevenueThisPeriod, 2),
+                'profit_today'            => round($netProfitThisPeriod, 2), 
+                'gross_profit'            => round($profitThisPeriod, 2),
+                'total_expenses'          => round($totalExpensesThisPeriod, 2),
+                'gross_purchases'         => round($grossPurchasesThisPeriod, 2),
+                'supplier_returns'        => round($supplierReturnsThisPeriod, 2),
+                'customer_returns'        => round($customerReturnsThisPeriod, 2),
                 'margin_percent'          => round($netMarginPercent, 1),
                 'revenue_growth'          => round($growthPercent, 1),
                 'total_credit_market'     => round($totalUnpaidCredit, 2),
-                'total_supplier_debt'     => round($totalSupplierDebt, 2)
+                'total_supplier_debt'     => round($totalSupplierDebt, 2),
+                'total_orders_month'      => $ordersThisPeriod->count() + $invoicesThisPeriod->count(),
+                'total_clients'           => Client::withoutGlobalScopes()->count(),
+                'clients_with_credit'     => Client::withoutGlobalScopes()->where('total_credit', '>', 0.05)->count(),
             ],
             'alerts' => [
                 'low_canto_stock' => $cantoAlerts,

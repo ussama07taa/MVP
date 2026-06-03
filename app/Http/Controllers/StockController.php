@@ -104,6 +104,7 @@ class StockController extends Controller
 
     public function adjustStock(StoreInventoryAdjustmentRequest $request)
     {
+        if (auth()->user()->role !== 'admin') abort(403);
         $validated = $request->validated();
         $validated['quantity_adjusted'] = -$validated['quantity'];
 
@@ -153,6 +154,7 @@ class StockController extends Controller
 
     public function adjustmentHistory()
     {
+        if (auth()->user()->role !== 'admin') abort(403);
         return \App\Models\InventoryAdjustment::withoutGlobalScopes()
             ->with('user')
             ->latest()
@@ -168,6 +170,7 @@ class StockController extends Controller
 
     public function importInitialStock(Request $request, $type = 'panel')
     {
+        if (auth()->user()->role !== 'admin') abort(403);
         $request->validate([
             'file' => 'required|mimes:xlsx,xls,csv|max:10240',
         ]);

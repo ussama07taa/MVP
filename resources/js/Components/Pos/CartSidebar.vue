@@ -231,7 +231,7 @@ const submitOrder = async () => {
     }))
   };
 
-  router.post('/api/orders/checkout', payload, {
+  router.post('/api/admin/orders/checkout', payload, {
     onSuccess: (page) => {
       lastOrder.value = {
         id: page.props.flash?.order_id || 'TEMP',

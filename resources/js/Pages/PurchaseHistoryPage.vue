@@ -40,6 +40,12 @@
                 <XCircleIcon class="w-5 h-5" />
             </button>
         </div>
+        
+        <!-- Search Bar -->
+        <div class="relative w-full md:w-64">
+            <SearchIcon class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input type="text" v-model="searchQuery" placeholder="Rechercher..." class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-brand-500 text-xs font-bold transition-all">
+        </div>
 
         <!-- View Toggle -->
         <div class="flex bg-slate-100 p-1 rounded-2xl border border-slate-200 shrink-0">
@@ -283,7 +289,6 @@
                     </div>
                 </div>
             </div>
-
             <!-- FOOTER / ACTIONS -->
             <div class="p-8 border-t border-slate-100 bg-white flex justify-between items-center">
                 <div class="bg-slate-50 px-5 py-3 rounded-2xl border border-slate-100">
@@ -306,7 +311,6 @@
             </div>
         </div>
     </div>
-
 
     <!-- Return Modal -->
     <div v-if="showReturnModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -403,6 +407,7 @@ const toggleExpand = (id) => {
 
 // State for Filters & View
 const viewMode = ref('list'); // 'list' or 'grid'
+const searchQuery = ref('');
 const startDate = ref('');
 const endDate = ref('');
 
@@ -412,7 +417,7 @@ const toast = useToast();
 import { 
   HistoryIcon, RotateCwIcon, AlertCircleIcon, CalendarIcon, 
   FileTextIcon, TruckIcon, SearchIcon, ArrowLeftRightIcon, XIcon, CheckCircleIcon, Loader2Icon, ArrowRightIcon, BanIcon,
-  LayoutGridIcon, ListIcon, CalendarDaysIcon, XCircleIcon, CornerDownRightIcon, ReceiptIcon, EyeIcon, FileDownIcon
+  LayoutGridIcon, ListIcon, CalendarDaysIcon, XCircleIcon, ReceiptIcon, EyeIcon, FileDownIcon
 } from 'lucide-vue-next';
 
 const purchases = ref([]);
@@ -468,6 +473,18 @@ const loadPurchases = async () => {
 // Computed property for filtering
 const filteredPurchases = computed(() => {
     return purchases.value.filter(purchase => {
+        // Search filter
+        if (searchQuery.value) {
+            const q = searchQuery.value.toLowerCase();
+            const refMatch = purchase.ref?.toLowerCase().includes(q);
+            const invMatch = purchase.reference_invoice?.toLowerCase().includes(q);
+            const supMatch = purchase.supplier_name?.toLowerCase().includes(q);
+            const itemMatch = purchase.item_name?.toLowerCase().includes(q);
+            
+            if (!refMatch && !invMatch && !supMatch && !itemMatch) return false;
+        }
+
+        // Date filter
         if (!startDate.value && !endDate.value) return true;
         
         const pDate = new Date(purchase.raw_date || purchase.created_at);

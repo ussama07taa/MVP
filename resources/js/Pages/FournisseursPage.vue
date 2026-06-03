@@ -118,7 +118,7 @@
                   <div class="bg-rose-50 border border-rose-100 rounded-2xl p-5 mb-8 text-center">
                     <span class="block text-[10px] font-black text-rose-400 uppercase tracking-widest mb-1">Reste à payer</span>
                     <span class="text-2xl font-black text-rose-600 tracking-tight">
-                        {{ selectedInvoice ? parseFloat(selectedInvoice.total_amount - selectedInvoice.amount_paid).toFixed(2) : (selectedSupplier ? parseFloat(selectedSupplier.total_debt).toFixed(2) : 0) }} DH
+                        {{ selectedInvoice ? parseFloat(selectedInvoice.net_amount - selectedInvoice.amount_paid).toFixed(2) : (selectedSupplier ? parseFloat(selectedSupplier.total_debt).toFixed(2) : 0) }} DH
                     </span>
                   </div>
 
@@ -138,7 +138,7 @@
                   </div>
                 </div>
                 <div class="bg-slate-50 px-8 py-6 sm:flex sm:flex-row-reverse gap-3">
-                  <button @click="submitPayment" :disabled="!paymentForm.amount || paymentForm.amount <= 0 || (selectedInvoice ? paymentForm.amount > (selectedInvoice.total_amount - selectedInvoice.amount_paid) : (selectedSupplier && paymentForm.amount > selectedSupplier.total_debt))" 
+                  <button @click="submitPayment" :disabled="!paymentForm.amount || paymentForm.amount <= 0 || (selectedInvoice ? paymentForm.amount > (selectedInvoice.net_amount - selectedInvoice.amount_paid) + 0.01 : (selectedSupplier && paymentForm.amount > selectedSupplier.total_debt + 0.01))" 
                           class="inline-flex w-full justify-center rounded-2xl bg-brand-600 px-8 py-4 text-sm font-black text-white shadow-xl shadow-brand-900/10 hover:bg-brand-500 sm:w-auto uppercase tracking-widest transition-all active:scale-95 disabled:opacity-30">Confirmer</button>
                   <button @click="isPaymentModalOpen = false" class="mt-3 inline-flex w-full justify-center rounded-2xl bg-white px-8 py-4 text-sm font-bold text-slate-700 shadow-sm border border-slate-200 hover:bg-slate-100 sm:mt-0 sm:w-auto transition-all">Annuler</button>
                 </div>
@@ -232,7 +232,10 @@
                                             <FileTextIcon class="w-5 h-5" />
                                         </div>
                                         <div>
-                                            <p class="text-xs font-bold text-slate-800 uppercase">{{ invoice.reference_invoice || 'SANS RÉF' }}</p>
+                                            <p class="text-xs font-bold text-slate-800 uppercase">
+                                                <span class="text-brand-600 mr-2">{{ invoice.ref }}</span>
+                                                {{ invoice.reference_invoice || 'SANS RÉF' }}
+                                            </p>
                                             <p class="text-[10px] text-slate-400 font-medium">{{ new Date(invoice.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) }}</p>
                                         </div>
                                     </div>
@@ -240,10 +243,10 @@
                                         <div class="text-right">
                                             <p class="text-sm font-black text-slate-700">{{ invoice.net_amount || invoice.total_price || invoice.amount_paid }} DH</p>
                                             <p class="text-[9px] font-bold text-slate-400 uppercase">Montant Net</p>
-                                            <p v-if="invoice.total_amount - invoice.amount_paid > 0" class="text-[10px] font-bold text-rose-500">Reste: {{ parseFloat(invoice.total_amount - invoice.amount_paid).toFixed(2) }} DH</p>
+                                            <p v-if="invoice.net_amount - invoice.amount_paid > 0.05" class="text-[10px] font-bold text-rose-500">Reste: {{ parseFloat(invoice.net_amount - invoice.amount_paid).toFixed(2) }} DH</p>
                                             <p v-else class="text-[10px] font-bold text-emerald-500">Réglée</p>
                                         </div>
-                                        <button v-if="invoice.total_amount - invoice.amount_paid > 0" @click.stop="openSpecificPaymentModal(invoice)" class="bg-brand-50 border border-brand-200 text-brand-600 hover:bg-brand-600 hover:text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-colors shadow-sm active:scale-95">Payer</button>
+                                        <button v-if="invoice.net_amount - invoice.amount_paid > 0.05" @click.stop="openSpecificPaymentModal(invoice)" class="bg-brand-50 border border-brand-200 text-brand-600 hover:bg-brand-600 hover:text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-colors shadow-sm active:scale-95">Payer</button>
                                         <ChevronDownIcon :class="expandedInvoices.includes(invoice.id) ? 'rotate-180' : ''" class="w-5 h-5 text-slate-400 transition-transform duration-300 ml-2" />
                                     </div>
                                 </div>
@@ -324,7 +327,6 @@
                             </div>
                         </div>
                     </div>
-
                 </div>
             </div>
 
@@ -406,12 +408,12 @@ const openPaymentModal = (supplier) => {
 };
 
 const openSpecificPaymentModal = (invoice) => {
-  const reste = invoice.total_amount - invoice.amount_paid;
-  if (reste <= 0) return;
+  const reste = invoice.net_amount - invoice.amount_paid;
+  if (reste <= 0.05) return;
   
   selectedInvoice.value = invoice;
   paymentForm.value = { 
-     amount: reste, 
+     amount: Math.max(0, parseFloat(reste.toFixed(2))), 
      payment_method: 'cash',
      purchase_id: invoice.id 
   };

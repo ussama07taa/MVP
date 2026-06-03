@@ -321,6 +321,7 @@ class PurchaseController extends Controller
 
                 return [
                     'id' => $purch->id,
+                    'ref' => '#ACH-' . str_pad($purch->id, 4, '0', STR_PAD_LEFT),
                     'reference_invoice' => $purch->reference_invoice,
                     'created_at' => $purch->created_at,
                     'total_amount' => (float)$purch->total_amount,
@@ -382,10 +383,11 @@ class PurchaseController extends Controller
             $amountToDistribute = $request->amount;
 
             if ($request->filled('purchase_id')) {
-                $purch = Purchase::withoutGlobalScopes()->where('supplier_id', $id)->findOrFail($request->purchase_id);
-                $reste = $purch->total_amount - $purch->amount_paid;
+                $purch = Purchase::withoutGlobalScopes()->with('returns')->where('supplier_id', $id)->findOrFail($request->purchase_id);
+                $netAmount = (float)$purch->total_amount - (float)$purch->returns->sum('refund_amount');
+                $reste = $netAmount - (float)$purch->amount_paid;
                 
-                if ($amountToDistribute > $reste + 0.01) {
+                if ($amountToDistribute > $reste + 0.05) {
                     return response()->json(['error' => 'Le montant dépasse le reste à payer de cette facture.'], 400);
                 }
 
@@ -407,25 +409,32 @@ class PurchaseController extends Controller
             }
 
             $unpaidPurchases = Purchase::withoutGlobalScopes()->where('supplier_id', $id)
-                ->whereRaw('amount_paid < total_amount')
-                ->orderBy('created_at', 'asc')
-                ->get();
+                ->with('returns')
+                ->get()
+                ->filter(function($p) {
+                    $net = (float)$p->total_amount - (float)$p->returns->sum('refund_amount');
+                    return (float)$p->amount_paid < ($net - 0.05);
+                })
+                ->sortBy('created_at');
 
             foreach ($unpaidPurchases as $purch) {
-                if ($amountToDistribute <= 0) break;
+                if ($amountToDistribute <= 0.01) break;
                 
-                $reste = $purch->total_amount - $purch->amount_paid;
+                $netAmount = (float)$purch->total_amount - (float)$purch->returns->sum('refund_amount');
+                $reste = $netAmount - (float)$purch->amount_paid;
                 $payForThis = min($amountToDistribute, $reste);
 
-                SupplierPayment::create([
-                    'supplier_id' => $supplier->id,
-                    'purchase_id' => $purch->id,
-                    'amount' => $payForThis,
-                    'payment_method' => $request->payment_method
-                ]);
+                if ($payForThis > 0.01) {
+                    SupplierPayment::create([
+                        'supplier_id' => $supplier->id,
+                        'purchase_id' => $purch->id,
+                        'amount' => $payForThis,
+                        'payment_method' => $request->payment_method
+                    ]);
 
-                $purch->increment('amount_paid', $payForThis);
-                $amountToDistribute -= $payForThis;
+                    $purch->increment('amount_paid', $payForThis);
+                    $amountToDistribute -= $payForThis;
+                }
             }
 
             if ($amountToDistribute > 0) {
@@ -456,18 +465,29 @@ class PurchaseController extends Controller
         return DB::transaction(function() use ($id) {
             $supplier = Supplier::withoutGlobalScopes()->lockForUpdate()->findOrFail($id);
             
-            $realDebt = Purchase::withoutGlobalScopes()
-                ->where('supplier_id', $id)
-                ->selectRaw('COALESCE(SUM(total_amount) - SUM(amount_paid), 0) as real_debt')
-                ->value('real_debt');
+            // 1. Get all purchases and their net amounts (accounting for returns)
+            $purchases = Purchase::withoutGlobalScopes()->where('supplier_id', $id)
+                ->with('returns')
+                ->orderBy('created_at', 'asc')
+                ->get();
 
-            // Account for purchase returns
-            $totalRefunds = \App\Models\PurchaseReturn::withoutGlobalScopes()
-                ->whereHas('purchase', function($q) use ($id) {
-                    $q->where('supplier_id', $id);
-                })->sum('refund_amount');
+            // 2. Get total amount actually paid by the supplier
+            $totalPaid = \App\Models\SupplierPayment::withoutGlobalScopes()->where('supplier_id', $id)->sum('amount');
+            
+            $tempPaid = $totalPaid;
+            $totalNetToPay = 0;
 
-            $correctedDebt = max(0, round($realDebt - $totalRefunds, 2));
+            // 3. Reset amount_paid on all purchases and re-distribute the total paid amount
+            foreach ($purchases as $purch) {
+                $netForThis = (float)$purch->total_amount - (float)$purch->returns->sum('refund_amount');
+                $totalNetToPay += $netForThis;
+
+                $payForThis = min($tempPaid, $netForThis);
+                $purch->update(['amount_paid' => round($payForThis, 2)]);
+                $tempPaid -= $payForThis;
+            }
+
+            $correctedDebt = max(0, round($totalNetToPay - $totalPaid, 2));
             $oldDebt = $supplier->total_debt;
             $supplier->update(['total_debt' => $correctedDebt]);
 
@@ -475,9 +495,7 @@ class PurchaseController extends Controller
                 'success' => true,
                 'old_debt' => $oldDebt,
                 'new_debt' => $correctedDebt,
-                'message' => $oldDebt != $correctedDebt 
-                    ? "Dette corrigée: {$oldDebt} → {$correctedDebt} DH" 
-                    : "La dette est déjà correcte: {$correctedDebt} DH"
+                'message' => "Dette recalculée en profondeur et synchronisée avec vos règlements."
             ]);
         });
     }

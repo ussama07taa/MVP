@@ -15,23 +15,21 @@
         </p>
       </div>
       <div class="flex items-center gap-4 w-full md:w-auto">
-        <!-- Actualiser Button (Master UX) -->
+        <!-- Actualiser Button -->
         <button @click="loadExpenses" 
           :class="isLoading ? 'opacity-50 pointer-events-none' : ''"
-          class="group relative p-3.5 bg-white border border-slate-200/60 rounded-2xl shadow-sm hover:shadow-md hover:border-rose-300 transition-all duration-300 active:scale-90"
+          class="btn-secondary !p-3"
           title="Actualiser">
-          <RotateCwIcon :class="isLoading ? 'animate-spin' : 'group-hover:rotate-180'" class="w-5 h-5 text-rose-600 transition-transform duration-500" />
+          <RotateCwIcon :class="isLoading ? 'animate-spin' : 'group-hover:rotate-180'" class="w-5 h-5 transition-transform duration-500" />
         </button>
 
-        <button @click="exportData('expenses')" class="p-3.5 bg-white border border-emerald-200 rounded-2xl shadow-sm hover:shadow-md hover:border-emerald-300 transition-all duration-300 active:scale-90 group text-emerald-600" title="Exporter Excel">
-          <FileDownIcon class="w-5 h-5 group-hover:scale-110 transition-transform" />
+        <button @click="exportData('expenses')" class="btn-secondary !p-3 font-bold !text-emerald-600" title="Exporter Excel">
+          <FileDownIcon class="w-5 h-5" />
         </button>
 
-        <button @click="showForm = !showForm" 
-          class="flex-1 md:flex-none group relative px-6 py-3.5 bg-slate-900 text-white font-bold rounded-2xl shadow-xl shadow-slate-900/20 hover:shadow-2xl hover:shadow-slate-900/30 transition-all duration-300 active:scale-95 flex items-center overflow-hidden">
-          <div class="absolute inset-0 w-full h-full bg-gradient-to-r from-slate-800 to-slate-900 group-hover:scale-105 transition-transform duration-500"></div>
-          <PlusIcon class="w-5 h-5 mr-2 relative z-10 transition-transform duration-300" :class="{'rotate-45': showForm}"/> 
-          <span class="relative z-10">{{ showForm ? 'Fermer le formulaire' : 'Nouvelle Dépense' }}</span>
+        <button @click="showForm = !showForm" class="btn-primary flex-1 md:flex-none">
+          <PlusIcon class="w-5 h-5 mr-2 transition-transform duration-300" :class="{'rotate-45': showForm}"/> 
+          <span>{{ showForm ? 'Fermer' : 'Nouvelle Dépense' }}</span>
         </button>
       </div>
     </header>
@@ -39,22 +37,22 @@
     <!-- Stats Summary Cards (Backend Powered) -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       <!-- Total -->
-      <div class="relative bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 overflow-hidden group hover:shadow-[0_8px_40px_rgb(0,0,0,0.08)] transition-all duration-500">
+      <div class="card-premium p-6 overflow-hidden group hover:shadow-premium transition-all duration-500">
         <div class="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 group-hover:scale-110 transition-all duration-500 text-rose-600">
           <TrendingDownIcon class="w-24 h-24 -mr-8 -mt-8"/>
         </div>
         <div class="relative z-10 flex flex-col h-full justify-between">
           <div class="flex items-center space-x-3 mb-6">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-100 to-rose-50 flex items-center justify-center text-rose-500 shadow-inner">
+            <div class="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center text-rose-500 border border-rose-100 shadow-sm">
               <ActivityIcon class="w-5 h-5"/>
             </div>
-            <p class="text-sm font-bold text-slate-500 uppercase tracking-wider">Total (Ce Mois)</p>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total (Ce Mois)</p>
           </div>
           <div>
-            <p class="text-4xl font-black text-slate-900 tracking-tight">{{ formatMoney(stats.total_this_month) }} <span class="text-xl font-bold text-slate-400">DH</span></p>
-            <div class="flex items-center mt-3 text-sm font-medium" :class="stats.trend > 0 ? 'text-rose-500' : (stats.trend < 0 ? 'text-emerald-500' : 'text-slate-400')">
-              <TrendingUpIcon v-if="stats.trend > 0" class="w-4 h-4 mr-1"/>
-              <TrendingDownIcon v-else-if="stats.trend < 0" class="w-4 h-4 mr-1"/>
+            <p class="text-3xl font-black text-slate-900 tracking-tight">{{ formatMoney(stats.total_this_month) }} <span class="text-lg font-bold text-slate-400">DH</span></p>
+            <div class="flex items-center mt-3 text-xs font-black uppercase tracking-wider" :class="stats.trend > 0 ? 'text-rose-500' : (stats.trend < 0 ? 'text-emerald-500' : 'text-slate-400')">
+              <TrendingUpIcon v-if="stats.trend > 0" class="w-3.5 h-3.5 mr-1"/>
+              <TrendingDownIcon v-else-if="stats.trend < 0" class="w-3.5 h-3.5 mr-1"/>
               <span>{{ stats.trend > 0 ? '+' : '' }}{{ stats.trend }}% vs mois dernier</span>
             </div>
           </div>
@@ -140,7 +138,7 @@
                 <transition name="fade" mode="out-in">
                   <!-- Select Mode -->
                   <div v-if="!isAddingNewCategory" class="flex gap-3 h-14">
-                    <select v-model="form.category" class="flex-1 rounded-2xl border-slate-200 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 bg-slate-50/50 hover:bg-slate-50 focus:bg-white transition-all text-slate-800 font-medium px-5 appearance-none">
+                    <select v-model="form.category" class="input-premium flex-1">
                       <optgroup v-for="(cats, groupName) in availableCategories" :key="groupName" :label="groupName">
                         <option v-for="cat in cats" :key="cat" :value="cat">{{ cat }}</option>
                       </optgroup>

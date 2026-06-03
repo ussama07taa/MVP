@@ -14,35 +14,27 @@ Route::middleware(['auth', 'identify.tenant', 'throttle:100,1'])->group(function
     Route::post('/export/{type}', [ExportController::class, 'export']);
     Route::get('/user', function (Request $request) { return $request->user(); });
 
+    Route::get('/products/{id}/batches', [StockController::class, 'getProductBatches']);
+    Route::post('/stock/adjust', [StockController::class, 'adjustStock']);
+
+
+    
+    Route::get('/panels', [StockController::class, 'posPanels']);
+
     // Workshop Queue — accessible to ALL authenticated users (admin + cashier + worker)
     Route::get('/workshop/queue',                            [WorkshopQueueController::class, 'mobileIndex']);
     Route::post('/workshop/queue/{id}/hide',                 [WorkshopQueueController::class, 'hideFromWorkshop']);
     Route::post('/workshop/services/{serviceId}/toggle',     [WorkshopQueueController::class, 'toggleService']);
-    Route::post('/orders/checkout', [OrderController::class, 'store']);
-    Route::get('/clients', [ClientController::class, 'index']);
-    Route::post('/clients', [ClientController::class, 'store']);
-    Route::get('/clients/{id}/history', [ClientController::class, 'history']);
-    Route::get('/orders/{id}/pdf', [OrderController::class, 'downloadPdf']);
-    Route::post('/orders/{id}/pay', [OrderController::class, 'pay']);
-    Route::post('/clients/{id}/pay', [ClientController::class, 'pay']);
-    Route::post('/clients/{id}/recalculate', [ClientController::class, 'recalculateCredit']);
-    Route::delete('/clients/{id}', [ClientController::class, 'destroy']);
-    Route::put('/clients/{id}', [ClientController::class, 'update']);
     
-    Route::get('/panels', [StockController::class, 'posPanels']);
-    Route::get('/services', function() { return Service::select('id', 'name', 'unit_price', 'calculation_type')->get(); });
-    Route::get('/cantos', [StockController::class, 'posCantos']);
-    Route::get('/consumables', function() { return Consumable::select('id', 'name', 'unit', 'quantity_in_stock', 'average_cost_price', 'base_price_sell')->where('quantity_in_stock', '>', 0)->get(); });
-    Route::get('/products/{id}/batches', [StockController::class, 'getProductBatches']);
-    Route::post('/stock/adjust', [StockController::class, 'adjustStock']);
+    // Workshop Board - accessible to Admin & Cashier
+    Route::get('/admin/workshop-queue',                    [WorkshopQueueController::class, 'index']);
+    Route::post('/admin/workshop-queue',                   [WorkshopQueueController::class, 'store']);
+    Route::post('/admin/workshop-queue/{id}/deliver',      [WorkshopQueueController::class, 'deliver']);
+    Route::post('/admin/workshop-queue/{id}/undeliver',    [WorkshopQueueController::class, 'undeliver']);
+
     Route::middleware('admin')->group(function () {
         Route::get('/admin/dashboard', [DashboardController::class, 'index']);
 
-        // Workshop Queue — Admin management
-        Route::get('/admin/workshop-queue',                    [WorkshopQueueController::class, 'index']);
-        Route::post('/admin/workshop-queue',                   [WorkshopQueueController::class, 'store']);
-        Route::post('/admin/workshop-queue/{id}/deliver',      [WorkshopQueueController::class, 'deliver']);
-        Route::post('/admin/workshop-queue/{id}/undeliver',    [WorkshopQueueController::class, 'undeliver']);
         Route::delete('/admin/workshop-queue/{id}',            [WorkshopQueueController::class, 'destroy']);
         Route::get('/admin/statistics/financial', [FinancialReportController::class, 'index']);
         Route::get('/admin/statistics/workshop', [WorkshopStatsController::class, 'index']);
@@ -57,7 +49,13 @@ Route::middleware(['auth', 'identify.tenant', 'throttle:100,1'])->group(function
         Route::get('/admin/stat', [FinancialReportController::class, 'index']); // Alias for the frontend
         Route::get('/admin/activity-logs', [ActivityLogController::class, 'index']);
         Route::apiResource('/admin/users', UserController::class);
-        Route::get('/admin/clients', function() { return Client::withoutGlobalScopes()->select('id', 'name', 'phone', 'total_credit')->get(); });
+        Route::get('/admin/clients/{id}/history', [ClientController::class, 'history']);
+        Route::post('/admin/clients/{id}/pay', [ClientController::class, 'pay']);
+        Route::post('/admin/clients/{id}/recalculate', [ClientController::class, 'recalculateCredit']);
+        Route::put('/admin/clients/{id}', [ClientController::class, 'update']);
+        Route::delete('/admin/clients/{id}', [ClientController::class, 'destroy']);
+        Route::get('/admin/clients', [ClientController::class, 'index']);
+        Route::post('/admin/clients', [ClientController::class, 'store']);
         Route::get('/admin/expenses', [ExpenseController::class, 'index']);
         Route::post('/admin/expenses', [ExpenseController::class, 'store']);
         Route::put('/admin/expenses/{expense}', [ExpenseController::class, 'update']);
@@ -82,8 +80,10 @@ Route::middleware(['auth', 'identify.tenant', 'throttle:100,1'])->group(function
         Route::get('/admin/services', [ServiceController::class, 'index']);
         Route::post('/admin/services', [ServiceController::class, 'store']);
         Route::put('/admin/services/{id}', [ServiceController::class, 'update']);
-        Route::delete('/admin/services/{id}', [ServiceController::class, 'destroy']);
+        Route::get('/admin/orders/{id}/pdf', [OrderController::class, 'downloadPdf']);
+        Route::post('/admin/orders/{id}/pay', [OrderController::class, 'pay']);
         Route::get('/admin/orders', [OrderController::class, 'index']);
+        Route::post('/admin/orders/checkout', [OrderController::class, 'store']);
         Route::post('/admin/orders/{id}/return', [OrderController::class, 'storeReturn']);
         Route::get('/admin/suppliers', [PurchaseController::class, 'suppliers']);
         Route::post('/admin/suppliers', [PurchaseController::class, 'storeSupplier']);

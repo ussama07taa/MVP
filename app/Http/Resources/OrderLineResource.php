@@ -13,7 +13,7 @@ class OrderLineResource extends JsonResource
 
         return [
             'id' => $this->id,
-            'label' => $this->label ?? $this->description,
+            'label' => $isOrderLine ? $this->label : ($this->description ?? $this->label),
             'quantity' => (float) $this->quantity,
             'unit_sell_price' => (float) ($this->unit_sell_price ?? $this->unit_price ?? 0),
             'total_line_sell' => (float) ($this->total_line_sell ?? $this->total ?? 0),

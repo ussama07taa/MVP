@@ -201,7 +201,7 @@ class OrderController extends Controller {
                     $status = $newPaid >= (float) $invoice->total ? 'paid' : 'partial';
                     $invoice->update(['status' => $status]);
 
-                    $invoice->load(['client', 'items', 'payments']);
+                    $invoice->load(['client' => fn($q) => $q->withTrashed(), 'items', 'payments']);
                     
                     // Map items to lines for resource consistency
                     $invoice->total_sell_price = (float) $invoice->total;
@@ -224,7 +224,7 @@ class OrderController extends Controller {
                     );
 
                     $order->increment('amount_paid', $request->amount);
-                    $order->load(['client', 'lines.item', 'payments']);
+                    $order->load(['client' => fn($q) => $q->withTrashed(), 'lines.item', 'payments']);
 
                     return response()->json([
                         'message' => 'Paiement ajouté', 
@@ -322,8 +322,8 @@ class OrderController extends Controller {
             );
 
             // Clear Stock Cache
-            Cache::forget("tenant.{$order->tenant_id}.panels");
-            Cache::forget("tenant.{$order->tenant_id}.cantos");
+            Cache::forget("global.panels");
+            Cache::forget("global.cantos");
 
             return response()->json([
                 'success' => true, 

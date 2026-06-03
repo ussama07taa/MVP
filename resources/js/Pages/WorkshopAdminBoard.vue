@@ -599,7 +599,7 @@ const openJobDetails = async (job) => {
     
     // 2. If matched, fetch their full invoice history
     if (matchedClient) {
-      const historyRes = await axios.get(`/api/clients/${matchedClient.id}/history`);
+      const historyRes = await axios.get(`/api/admin/clients/${matchedClient.id}/history`);
       clientDossier.value = historyRes.data;
     }
   } catch (error) {

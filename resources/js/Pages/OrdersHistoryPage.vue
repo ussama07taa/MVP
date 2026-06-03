@@ -22,7 +22,7 @@
         </div>
 
         <div class="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
-          <button @click="exportData('orders')" class="px-6 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 font-bold rounded-xl transition-all border border-emerald-200 flex items-center shadow-sm h-[48px]">
+          <button v-if="userRole === 'admin'" @click="exportData('orders')" class="px-6 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 font-bold rounded-xl transition-all border border-emerald-200 flex items-center shadow-sm h-[48px]">
             <FileDownIcon class="w-5 h-5 mr-2" /> Exporter Excel
           </button>
 
@@ -411,7 +411,7 @@
 
                 <!-- Footer -->
                 <div class="px-8 py-5 bg-slate-50 border-t border-slate-100 flex justify-between items-center rounded-b-[2rem]">
-                  <button type="button" 
+                  <button v-if="userRole === 'admin'" type="button" 
                     class="px-5 py-2.5 text-sm font-black text-rose-600 bg-rose-50 border border-rose-100 rounded-xl hover:bg-rose-100 focus:outline-none transition-all flex items-center shadow-sm"
                     @click="openReturnModal">
                     <RotateCcwIcon class="w-4 h-4 mr-2" /> Retour / Avoir
@@ -510,6 +510,8 @@ import { usePage } from '@inertiajs/vue3';
 import { useToast } from '@/composables/useToast';
 const toast = useToast();
 const page = usePage();
+const authUser = computed(() => page.props.auth.user);
+const userRole = computed(() => authUser.value?.role);
 import { 
   FileTextIcon, FilterIcon, CheckCircleIcon, ClockIcon, 
   PrinterIcon, ReceiptIcon, SearchIcon, CreditCardIcon, CalendarIcon,
@@ -625,7 +627,7 @@ const addPayment = async () => {
   }
 
   try {
-    const res = await axios.post(`/api/orders/${selectedOrder.value.id}/pay`, { 
+    const res = await axios.post(`/api/admin/orders/${selectedOrder.value.id}/pay`, { 
       amount: paymentAmount.value,
       source: selectedOrder.value.source 
     });
@@ -717,7 +719,7 @@ const shareOnWhatsApp = (order) => {
   // 1. Generate PDF URL
   // If it's a 'pos' source, use /orders/{id}/pdf, if it's 'invoice', use /invoices/{id}/pdf
   const pdfUrl = order.source === 'pos' 
-    ? `/api/orders/${order.id}/pdf` 
+    ? `/api/admin/orders/${order.id}/pdf` 
     : `/api/admin/invoices/${order.id}/pdf`;
   
   // 2. Open PDF in a new tab

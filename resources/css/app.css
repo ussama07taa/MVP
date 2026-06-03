@@ -1,33 +1,232 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/forms";
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
 
 @theme {
-  --font-sans: "Outfit", "Inter", ui-sans-serif, system-ui, sans-serif;
-  
-  --color-brand-50: #f0f9ff;
-  --color-brand-100: #e0f2fe;
-  --color-brand-200: #bae6fd;
-  --color-brand-300: #7dd3fc;
-  --color-brand-400: #38bdf8;
-  --color-brand-500: #0ea5e9;
-  --color-brand-600: #0284c7;
-  --color-brand-700: #0369a1;
-  --color-brand-800: #075985;
-  --color-brand-900: #0c4a6e;
+  /* ===== TYPOGRAPHY ===== */
+  --font-sans:    'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-heading: 'Poppins', sans-serif;
 
-  --color-accent-500: #f59e0b;
-  --color-accent-600: #d97706;
+  /* ===== BRAND — Indigo (SaaS Professionnel) ===== */
+  --color-brand-50:  #EEF2FF;
+  --color-brand-100: #E0E7FF;
+  --color-brand-200: #C7D2FE;
+  --color-brand-300: #A5B4FC;
+  --color-brand-400: #818CF8;
+  --color-brand-500: #6366F1;
+  --color-brand-600: #4F46E5;
+  --color-brand-700: #4338CA;
+  --color-brand-800: #3730A3;
+  --color-brand-900: #312E81;
 
-  --color-surface: #f8fafc;
-  --color-panel: #ffffff;
+  /* ===== SUCCESS — Emerald (Paiements, Bénéfice) ===== */
+  --color-success-50:  #ECFDF5;
+  --color-success-100: #D1FAE5;
+  --color-success-500: #10B981;
+  --color-success-600: #059669;
+  --color-success-700: #047857;
 
-  --shadow-premium: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-  --shadow-soft: 0 4px 30px rgba(0, 0, 0, 0.03);
-  --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+  /* ===== WARNING — Amber (Stock, Alertes) ===== */
+  --color-warning-50:  #FFFBEB;
+  --color-warning-100: #FEF3C7;
+  --color-warning-500: #F59E0B;
+  --color-warning-600: #D97706;
+
+  /* ===== DANGER — Red (Rupture, Dettes, Danger) ===== */
+  --color-danger-50:  #FEF2F2;
+  --color-danger-100: #FEE2E2;
+  --color-danger-200: #FECACA;
+  --color-danger-500: #EF4444;
+  --color-danger-600: #DC2626;
+
+  /* ===== ACCENT — Violet (Rapports, Stats) ===== */
+  --color-accent-50:  #F5F3FF;
+  --color-accent-500: #8B5CF6;
+  --color-accent-600: #7C3AED;
+
+  /* ===== SURFACES ===== */
+  --color-surface: #F8FAFC;
+  --color-panel:   #FFFFFF;
+  --color-sidebar: #0F172A;
+
+  /* ===== SHADOWS ===== */
+  --shadow-sm:      0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-card:    0 4px 16px rgba(0,0,0,0.05);
+  --shadow-premium: 0 10px 30px rgba(0,0,0,0.08);
+  --shadow-glass:   0 8px 32px rgba(31,38,135,0.06);
+  --shadow-brand:   0 4px 14px rgba(99,102,241,0.25);
+  --shadow-success: 0 4px 14px rgba(16,185,129,0.25);
 }
 
 @layer base {
   body {
     @apply bg-surface text-slate-900 antialiased;
+    font-family: var(--font-sans);
+  }
+  h1, h2, h3, h4 {
+    font-family: var(--font-heading);
+  }
+}
+
+@layer utilities {
+  .font-heading { font-family: var(--font-heading); }
+
+  /* ===== BUTTON SYSTEM ===== */
+
+  /* Primary — Action principale */
+  .btn-primary {
+    @apply inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold
+           text-white cursor-pointer select-none transition-all duration-200
+           active:scale-95 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1;
+    background-color: var(--color-brand-600);
+    box-shadow: var(--shadow-brand);
+  }
+  .btn-primary:hover { background-color: var(--color-brand-700); }
+
+  /* Secondary — Action secondaire */
+  .btn-secondary {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold
+           text-slate-700 bg-white border border-slate-200 cursor-pointer select-none
+           transition-all duration-200 hover:bg-slate-50 hover:border-slate-300
+           active:scale-95 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1;
+  }
+
+  /* Success — Paiement / Confirmation financière */
+  .btn-success {
+    @apply inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold
+           text-white cursor-pointer select-none transition-all duration-200
+           active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-1;
+    background-color: var(--color-success-500);
+    box-shadow: var(--shadow-success);
+  }
+  .btn-success:hover { background-color: var(--color-success-600); }
+
+  /* Danger — Suppression uniquement */
+  .btn-danger {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold
+           cursor-pointer select-none transition-all duration-200
+           active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-1;
+    color: var(--color-danger-600);
+    background-color: var(--color-danger-50);
+    border: 1px solid var(--color-danger-200);
+  }
+  .btn-danger:hover {
+    background-color: var(--color-danger-500);
+    color: white;
+  }
+
+  /* Ghost Icon — Bouton icône uniquement */
+  .btn-ghost {
+    @apply p-2.5 rounded-xl text-slate-400 border border-transparent cursor-pointer
+           transition-all duration-200 hover:bg-slate-100 hover:text-slate-700
+           hover:border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500;
+  }
+
+  /* ===== CARD SYSTEM ===== */
+  .card {
+    @apply bg-white rounded-2xl border border-slate-200 p-5;
+    box-shadow: var(--shadow-card);
+  }
+  .card-hover {
+    @apply hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 cursor-pointer;
+  }
+  .card-premium {
+    @apply bg-white/40 backdrop-blur-xl border border-white/60 rounded-[2rem] p-6 
+           transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl 
+           hover:shadow-brand-500/10 cursor-pointer relative overflow-hidden;
+    box-shadow: var(--shadow-premium);
+  }
+  .card-dark {
+    @apply rounded-2xl border border-slate-700/50 p-5;
+    background: linear-gradient(135deg, #0f172a, #1e1b4b);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+  }
+
+  /* ===== UTILITIES ===== */
+  .mesh-gradient-blue {
+    background: radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(99, 102, 241, 0.1) 0px, transparent 50%);
+  }
+  .mesh-gradient-emerald {
+    background: radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(5, 150, 105, 0.1) 0px, transparent 50%);
+  }
+  .mesh-gradient-amber {
+    background: radial-gradient(at 0% 0%, rgba(245, 158, 11, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(217, 119, 6, 0.1) 0px, transparent 50%);
+  }
+  .mesh-gradient-red {
+    background: radial-gradient(at 0% 0%, rgba(239, 68, 68, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(220, 38, 38, 0.1) 0px, transparent 50%);
+  }
+
+  /* ===== INPUT SYSTEM ===== */
+  .input {
+    @apply w-full px-3 py-2.5 text-sm font-medium text-slate-900 bg-slate-50
+           border border-slate-200 rounded-xl placeholder:text-slate-400
+           focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500
+           transition-all duration-200;
+  }
+  .input-label {
+    @apply text-xs font-semibold text-slate-500 uppercase tracking-wider;
+  }
+
+  /* ===== BADGE SYSTEM ===== */
+  .badge { @apply px-2 py-0.5 rounded-lg text-xs font-semibold border; }
+  .badge-success  { @apply bg-emerald-50 text-emerald-700 border-emerald-200; }
+  .badge-warning  { @apply bg-amber-50 text-amber-700 border-amber-200; }
+  .badge-danger   { @apply bg-red-50 text-red-700 border-red-200; }
+  .badge-info     { @apply bg-blue-50 text-blue-700 border-blue-100; }
+  .badge-neutral  { @apply bg-slate-100 text-slate-600 border-slate-200; }
+  .badge-brand    { @apply bg-brand-50 text-brand-700 border-brand-100; }
+
+  /* ===== HERO SECTION ===== */
+  .page-hero {
+    @apply flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6;
+  }
+  .page-hero-icon {
+    @apply w-12 h-12 bg-brand-50 rounded-2xl flex items-center justify-center
+           border border-brand-100 shadow-sm shrink-0;
+  }
+  .page-hero-title {
+    @apply text-2xl font-bold text-slate-900 leading-tight;
+    font-family: var(--font-heading);
+  }
+  .page-hero-sub {
+    @apply text-sm text-slate-500 font-medium mt-0.5;
+  }
+
+  /* ===== SCROLLBAR ===== */
+  .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+  .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #CBD5E1;
+    border-radius: 20px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #94A3B8; }
+
+  /* ===== SIDEBAR SCROLLBAR ===== */
+  .sidebar-scrollbar::-webkit-scrollbar { width: 4px; }
+  .sidebar-scrollbar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+  }
+
+  /* ===== SKELETON SHIMMER ===== */
+  .animate-shimmer {
+    background: linear-gradient(
+      90deg,
+      #e2e8f0 25%,
+      #f8fafc 50%,
+      #e2e8f0 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite linear;
+  }
+
+  @keyframes shimmer {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
   }
 }

@@ -13,7 +13,7 @@ class ClientLedgerService
     public function recordPayment($clientId, $amount, $type, $orderId = null, $notes = null, $invoiceId = null)
     {
         return DB::transaction(function() use ($clientId, $amount, $type, $orderId, $notes, $invoiceId) {
-            $client = Client::whereId($clientId)->lockForUpdate()->firstOrFail();
+            $client = Client::withTrashed()->whereId($clientId)->lockForUpdate()->firstOrFail();
             
             $payment = Payment::create([
                 'tenant_id' => $client->tenant_id,
