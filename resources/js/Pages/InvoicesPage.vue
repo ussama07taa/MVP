@@ -1,66 +1,88 @@
 <template>
-  <div class="min-h-screen font-sans selection:bg-brand-500 selection:text-white">
-
-    <!-- Header -->
-    <header class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
-      <div>
-        <h1 class="text-3xl font-black text-slate-900 tracking-tight">Factures & Devis</h1>
-        <p class="text-sm font-bold text-slate-400 mt-1 uppercase tracking-widest">Gestion complète de la facturation</p>
-      </div>
-      <div class="flex items-center gap-3">
-        <button @click="openCreateModal('quote')" class="btn-warning">
-          <FileTextIcon class="w-5 h-5 mr-2" /> Nouveau Devis
-        </button>
-        <button @click="openCreateModal('invoice')" class="btn-primary">
-          <PlusIcon class="w-5 h-5 mr-2" /> Nouvelle Facture
-        </button>
-      </div>
-    </header>
-
-    <!-- KPI Loading State -->
-    <div v-if="isLoading" class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-      <SkeletonLoader v-for="i in 3" :key="i" type="button" class="!w-full !h-24" />
+  <div class="min-h-screen font-sans selection:bg-brand-500 selection:text-white relative">
+    
+    <!-- Ambient Background (Master UI) -->
+    <div class="fixed top-0 left-0 w-full h-[600px] pointer-events-none z-0 overflow-hidden">
+      <div class="absolute -top-32 -left-32 w-[30rem] h-[30rem] bg-brand-100 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob"></div>
+      <div class="absolute top-0 right-0 w-[30rem] h-[30rem] bg-indigo-100 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob animation-delay-2000"></div>
     </div>
 
-    <!-- Summary Cards -->
-    <div v-else class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-      <div class="card-premium p-4 flex items-center gap-4">
-        <div class="w-11 h-11 bg-amber-50 rounded-xl flex items-center justify-center border border-amber-100">
-          <ClockIcon class="w-5 h-5 text-amber-600" />
+    <div class="relative z-10 w-full max-w-7xl mx-auto">
+      <!-- Header -->
+      <header class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div class="flex items-center gap-5">
+          <div class="w-16 h-16 bg-white rounded-[1.5rem] flex items-center justify-center shadow-sm border border-slate-100 shrink-0 relative overflow-hidden group">
+            <div class="absolute inset-0 bg-gradient-to-br from-brand-500/10 to-indigo-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            <FileTextIcon class="w-8 h-8 text-brand-600 relative z-10 group-hover:scale-110 transition-transform duration-500" />
+          </div>
+          <div>
+            <h1 class="text-3xl font-black text-slate-900 tracking-tight leading-none mb-1">Factures & Devis</h1>
+            <p class="text-slate-500 font-medium text-sm">Gestion complète de la facturation et des encaissements.</p>
+          </div>
         </div>
-        <div>
-          <p class="text-2xl font-black text-slate-900">{{ summary.pending_quotes }}</p>
-          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">En attente</p>
+        <div class="flex items-center gap-3">
+          <button @click="openCreateModal('quote')" class="btn-warning !px-5 !py-3 shadow-sm hover:shadow-md transition-all rounded-2xl flex items-center gap-2">
+            <FileTextIcon class="w-4 h-4" /> Nouveau Devis
+          </button>
+          <button @click="openCreateModal('invoice')" class="btn-primary !px-5 !py-3 shadow-lg shadow-brand-200 hover:shadow-brand-300 transition-all rounded-2xl flex items-center gap-2">
+            <PlusIcon class="w-4 h-4" /> Nouvelle Facture
+          </button>
         </div>
-      </div>
-      <div class="card-premium p-4 flex items-center gap-4">
-        <div class="w-11 h-11 bg-rose-50 rounded-xl flex items-center justify-center border border-rose-100">
-          <AlertTriangleIcon class="w-5 h-5 text-rose-500" />
-        </div>
-        <div>
-          <p class="text-2xl font-black text-slate-900">{{ summary.expired_quotes }}</p>
-          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Expirés</p>
-        </div>
-      </div>
-      <div class="card-premium p-4 flex items-center gap-4">
-        <div class="w-11 h-11 bg-blue-50 rounded-xl flex items-center justify-center border border-blue-100">
-          <BanknoteIcon class="w-5 h-5 text-blue-600" />
-        </div>
-        <div>
-          <p class="text-2xl font-black text-slate-900">{{ summary.unpaid_invoices }}</p>
-          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Impayées</p>
-        </div>
-      </div>
-    </div>
+      </header>
 
-    <!-- Filters -->
-    <div class="flex flex-wrap gap-2 mb-6">
-      <button v-for="f in filters" :key="f.value" @click="activeFilter = f.value"
-        :class="activeFilter === f.value ? 'bg-brand-600 text-white shadow-lg shadow-brand-200' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'"
-        class="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">
-        {{ f.label }}
-      </button>
-    </div>
+      <!-- KPI Loading State -->
+      <div v-if="isLoading" class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+        <SkeletonLoader v-for="i in 3" :key="i" type="card" class="!w-full !h-32 !rounded-[2rem]" />
+      </div>
+
+      <!-- Summary Cards -->
+      <div v-else class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+        <!-- Pending -->
+        <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-all group relative overflow-hidden flex items-center gap-6">
+          <div class="absolute -right-6 -top-6 w-32 h-32 bg-amber-50 rounded-full blur-2xl group-hover:bg-amber-100 transition-colors opacity-50 pointer-events-none"></div>
+          <div class="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center border border-amber-100 shrink-0 relative z-10">
+            <ClockIcon class="w-6 h-6 text-amber-600" />
+          </div>
+          <div class="relative z-10">
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Devis en attente</p>
+            <p class="text-3xl font-black text-slate-900 tracking-tight">{{ summary.pending_quotes }}</p>
+          </div>
+        </div>
+        <!-- Expired -->
+        <div class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-all group relative overflow-hidden flex items-center gap-6">
+          <div class="absolute -right-6 -top-6 w-32 h-32 bg-rose-50 rounded-full blur-2xl group-hover:bg-rose-100 transition-colors opacity-50 pointer-events-none"></div>
+          <div class="w-14 h-14 bg-rose-50 rounded-2xl flex items-center justify-center border border-rose-100 shrink-0 relative z-10">
+            <AlertTriangleIcon class="w-6 h-6 text-rose-500" />
+          </div>
+          <div class="relative z-10">
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Devis Expirés</p>
+            <p class="text-3xl font-black text-slate-900 tracking-tight">{{ summary.expired_quotes }}</p>
+          </div>
+        </div>
+        <!-- Unpaid (PRO MAX) -->
+        <div class="relative overflow-hidden bg-brand-600 p-6 rounded-[2rem] border border-brand-700 shadow-xl shadow-brand-100 group flex items-center gap-6">
+          <div class="absolute inset-0 bg-gradient-to-r from-brand-600 to-indigo-600 opacity-90"></div>
+          <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-3xl group-hover:scale-125 transition-transform duration-500 pointer-events-none"></div>
+          <div class="w-14 h-14 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center border border-white/20 shrink-0 relative z-10">
+            <BanknoteIcon class="w-6 h-6 text-white" />
+          </div>
+          <div class="relative z-10">
+            <p class="text-[10px] font-black text-brand-200 uppercase tracking-widest mb-1">Factures Impayées</p>
+            <p class="text-3xl font-black text-white tracking-tight">{{ summary.unpaid_invoices }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="mb-6 flex">
+        <div class="bg-slate-200/50 backdrop-blur-md p-1.5 rounded-[1.5rem] border border-slate-200/50 flex gap-1 w-full sm:w-auto overflow-x-auto no-scrollbar snap-x">
+          <button v-for="f in filters" :key="f.value" @click="activeFilter = f.value"
+            :class="activeFilter === f.value ? 'bg-white text-brand-600 shadow-sm border-slate-200/60' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 border-transparent'"
+            class="flex-1 sm:flex-none shrink-0 snap-center px-6 py-3 rounded-[1.25rem] text-[10px] font-black uppercase tracking-widest transition-all border whitespace-nowrap">
+            {{ f.label }}
+          </button>
+        </div>
+      </div>
 
     <!-- Loading -->
     <div v-if="isLoading" class="space-y-4">
@@ -77,88 +99,99 @@
     </div>
 
     <!-- Invoice List -->
-    <div v-else class="space-y-3">
-      <div v-for="inv in filteredInvoices" :key="inv.id"
-        class="bg-white rounded-2xl border border-slate-200/60 shadow-[0_2px_10px_rgb(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-brand-200 transition-all duration-300 p-5 group cursor-pointer"
-        @click="openEditModal(inv)">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div class="flex items-center space-x-4">
-            <div class="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm"
-              :class="inv.type === 'invoice' ? 'bg-brand-50 border border-brand-100' : 'bg-amber-50 border border-amber-100'">
-              <FileTextIcon class="w-5 h-5" :class="inv.type === 'invoice' ? 'text-brand-600' : 'text-amber-600'" />
-            </div>
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="font-black text-slate-900 text-sm">{{ inv.invoice_number }}</span>
-                <span :class="statusClasses(inv.status)" class="px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border">{{ statusLabel(inv.status) }}</span>
-                <span v-if="inv.type === 'invoice' && inv.validated_at" class="px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider border bg-emerald-50 text-emerald-700 border-emerald-200">Validée</span>
+      <div v-else class="space-y-4">
+        <div v-for="inv in filteredInvoices" :key="inv.id"
+          class="bg-white rounded-[2rem] border border-slate-100 shadow-sm transition-all hover:border-brand-200 hover:shadow-md group cursor-pointer overflow-hidden relative"
+          @click="openEditModal(inv)">
+          
+          <div class="p-5 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div class="flex items-center space-x-5">
+              <div class="w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm shrink-0 border"
+                :class="inv.type === 'invoice' ? 'bg-gradient-to-br from-brand-50 to-indigo-50 border-brand-100' : 'bg-gradient-to-br from-amber-50 to-orange-50 border-amber-100'">
+                <FileTextIcon class="w-6 h-6" :class="inv.type === 'invoice' ? 'text-brand-600' : 'text-amber-600'" />
               </div>
-              <p class="text-xs font-bold text-slate-400 mt-0.5">
-                {{ inv.client?.name || 'Client inconnu' }} • {{ formatDate(inv.issue_date) }}
-                <span v-if="inv.type === 'quote' && inv.expiry_date" class="ml-2" :class="inv.is_expired ? 'text-rose-500' : 'text-slate-400'">
-                  (expire {{ formatDate(inv.expiry_date) }})
-                </span>
-              </p>
+              <div>
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="font-black text-slate-900 text-base tracking-tight font-heading">{{ inv.invoice_number }}</span>
+                  <span :class="statusClasses(inv.status)" class="px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest border border-slate-200/50">{{ statusLabel(inv.status) }}</span>
+                  <span v-if="inv.type === 'invoice' && inv.validated_at" class="px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest border border-emerald-200/50 bg-emerald-50 text-emerald-700 shadow-sm">Validée</span>
+                </div>
+                <p class="text-xs font-bold text-slate-500 flex items-center">
+                  <UserIcon class="w-3.5 h-3.5 mr-1 text-slate-400" />
+                  {{ inv.client?.name || 'Client inconnu' }}
+                  <span class="mx-2 text-slate-300">•</span>
+                  <CalendarIcon class="w-3.5 h-3.5 mr-1 text-slate-400" />
+                  {{ formatDate(inv.issue_date) }}
+                  <span v-if="inv.type === 'quote' && inv.expiry_date" class="ml-2 flex items-center" :class="inv.is_expired ? 'text-rose-500 font-black' : 'text-slate-400'">
+                    <ClockIcon class="w-3 h-3 mr-1" /> Expire {{ formatDate(inv.expiry_date) }}
+                  </span>
+                </p>
+              </div>
             </div>
-          </div>
-          <div class="flex items-center gap-6">
-            <div class="text-right">
-              <span class="text-lg font-black text-slate-900">{{ (inv.total || 0).toFixed(2) }}</span>
-              <span class="text-xs font-bold text-slate-400 ml-1">DH</span>
-              <div v-if="inv.remaining > 0" class="text-[10px] font-black text-rose-500">Reste: {{ (inv.remaining || 0).toFixed(2) }} DH</div>
-            </div>
-            <div class="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-              <!-- Validate invoice (not yet validated) -->
-              <button v-if="inv.type === 'invoice' && !inv.validated_at && inv.status !== 'cancelled'" @click.stop="validateInvoice(inv)" title="Valider (stock + dette)"
-                class="w-8 h-8 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center transition-colors">
-                <ShieldCheckIcon class="w-4 h-4" />
-              </button>
-              <!-- Pay invoice (validated + remaining > 0) -->
-              <button v-if="inv.type === 'invoice' && inv.validated_at && inv.remaining > 0" @click.stop="openPayModal(inv)" title="Encaisser"
-                class="w-8 h-8 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center transition-colors">
-                <BanknoteIcon class="w-4 h-4" />
-              </button>
-              <!-- Quote-specific actions -->
-              <button v-if="inv.type === 'quote' && !['accepted','refused','cancelled','expired'].includes(inv.status)" @click.stop="updateQuoteStatus(inv, 'accepted')" title="Accepter"
-                class="w-8 h-8 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center transition-colors">
-                <CheckCircleIcon class="w-4 h-4" />
-              </button>
-              <button v-if="inv.type === 'quote' && !['accepted','refused','cancelled','expired'].includes(inv.status)" @click.stop="updateQuoteStatus(inv, 'refused')" title="Refuser"
-                class="w-8 h-8 bg-rose-50 hover:bg-rose-100 text-rose-500 rounded-lg flex items-center justify-center transition-colors">
-                <XCircleIcon class="w-4 h-4" />
-              </button>
-              <button v-if="inv.type === 'quote' && inv.status === 'accepted'" @click.stop="convertQuote(inv)" title="Convertir en Facture"
-                class="w-8 h-8 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center transition-colors">
-                <ArrowRightCircleIcon class="w-4 h-4" />
-              </button>
-              <!-- Common actions -->
-              <button v-if="userRole === 'admin'" @click.stop="duplicateInvoice(inv)" title="Dupliquer"
-                class="w-8 h-8 bg-indigo-50 hover:bg-indigo-100 text-indigo-500 rounded-lg flex items-center justify-center transition-colors">
-                <CopyIcon class="w-4 h-4" />
-              </button>
-              <button @click.stop="printInvoice(inv)" title="Imprimer"
-                class="w-8 h-8 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-lg flex items-center justify-center transition-colors">
-                <PrinterIcon class="w-4 h-4" />
-              </button>
-              <button @click.stop="shareOnWhatsApp(inv)" title="Envoyer sur WhatsApp (PDF)"
-                class="w-8 h-8 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center transition-colors">
-                <MessageCircleIcon class="w-4 h-4" />
-              </button>
-              <button v-if="userRole === 'admin'" @click.stop="deleteInvoice(inv)" title="Supprimer"
-                class="w-8 h-8 bg-rose-50 hover:bg-rose-100 text-rose-500 rounded-lg flex items-center justify-center transition-colors">
-                <Trash2Icon class="w-4 h-4" />
-              </button>
+            
+            <div class="flex flex-col md:flex-row md:items-center gap-6">
+              <div class="text-right">
+                <span class="text-xs font-black text-slate-400 uppercase tracking-[0.2em] block mb-0.5">Total TTC</span>
+                <span class="text-2xl font-black text-slate-900 tracking-tight">{{ (inv.total || 0).toFixed(2) }}</span>
+                <span class="text-[10px] font-bold text-slate-400 ml-1">DH</span>
+                <div v-if="inv.remaining > 0" class="text-[10px] font-black text-rose-500 uppercase tracking-widest mt-1 bg-rose-50 w-max ml-auto px-2 py-0.5 rounded-md">Reste: {{ (inv.remaining || 0).toFixed(2) }} DH</div>
+              </div>
+              
+              <!-- Quick Actions Slide-in -->
+              <div class="flex items-center gap-1.5 md:opacity-0 md:group-hover:opacity-100 transition-all duration-300 transform md:translate-x-4 md:group-hover:translate-x-0">
+                <!-- Validate invoice (not yet validated) -->
+                <button v-if="inv.type === 'invoice' && !inv.validated_at && inv.status !== 'cancelled'" @click.stop="validateInvoice(inv)" title="Valider (stock + dette)"
+                  class="w-10 h-10 bg-emerald-50 hover:bg-emerald-500 text-emerald-600 hover:text-white rounded-[1rem] flex items-center justify-center transition-all shadow-sm hover:shadow-emerald-200">
+                  <ShieldCheckIcon class="w-5 h-5" />
+                </button>
+                <!-- Pay invoice (validated + remaining > 0) -->
+                <button v-if="inv.type === 'invoice' && inv.validated_at && inv.remaining > 0" @click.stop="openPayModal(inv)" title="Encaisser"
+                  class="w-10 h-10 bg-emerald-50 hover:bg-emerald-500 text-emerald-600 hover:text-white rounded-[1rem] flex items-center justify-center transition-all shadow-sm hover:shadow-emerald-200">
+                  <BanknoteIcon class="w-5 h-5" />
+                </button>
+                <!-- Quote-specific actions -->
+                <button v-if="inv.type === 'quote' && !['accepted','refused','cancelled','expired'].includes(inv.status)" @click.stop="updateQuoteStatus(inv, 'accepted')" title="Accepter"
+                  class="w-10 h-10 bg-emerald-50 hover:bg-emerald-500 text-emerald-600 hover:text-white rounded-[1rem] flex items-center justify-center transition-all shadow-sm hover:shadow-emerald-200">
+                  <CheckCircleIcon class="w-5 h-5" />
+                </button>
+                <button v-if="inv.type === 'quote' && !['accepted','refused','cancelled','expired'].includes(inv.status)" @click.stop="updateQuoteStatus(inv, 'refused')" title="Refuser"
+                  class="w-10 h-10 bg-rose-50 hover:bg-rose-500 text-rose-500 hover:text-white rounded-[1rem] flex items-center justify-center transition-all shadow-sm hover:shadow-rose-200">
+                  <XCircleIcon class="w-5 h-5" />
+                </button>
+                <button v-if="inv.type === 'quote' && inv.status === 'accepted'" @click.stop="convertQuote(inv)" title="Convertir en Facture"
+                  class="w-10 h-10 bg-indigo-50 hover:bg-indigo-500 text-indigo-600 hover:text-white rounded-[1rem] flex items-center justify-center transition-all shadow-sm hover:shadow-indigo-200">
+                  <ArrowRightCircleIcon class="w-5 h-5" />
+                </button>
+                <!-- Common actions -->
+                <button v-if="userRole === 'admin'" @click.stop="duplicateInvoice(inv)" title="Dupliquer"
+                  class="w-10 h-10 bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 rounded-[1rem] flex items-center justify-center transition-all border border-slate-200 shadow-sm">
+                  <CopyIcon class="w-4 h-4" />
+                </button>
+                <button @click.stop="printInvoice(inv)" title="Imprimer"
+                  class="w-10 h-10 bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 rounded-[1rem] flex items-center justify-center transition-all border border-slate-200 shadow-sm">
+                  <PrinterIcon class="w-4 h-4" />
+                </button>
+                <button @click.stop="shareOnWhatsApp(inv)" title="Envoyer sur WhatsApp (PDF)"
+                  class="w-10 h-10 bg-emerald-50 border border-emerald-100 hover:bg-emerald-500 text-emerald-600 hover:text-white rounded-[1rem] flex items-center justify-center transition-all shadow-sm hover:shadow-emerald-200">
+                  <MessageCircleIcon class="w-4 h-4" />
+                </button>
+                <button v-if="userRole === 'admin'" @click.stop="deleteInvoice(inv)" title="Supprimer"
+                  class="w-10 h-10 bg-rose-50 border border-rose-100 hover:bg-rose-500 text-rose-500 hover:text-white rounded-[1rem] flex items-center justify-center transition-all shadow-sm hover:shadow-rose-200">
+                  <Trash2Icon class="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- CREATE / EDIT MODAL -->
-    <div v-if="showModal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-md z-[100] flex items-start justify-center p-4 pt-10 overflow-y-auto">
-      <div class="bg-white rounded-[2rem] w-full max-w-4xl shadow-2xl my-8">
-        <!-- Modal Header -->
-        <div class="p-8 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white rounded-t-[2rem] z-10">
+    <!-- CREATE / EDIT MODAL (Cinema Glass) -->
+    <transition name="fade">
+      <div v-if="showModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xl z-[100] flex items-start justify-center p-4 pt-10 overflow-y-auto">
+        <div class="bg-white/95 backdrop-blur-3xl rounded-[2.5rem] w-full max-w-4xl shadow-2xl my-8 border border-white/20 transform transition-all duration-300">
+          <!-- Modal Header -->
+          <div class="p-8 border-b border-white/10 flex justify-between items-center sticky top-0 bg-white/80 backdrop-blur-3xl rounded-t-[2.5rem] z-10 shadow-sm">
           <div>
             <h3 class="font-black text-2xl text-slate-900 tracking-tight">{{ editingInvoice ? 'Modifier' : 'Créer' }} un Document</h3>
             <p class="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">{{ form.invoice_number || 'Nouveau' }}</p>
@@ -273,15 +306,16 @@
         </div>
 
         <!-- Modal Footer -->
-        <div class="p-8 bg-slate-50 flex justify-end gap-3 rounded-b-[2rem] border-t border-slate-100">
-          <button @click="showModal = false" class="px-6 py-3 font-black text-slate-500 hover:text-slate-800 uppercase text-xs tracking-widest transition-colors">Annuler</button>
-          <button @click="saveInvoice" :disabled="isSaving" class="px-8 py-3 font-black text-white bg-brand-600 hover:bg-brand-700 rounded-2xl shadow-lg shadow-brand-200 disabled:opacity-50 uppercase text-xs tracking-widest flex items-center transition-all">
-            <Loader2Icon v-if="isSaving" class="w-4 h-4 mr-2 animate-spin" />
-            {{ editingInvoice ? 'Mettre à jour' : 'Enregistrer' }}
-          </button>
+          <div class="p-8 bg-slate-100/50 backdrop-blur-sm flex justify-end gap-3 rounded-b-[2.5rem] border-t border-slate-100/50">
+            <button @click="showModal = false" class="px-8 py-3.5 font-black text-slate-500 hover:text-slate-800 uppercase text-xs tracking-widest transition-colors bg-white border border-slate-200 rounded-2xl hover:shadow-sm">Annuler</button>
+            <button @click="saveInvoice" :disabled="isSaving" class="px-8 py-3.5 font-black text-white bg-brand-600 hover:bg-brand-700 rounded-2xl shadow-xl shadow-brand-200 disabled:opacity-50 uppercase text-xs tracking-widest flex items-center transition-all active:scale-95">
+              <Loader2Icon v-if="isSaving" class="w-4 h-4 mr-2 animate-spin" />
+              {{ editingInvoice ? 'Mettre à jour' : 'Enregistrer' }}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </transition>
 
     <!-- STOCK PICKER MODAL -->
     <div v-if="showStockPicker" class="fixed inset-0 bg-slate-950/60 backdrop-blur-md z-[200] flex items-start justify-center p-4 pt-10 overflow-y-auto">
@@ -362,7 +396,7 @@ const toast = useToast();
 const page = usePage();
 const authUser = computed(() => page.props.auth.user);
 const userRole = computed(() => authUser.value?.role);
-import { FileTextIcon, PlusIcon, XIcon, Trash2Icon, PrinterIcon, ArrowRightCircleIcon, Loader2Icon, CheckCircleIcon, XCircleIcon, CopyIcon, ClockIcon, AlertTriangleIcon, BanknoteIcon, ShieldCheckIcon, PackageIcon, MessageCircleIcon, FileSearchIcon } from 'lucide-vue-next';
+import { FileTextIcon, PlusIcon, XIcon, Trash2Icon, PrinterIcon, ArrowRightCircleIcon, Loader2Icon, CheckCircleIcon, XCircleIcon, CopyIcon, ClockIcon, AlertTriangleIcon, BanknoteIcon, ShieldCheckIcon, PackageIcon, MessageCircleIcon, FileSearchIcon, UserIcon, CalendarIcon } from 'lucide-vue-next';
 
 const invoices = ref([]);
 const clients = ref([]);

@@ -175,7 +175,7 @@ import axios from 'axios';
 import { usePage, router, Link } from '@inertiajs/vue3';
 import { useCartStore } from '@/stores/cart';
 import { useToast } from '@/composables/useToast';
-import { LayoutDashboardIcon, SearchIcon, XIcon, Loader2Icon, MenuIcon, ShoppingCartIcon, ChevronDownIcon } from 'lucide-vue-next';
+import { LayoutDashboardIcon, SearchIcon, XIcon, Loader2Icon, MenuIcon, ShoppingCartIcon, ChevronDownIcon, UserIcon } from 'lucide-vue-next';
 
 import ProductGrid from '@/Components/Pos/ProductGrid.vue';
 import CartSidebar from '@/Components/Pos/CartSidebar.vue';
@@ -225,7 +225,7 @@ const saveNewClient = async () => {
   if (!newClient.value.name) return;
   isSubmittingClient.value = true;
   try {
-    const res = await axios.post('/api/clients', newClient.value);
+    const res = await axios.post('/api/admin/clients', newClient.value);
     router.reload({
       only: ['initialClients'],
       onSuccess: () => {

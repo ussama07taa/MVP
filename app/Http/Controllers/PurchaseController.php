@@ -46,7 +46,9 @@ class PurchaseController extends Controller
                     'supplier_id' => $request->supplier_id, 
                     'purchase_id' => $purchase->id, 
                     'amount' => $request->amount_paid, 
-                    'payment_method' => $request->payment_method ?? 'cash'
+                    'payment_method' => $request->payment_method ?? 'cash',
+                    'cash_date' => ($request->payment_method === 'check') ? $request->cash_date : null,
+                    'status' => ($request->payment_method === 'check' && $request->cash_date) ? 'pending' : 'cashed'
                  ]);
             }
 
@@ -375,6 +377,7 @@ class PurchaseController extends Controller
         $request->validate([
             'amount' => 'required|numeric|min:0.1',
             'payment_method' => 'required|string',
+            'cash_date' => 'nullable|date',
             'purchase_id' => 'nullable|exists:purchases,id'
         ]);
 
@@ -395,7 +398,9 @@ class PurchaseController extends Controller
                     'supplier_id' => $supplier->id,
                     'purchase_id' => $purch->id,
                     'amount' => $amountToDistribute,
-                    'payment_method' => $request->payment_method
+                    'payment_method' => $request->payment_method,
+                    'cash_date' => ($request->payment_method === 'check') ? $request->cash_date : null,
+                    'status' => ($request->payment_method === 'check' && $request->cash_date) ? 'pending' : 'cashed'
                 ]);
 
                 $purch->increment('amount_paid', $amountToDistribute);
@@ -429,7 +434,9 @@ class PurchaseController extends Controller
                         'supplier_id' => $supplier->id,
                         'purchase_id' => $purch->id,
                         'amount' => $payForThis,
-                        'payment_method' => $request->payment_method
+                        'payment_method' => $request->payment_method,
+                        'cash_date' => ($request->payment_method === 'check') ? $request->cash_date : null,
+                        'status' => ($request->payment_method === 'check' && $request->cash_date) ? 'pending' : 'cashed'
                     ]);
 
                     $purch->increment('amount_paid', $payForThis);
@@ -442,7 +449,9 @@ class PurchaseController extends Controller
                     'supplier_id' => $supplier->id,
                     'purchase_id' => null,
                     'amount' => $amountToDistribute,
-                    'payment_method' => $request->payment_method
+                    'payment_method' => $request->payment_method,
+                    'cash_date' => ($request->payment_method === 'check') ? $request->cash_date : null,
+                    'status' => ($request->payment_method === 'check' && $request->cash_date) ? 'pending' : 'cashed'
                 ]);
             }
 

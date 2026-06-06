@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\{Order, OrderLine, Client, StockCanto, Service, OrderReturn, Invoice, InvoiceItem, Payment, Expense, Purchase, PurchaseReturn, StockPanel, Supplier};
+use App\Models\{Order, OrderLine, Client, StockCanto, Service, OrderReturn, Invoice, InvoiceItem, Payment, Expense, Purchase, PurchaseReturn, StockPanel, Supplier, SupplierPayment};
 use Carbon\Carbon;
 
 class DashboardController extends Controller
@@ -18,6 +18,7 @@ class DashboardController extends Controller
         $netStats = $this->getNetProfitStats($startDate, $finStats['gross_profit'], $finStats['revenue']);
         $globalStats = $this->getGlobalAtelierStats();
         $stockAlerts = $this->getStockAlerts();
+        $chequeAlerts = $this->getChequeAlerts();
         $recentActivity = $this->getRecentActivityFeed();
 
         return \Inertia\Inertia::render('DashboardApp', [
@@ -39,7 +40,7 @@ class DashboardController extends Controller
                 'total_clients' => $globalStats['total_clients'],
                 'clients_with_credit' => $globalStats['clients_with_credit'],
             ],
-            'alerts' => array_merge($stockAlerts, [
+            'alerts' => array_merge($stockAlerts, $chequeAlerts, [
                 'recent_activity' => $recentActivity
             ])
         ]);
@@ -63,7 +64,13 @@ class DashboardController extends Controller
             ->where('validated_at', '>=', $startDate)
             ->get();
 
-        $revenue = $orders->sum('total_sell_price') + $invoices->sum('total');
+        $grossRevenue = $orders->sum('total_sell_price') + $invoices->sum('total');
+
+        // Subtract customer returns for Net Revenue
+        $customerReturns = OrderReturn::withoutGlobalScopes()
+            ->whereIn('order_id', $orders->pluck('id'))
+            ->sum('total_refunded');
+        $revenue = $grossRevenue - $customerReturns;
 
         $posCost = $orders->sum('total_cost_price');
         $invoiceCost = InvoiceItem::whereIn('invoice_id', $invoices->pluck('id'))
@@ -71,6 +78,7 @@ class DashboardController extends Controller
             ->value('total_cost') ?? 0;
         $totalCost = $posCost + $invoiceCost;
 
+        // Gross Profit uses Net Revenue
         $grossProfit = $revenue - $totalCost;
 
         $servicesRevenue = 0;
@@ -99,14 +107,18 @@ class DashboardController extends Controller
         $start = Carbon::now()->subMonth()->startOfMonth();
         $end = Carbon::now()->subMonth()->endOfMonth();
 
-        $prevPos = Order::withoutGlobalScopes()->whereBetween('created_at', [$start, $end])->sum('total_sell_price');
+        $prevOrders = Order::withoutGlobalScopes()->whereBetween('created_at', [$start, $end])->get();
+        $prevPos = $prevOrders->sum('total_sell_price');
+        $prevReturns = OrderReturn::withoutGlobalScopes()
+            ->whereIn('order_id', $prevOrders->pluck('id'))
+            ->sum('total_refunded');
         $prevInv = Invoice::withoutGlobalScopes()
             ->where('type', 'invoice')
             ->whereNotNull('validated_at')
             ->whereBetween('validated_at', [$start, $end])
             ->sum('total');
 
-        $prevRevenue = $prevPos + $prevInv;
+        $prevRevenue = ($prevPos - $prevReturns) + $prevInv;
 
         if ($prevRevenue > 0) {
             return (($currentRevenue - $prevRevenue) / $prevRevenue) * 100;
@@ -161,6 +173,32 @@ class DashboardController extends Controller
         return [
             'low_canto_stock' => $cantoAlerts,
             'low_panel_stock' => $panelAlerts,
+            'low_stock_count' => count($cantoAlerts) + count($panelAlerts),
+        ];
+    }
+
+    private function getChequeAlerts(): array
+    {
+        $upcomingCheques = SupplierPayment::withoutGlobalScopes()
+            ->with(['supplier:id,name'])
+            ->where('payment_method', 'check')
+            ->where('status', 'pending')
+            ->whereNotNull('cash_date')
+            ->where('cash_date', '<=', Carbon::now()->addDays(3)->toDateString())
+            ->get(['id', 'supplier_id', 'amount', 'cash_date'])
+            ->map(function ($cheque) {
+                return [
+                    'id' => $cheque->id,
+                    'supplier_name' => $cheque->supplier?->name ?? 'Inconnu',
+                    'amount' => round($cheque->amount, 2),
+                    'cash_date' => $cheque->cash_date,
+                    'days_remaining' => Carbon::parse($cheque->cash_date)->diffInDays(Carbon::now(), false) * -1
+                ];
+            });
+
+        return [
+            'upcoming_cheques' => $upcomingCheques,
+            'upcoming_cheques_count' => $upcomingCheques->count()
         ];
     }
 

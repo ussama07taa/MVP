@@ -43,6 +43,11 @@ class OrderController extends Controller {
         $result = collect();
 
         foreach ($orders as $order) {
+            $total = (float) $order->total_sell_price;
+            $paid = (float) $order->amount_paid;
+            $refunded = (float) $order->returns()->sum('total_refunded');
+            $netTotal = $total - $refunded;
+
             $result->push([
                 'id' => $order->id,
                 'client' => $order->client ? [
@@ -50,8 +55,11 @@ class OrderController extends Controller {
                     'name'  => $order->client->name,
                     'phone' => $order->client->phone
                 ] : null,
-                'total_sell_price' => (float) $order->total_sell_price,
-                'amount_paid' => (float) $order->amount_paid,
+                'total_sell_price' => $total,
+                'net_total' => $netTotal,
+                'amount_paid' => $paid,
+                'total_refunded' => $refunded,
+                'remaining_balance' => (float) max(0, $netTotal - $paid),
                 'status' => $order->status,
                 'display_reference' => "#FAC-" . $order->id,
                 'source' => 'pos',
@@ -67,7 +75,6 @@ class OrderController extends Controller {
                     'quantity_returned' => (float) $l->returns()->sum('quantity_returned'),
                 ]),
                 'payments' => $order->payments,
-                'total_refunded' => (float) $order->returns()->sum('total_refunded'),
                 'return_history' => [],
             ]);
         }
@@ -80,8 +87,10 @@ class OrderController extends Controller {
                     'name'  => $inv->client->name,
                     'phone' => $inv->client->phone
                 ] : null,
-                'total_sell_price' => (float) $inv->total,
-                'amount_paid' => (float) $inv->amount_paid,
+                'total_sell_price' => (float) $total = $inv->total,
+                'amount_paid' => (float) $paid = $inv->amount_paid,
+                'total_refunded' => (float) $refunded = 0,
+                'remaining_balance' => (float) ($total - $paid - $refunded),
                 'status' => $inv->status,
                 'display_reference' => $inv->invoice_number,
                 'source' => 'invoice',
@@ -97,7 +106,6 @@ class OrderController extends Controller {
                     'quantity_returned' => 0,
                 ]),
                 'payments' => $inv->payments,
-                'total_refunded' => 0,
                 'return_history' => [],
             ]);
         }
@@ -288,6 +296,7 @@ class OrderController extends Controller {
                 $totalRefund += $refundAmount;
 
                 OrderReturnLine::create([
+                    'tenant_id' => $order->tenant_id,
                     'order_return_id' => $orderReturn->id,
                     'order_line_id' => $orderLine->id,
                     'quantity_returned' => $qtyToReturn,
@@ -321,6 +330,9 @@ class OrderController extends Controller {
                 'Remboursement Retour #' . $orderReturn->id . ($request->reason ? ' : ' . $request->reason : '')
             );
 
+            // Clear Workshop Queue
+            \App\Models\WorkshopQueue::where('order_id', $order->id)->delete();
+            
             // Clear Stock Cache
             Cache::forget("global.panels");
             Cache::forget("global.cantos");
@@ -331,5 +343,25 @@ class OrderController extends Controller {
                 'refunded' => $totalRefund
             ]);
         });
+    }
+
+    /**
+     * Append items to an existing order.
+     */
+    public function append(\Illuminate\Http\Request $request, $id)
+    {
+        $order = Order::findOrFail($id);
+        $items = $request->input('items', []);
+
+        if (empty($items)) {
+            return response()->json(['error' => 'Aucun article à ajouter.'], 400);
+        }
+
+        try {
+            $this->checkout->appendItems($order, $items);
+            return response()->json(['success' => true, 'message' => 'Articles ajoutés avec succès !']);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 400);
+        }
     }
 }

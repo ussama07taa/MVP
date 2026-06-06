@@ -135,6 +135,12 @@
                         <option value="transfer">📱 Virement / Versement</option>
                       </select>
                     </div>
+                    <!-- DATE D'ENCAISSEMENT POUR LES CHÈQUES -->
+                    <div v-show="paymentForm.payment_method === 'check'" class="animate-in fade-in slide-in-from-top-2 duration-300">
+                      <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Date d'encaissement (Optionnel)</label>
+                      <input type="date" v-model="paymentForm.cash_date" class="block w-full rounded-2xl border-slate-200 bg-slate-50 p-4 focus:ring-2 focus:ring-brand-500 font-bold text-slate-700">
+                      <p class="text-[9px] text-slate-400 mt-2 font-medium">Vous recevrez une notification lorsque la date approchera.</p>
+                    </div>
                   </div>
                 </div>
                 <div class="bg-slate-50 px-8 py-6 sm:flex sm:flex-row-reverse gap-3">
@@ -362,7 +368,7 @@ const isHistoryModalOpen = ref(false);
 const isLoading = ref(false);
 const selectedSupplier = ref(null);
 const selectedInvoice = ref(null);
-const paymentForm = ref({ amount: null, payment_method: 'cash', purchase_id: null });
+const paymentForm = ref({ amount: null, payment_method: 'cash', purchase_id: null, cash_date: null });
 const purchaseHistory = ref([]);
 const allPayments = ref([]);
 const expandedInvoices = ref([]);
@@ -403,7 +409,7 @@ const totalDebtGlobal = computed(() => {
 const openPaymentModal = (supplier) => {
   selectedSupplier.value = supplier;
   selectedInvoice.value = null;
-  paymentForm.value = { amount: null, payment_method: 'cash', purchase_id: null };
+  paymentForm.value = { amount: null, payment_method: 'cash', purchase_id: null, cash_date: null };
   isPaymentModalOpen.value = true;
 };
 
@@ -415,7 +421,8 @@ const openSpecificPaymentModal = (invoice) => {
   paymentForm.value = { 
      amount: Math.max(0, parseFloat(reste.toFixed(2))), 
      payment_method: 'cash',
-     purchase_id: invoice.id 
+     purchase_id: invoice.id,
+     cash_date: null
   };
   isPaymentModalOpen.value = true;
 };

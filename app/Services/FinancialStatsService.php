@@ -59,17 +59,27 @@ class FinancialStatsService
 
         $averageOrderValue = $orderCount > 0 ? $revenue / $orderCount : 0;
 
-        // 5. Purchases (Achats)
-        $purchases = DB::table('purchases')
+        // 5. Purchases & Supplier Payments
+        $totalPurchases = (float) DB::table('purchases')
                         ->whereMonth('created_at', $month)
-                        ->whereYear('created_at', $year);
+                        ->whereYear('created_at', $year)
+                        ->sum('total_amount');
         
-        $totalPurchases = (float)$purchases->sum('total_amount');
-        $purchasesPaid = (float)$purchases->sum('amount_paid');
+        $supplierPayments = DB::table('supplier_payments')
+            ->whereMonth('created_at', $month)
+            ->whereYear('created_at', $year)
+            ->selectRaw('payment_method, SUM(amount) as total')
+            ->groupBy('payment_method')
+            ->get();
+            
+        $purchasesPaidCash = (float) $supplierPayments->where('payment_method', 'cash')->sum('total');
+        $purchasesPaidBank = (float) $supplierPayments->whereIn('payment_method', ['check', 'transfer'])->sum('total');
+        
+        $purchasesPaid = $purchasesPaidCash + $purchasesPaidBank;
 
-        // 6. Net Cash Flow (Trésorerie Réelle)
-        $cashOut = (float)$otherExpenses + (float)$monthlyWages + (float)$purchasesPaid;
-        $netCashFlow = (float)$totalCollected - $cashOut;
+        // 6. Net Cash Flow (Trésorerie Réelle = Physique)
+        $cashOutLocal = (float)$otherExpenses + (float)$monthlyWages + (float)$purchasesPaidCash;
+        $netCashFlow = (float)$totalCollected - $cashOutLocal;
 
         // 7. Customer Returns (Order Refunds)
         $customerReturns = (float) DB::table('order_returns')
@@ -133,6 +143,8 @@ class FinancialStatsService
             'unpaid_revenue' => (float)$unpaidRevenue,
             'total_purchases' => (float)$totalPurchases,
             'purchases_paid' => (float)$purchasesPaid,
+            'purchases_paid_cash' => (float)$purchasesPaidCash,
+            'purchases_paid_bank' => (float)$purchasesPaidBank,
             'net_cash_flow' => (float)$netCashFlow,
         ];
     }

@@ -30,18 +30,20 @@ class StatsController extends Controller
         // 4. Supplier Debt (Dynamic sum of actual balances)
         $supplierDebt = Supplier::withoutGlobalScopes()->sum('total_debt');
 
-        // 5. Client Revenue and Profit (Copied from Dashboard logic for consistency)
+        // 5. Client Revenue and Profit — Net Revenue = Gross - Returns
         $ordersThisMonth = Order::withoutGlobalScopes()->whereBetween('created_at', [$startOfMonth, $endOfMonth])->get();
-        $revenueThisMonth = $ordersThisMonth->sum('total_sell_price');
+        $grossRevenue = $ordersThisMonth->sum('total_sell_price');
+        $customerReturns = OrderReturn::withoutGlobalScopes()
+            ->whereIn('order_id', $ordersThisMonth->pluck('id'))
+            ->sum('total_refunded');
+        $revenueThisMonth = $grossRevenue - $customerReturns;
         $costThisMonth = $ordersThisMonth->sum('total_cost_price');
         $grossProfit = $revenueThisMonth - $costThisMonth;
 
         $salaryExpenses = \App\Models\Expense::withoutGlobalScopes()->whereBetween('expense_date', [$startOfMonth, $endOfMonth])
             ->sum('amount');
         
-        $customerReturns = OrderReturn::withoutGlobalScopes()->whereBetween('created_at', [$startOfMonth, $endOfMonth])->sum('total_refunded');
-        
-        $netProfit = $grossProfit - $salaryExpenses - $netPurchases - $customerReturns;
+        $netProfit = $grossProfit - $salaryExpenses - $netPurchases;
 
         return response()->json([
             'stats' => [

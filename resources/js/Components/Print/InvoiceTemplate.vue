@@ -66,20 +66,22 @@
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-50">
-          <tr v-for="(item, index) in groupedItems" :key="index" class="break-inside-avoid">
+          <tr v-for="(item, index) in groupedItems" :key="index" class="break-inside-avoid"
+              :class="item.is_fully_returned ? 'opacity-40' : ''">
             <td class="py-3 px-2 text-[10px] font-bold text-slate-300">0{{ index + 1 }}</td>
             <td class="py-3 px-2">
-              <p class="text-[11px] font-black text-slate-800 leading-tight">{{ formatItemName(item.name || item.label) }}</p>
+              <p class="text-[11px] font-black text-slate-800 leading-tight" :class="item.is_fully_returned ? 'line-through text-rose-400' : ''">{{ formatItemName(item.name || item.label) }}</p>
               <div v-if="item.width_mm && item.thickness_mm" class="flex gap-2 mt-0.5">
                 <span class="text-[8px] text-slate-400 font-bold uppercase tracking-wider">Specs: {{ item.width_mm }}x{{ item.thickness_mm }}mm</span>
               </div>
               <p v-if="item.description" class="text-[8px] text-slate-400 font-bold mt-0.5 uppercase tracking-wider">{{ item.description }}</p>
+              <span v-if="item.is_fully_returned" class="text-[8px] font-black text-rose-500 uppercase tracking-widest">RETOURNÉ</span>
             </td>
             <td class="py-3 px-2 text-center">
-              <span class="text-[10px] font-black text-slate-900 leading-none">x{{ item.quantity }}</span>
+              <span class="text-[10px] font-black text-slate-900 leading-none" :class="item.is_fully_returned ? 'line-through text-rose-300' : ''">x{{ item.quantity }}</span>
             </td>
-            <td class="py-3 px-2 text-right text-[10px] font-bold text-slate-500">{{ Number(item.unit_price || item.unit_sell_price).toFixed(2) }}</td>
-            <td class="py-3 px-2 text-right text-[11px] font-black text-slate-900">{{ Number(item.total_price || item.total_line_sell).toFixed(2) }} DH</td>
+            <td class="py-3 px-2 text-right text-[10px] font-bold text-slate-500" :class="item.is_fully_returned ? 'line-through text-rose-300' : ''">{{ Number(item.unit_price || item.unit_sell_price).toFixed(2) }}</td>
+            <td class="py-3 px-2 text-right text-[11px] font-black" :class="item.is_fully_returned ? 'text-rose-300 line-through' : 'text-slate-900'">{{ Number(item.total_price || item.total_line_sell).toFixed(2) }} DH</td>
           </tr>
         </tbody>
       </table>
@@ -104,11 +106,17 @@
           <div class="space-y-2 relative z-10">
             <div class="flex justify-between items-center text-white/60">
               <span class="text-[8px] font-black uppercase tracking-widest">SOUS-TOTAL HT</span>
-              <span class="text-xs font-bold">{{ (total / 1).toFixed(2) }} DH</span>
+              <span class="text-xs font-bold">{{ (grossTotal || total).toFixed(2) }} DH</span>
+            </div>
+            
+            <!-- Retour deduction row (only shown when there are returns) -->
+            <div v-if="totalRefunded > 0" class="flex justify-between items-center">
+              <span class="text-[8px] font-black uppercase tracking-widest text-rose-400">RETOUR MARCHANDISE</span>
+              <span class="text-xs font-bold text-rose-400">- {{ totalRefunded.toFixed(2) }} DH</span>
             </div>
             
             <div class="pt-3 border-t border-white/10 flex justify-between items-baseline">
-              <span class="text-[8px] font-black uppercase tracking-widest text-white/40">TOTAL À PAYER</span>
+              <span class="text-[8px] font-black uppercase tracking-widest text-white/40">{{ totalRefunded > 0 ? 'TOTAL NET À PAYER' : 'TOTAL À PAYER' }}</span>
               <div class="text-right">
                 <span class="text-2xl font-black tracking-tighter">{{ total.toFixed(2) }}</span>
                 <span class="text-[10px] font-black ml-1">DH</span>
@@ -151,6 +159,8 @@ const props = defineProps({
   order: Object,
   items: Array,
   total: Number,
+  grossTotal: { type: Number, default: 0 },
+  totalRefunded: { type: Number, default: 0 },
   amountPaid: Number,
   clientName: String
 });
@@ -189,8 +199,7 @@ const groupedItems = computed(() => {
       .replace(/Collage Chant:\s*/gi, '')
       .trim();
     
-    // We group by baseName AND quantity to ensure we don't accidentally group different orders of the same product
-    // though usually in an invoice they are distinct.
+    // We group by baseName AND quantity to ensure we don't accidentally group different orders
     const key = `${baseName}_${item.quantity}`;
     
     if (!groups[key]) {
@@ -198,7 +207,8 @@ const groupedItems = computed(() => {
         ...item,
         name: baseName, // Use the clean name
         total_price: Number(item.total_price || item.total_line_sell || (item.quantity * (item.unit_price || item.unit_sell_price))),
-        is_grouped: false
+        is_grouped: false,
+        is_fully_returned: Number(item.quantity_returned || 0) >= Number(item.quantity || 1)
       };
     } else {
       groups[key].total_price += Number(item.total_price || item.total_line_sell || (item.quantity * (item.unit_price || item.unit_sell_price)));

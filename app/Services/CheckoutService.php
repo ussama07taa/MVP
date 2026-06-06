@@ -23,7 +23,7 @@ class CheckoutService
             $tenantId = auth()->user()->tenant_id;
             $userId = auth()->id();
 
-            // 1. PHASE 1: STOCK VALIDATION & LOCKING (Calculate Totals First)
+            // 1. PHASE 1: STOCK VALIDATION & LOCKING
             $processedItems = [];
             $totalSell = 0;
             $totalCost = 0;
@@ -52,21 +52,14 @@ class CheckoutService
                 $this->createLine($order, $pItem);
             }
 
-            // 3. PHASE 3: FINANCIALS (Using Ledger Service)
-            // A. Add total debt to client
+            // 3. PHASE 3: FINANCIALS
             $this->ledger->adjustCreditForOrder($data['client_id'], $totalSell);
 
-            // B. If paid, record payment (which will deduct from credit)
             if ($data['amount_paid'] > 0) {
-                $this->ledger->recordPayment(
-                    $data['client_id'], 
-                    $data['amount_paid'], 
-                    'avance', 
-                    $order->id
-                );
+                $this->ledger->recordPayment($data['client_id'], $data['amount_paid'], 'avance', $order->id);
             }
 
-            // 4. WORKSHOP QUEUE (if requested and order has services)
+            // 4. WORKSHOP QUEUE
             if (!empty($data['send_to_workshop'])) {
                 $this->createWorkshopEntry($order, $processedItems, $tenantId, $data);
             }
@@ -79,6 +72,93 @@ class CheckoutService
 
             return $order;
         });
+    }
+
+    /**
+     * Append items to an existing order.
+     */
+    public function appendItems(Order $order, array $items)
+    {
+        return DB::transaction(function() use ($order, $items) {
+            $tenantId = $order->tenant_id;
+            
+            $processedItems = [];
+            $totalSell = 0;
+            $totalCost = 0;
+
+            foreach ($items as $item) {
+                $processedArray = $this->lockAndPrepareItems($item);
+                foreach ($processedArray as $processed) {
+                    $processedItems[] = $processed;
+                    $totalSell += $processed['line_sell'];
+                    $totalCost += $processed['line_cost'];
+                }
+            }
+
+            // 1. Create Lines
+            foreach ($processedItems as $pItem) {
+                $this->createLine($order, $pItem);
+            }
+
+            // 2. Update Order Totals
+            $order->increment('total_sell_price', $totalSell);
+            $order->increment('total_cost_price', $totalCost);
+
+            // 3. Financials
+            $this->ledger->adjustCreditForOrder($order->client_id, $totalSell);
+
+            // 4. Update Workshop Queue
+            $this->appendToWorkshop($order, $processedItems);
+
+            // 5. Cleanup
+            Cache::forget("tenant.{$tenantId}.panels");
+            Cache::forget("tenant.{$tenantId}.cantos");
+
+            return $order;
+        });
+    }
+
+    protected function appendToWorkshop(Order $order, array $processedItems): void
+    {
+        $serviceLines = collect($processedItems)->filter(function($item) {
+            return $item['type'] === Service::class || 
+                   (is_string($item['type']) && str_contains($item['type'], 'Service'));
+        });
+
+        if ($serviceLines->isEmpty()) return;
+
+        // Find existing non-delivered queue entry for this order
+        $queue = WorkshopQueue::where('order_id', $order->id)
+            ->where('status', '!=', 'delivered')
+            ->first();
+
+        if (!$queue) {
+            // Case where order didn't have workshop yet, or it was delivered
+            // We pass an empty data array since we don't have the original request context here
+            $this->createWorkshopEntry($order, $processedItems, $order->tenant_id, []);
+            return;
+        }
+
+        foreach ($serviceLines as $line) {
+            WorkshopQueueService::create([
+                'queue_id'       => $queue->id,
+                'label'          => $line['label'] ?? 'Service',
+                'material_type'  => $line['width_mm'] ? "{$line['width_mm']}mm" : null,
+                'material_color' => $line['thickness_mm'] ? "{$line['thickness_mm']}mm" : null,
+                'quantity'       => $line['quantity'],
+                'unit'           => 'u',
+                'is_done'        => false,
+            ]);
+        }
+        
+        // Reset status to 'waiting' if it was already processed, so it appears again in the board
+        if ($queue->status === 'done' || $queue->status === 'in_progress') {
+            $queue->update([
+                'status' => 'waiting', 
+                'done_at' => null,
+                'notes' => trim($queue->notes . " | Artiklat jdad zado!")
+            ]);
+        }
     }
 
     protected function lockAndPrepareItems(array $item)
@@ -183,6 +263,7 @@ class CheckoutService
     protected function createLine(Order $order, array $pItem)
     {
         return $order->lines()->create([
+            'tenant_id' => $order->tenant_id,
             'item_type' => $pItem['type'],
             'item_id' => $pItem['id'],
             'label' => $pItem['label'],
@@ -215,6 +296,7 @@ class CheckoutService
 
         $queue = WorkshopQueue::create([
             'tenant_id'    => $tenantId,
+            'order_id'     => $order->id,
             'queue_number' => WorkshopQueue::generateNumber($tenantId),
             'client_name'  => $client->name ?? 'Client',
             'client_phone' => $client->phone ?? null,

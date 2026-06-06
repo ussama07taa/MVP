@@ -231,3 +231,35 @@
     to { background-position: -200% 0; }
   }
 }
+
+/* ===== PRINT SYSTEM OVERRIDES ===== */
+@media print {
+  /* Hide EVERYTHING by default */
+  html, body, #app, [id^="headlessui-portal-root"], .Dialog, .TransitionRoot {
+    visibility: hidden !important;
+    height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  /* Show ONLY the print area */
+  #print-area, #print-area * {
+    visibility: visible !important;
+  }
+
+  #print-area {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  /* Reset body for printing */
+  body {
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+}

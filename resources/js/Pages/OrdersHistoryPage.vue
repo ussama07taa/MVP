@@ -168,11 +168,11 @@
           <div v-for="order in filteredOrders" :key="order.id" 
             @click="openOrderDetails(order)"
             class="group bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-indigo-200/50 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer grid grid-cols-1 md:grid-cols-12 items-center gap-4 relative overflow-hidden"
-            :class="order.total_refunded >= order.total_sell_price ? 'bg-rose-50/20 border-rose-100' : ''">
+            :class="order.total_refunded >= order.total_sell_price ? 'bg-rose-50/20 border-rose-100' : (order.total_refunded > 0 ? 'bg-amber-50/10' : '')">
             
             <!-- Left Glow accent -->
             <div class="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                 :class="order.total_refunded >= order.total_sell_price ? 'from-rose-400 to-rose-600 opacity-100' : ((Number(order.total_sell_price) - Number(order.amount_paid)) <= 0 ? 'from-emerald-400 to-teal-500' : 'from-amber-400 to-orange-500')"></div>
+                 :class="order.total_refunded >= order.total_sell_price ? 'from-rose-400 to-rose-600 opacity-100' : (order.remaining_balance <= 0 ? 'from-emerald-400 to-teal-500' : 'from-amber-400 to-orange-500')"></div>
 
             <!-- Ref -->
             <div class="md:col-span-2 flex items-center space-x-3">
@@ -181,8 +181,9 @@
               </div>
               <div class="flex flex-col">
                 <span class="font-black text-slate-900 text-lg leading-tight" :class="order.total_refunded >= order.total_sell_price ? 'line-through text-rose-300' : ''">{{ order.display_reference }}</span>
-                <span v-if="order.total_refunded > 0" class="inline-flex items-center text-[9px] font-black bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded mt-1 border border-rose-100 uppercase tracking-tighter w-fit">
-                  <RotateCcwIcon class="w-2.5 h-2.5 mr-1" /> RETOURNÉ
+                <span v-if="order.total_refunded > 0" class="inline-flex items-center text-[9px] font-black px-1.5 py-0.5 rounded mt-1 border uppercase tracking-tighter w-fit"
+                  :class="order.total_refunded >= order.total_sell_price ? 'bg-rose-600 text-white border-rose-700' : 'bg-rose-50 text-rose-600 border-rose-100'">
+                  <RotateCcwIcon class="w-2.5 h-2.5 mr-1" /> {{ order.total_refunded >= order.total_sell_price ? 'RETOUR TOTAL' : 'RETOUR PARTIEL' }}
                 </span>
                 <span v-if="order.source === 'invoice'" class="inline-flex items-center text-[9px] font-black bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded mt-1 border border-indigo-100 uppercase tracking-tighter w-fit">
                   <FileTextIcon class="w-2.5 h-2.5 mr-1" /> FACTURE MOD.
@@ -209,10 +210,15 @@
               </span>
             </div>
 
-            <!-- Total Amount -->
             <div class="md:col-span-2 flex flex-col md:text-right">
               <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest md:hidden mb-1">Montant</span>
-              <span class="font-black text-slate-900 text-lg tracking-tight" :class="order.total_refunded >= order.total_sell_price ? 'line-through text-rose-300' : ''">{{ Number(order.total_sell_price).toFixed(2) }} <span class="text-xs text-slate-400">DH</span></span>
+              <div class="flex flex-col md:items-end">
+                <span v-if="order.total_refunded > 0" class="text-[10px] font-bold text-slate-400 line-through decoration-rose-400/50">{{ Number(order.total_sell_price).toFixed(2) }}</span>
+                <span class="font-black text-slate-900 text-lg tracking-tight" :class="order.total_refunded >= order.total_sell_price ? 'line-through text-rose-300' : ''">
+                  {{ Number(order.net_total ?? (order.total_sell_price - order.total_refunded)).toFixed(2) }} <span class="text-xs text-slate-400">DH</span>
+                </span>
+                <span v-if="order.total_refunded > 0 && order.total_refunded < order.total_sell_price" class="text-[8px] font-black text-rose-500 uppercase tracking-tighter">Net après retour</span>
+              </div>
             </div>
 
             <!-- Status & Actions -->
@@ -220,20 +226,20 @@
               
               <!-- Badges -->
               <div class="flex-1 text-left md:text-right">
-                <span v-if="Number(order.amount_paid) >= Number(order.total_sell_price)" 
+                <span v-if="order.remaining_balance <= 0" 
                   class="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-black bg-emerald-50 text-emerald-600 border border-emerald-200/50">
                   <CheckCircleIcon class="w-4 h-4 mr-1.5" /> 
-                  {{ Number(order.amount_paid) > Number(order.total_sell_price) ? '+' + (Number(order.amount_paid) - Number(order.total_sell_price)).toFixed(2) + ' DH' : 'Réglé' }}
+                  {{ order.remaining_balance < -0.01 ? 'Crédit: ' + Math.abs(order.remaining_balance).toFixed(2) + ' DH' : 'Réglé' }}
                 </span>
                 <span v-else class="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-black bg-amber-50 text-amber-600 border border-amber-200/50">
                   <ClockIcon class="w-4 h-4 mr-1.5" /> 
-                  Reste: {{ (Number(order.total_sell_price) - Number(order.amount_paid)).toFixed(2) }}
+                  Reste: {{ order.remaining_balance.toFixed(2) }}
                 </span>
               </div>
 
               <!-- Buttons -->
               <div class="flex items-center gap-2">
-                <button v-if="(Number(order.total_sell_price) - Number(order.amount_paid)) > 0.01" 
+                <button v-if="order.remaining_balance > 0.01" 
                   @click.stop="openOrderDetails(order)" 
                   class="bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-4 py-2 rounded-xl text-xs font-black shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 hover:scale-105 active:scale-95 transition-all flex items-center">
                   PAYER
@@ -280,8 +286,8 @@
                   
                   <div>
                     <span class="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase mb-3"
-                      :class="(Number(selectedOrder?.total_sell_price) - Number(selectedOrder?.amount_paid)) <= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'">
-                      {{ (Number(selectedOrder?.total_sell_price) - Number(selectedOrder?.amount_paid)) <= 0 ? 'Facture Réglée' : 'Paiement en attente' }}
+                      :class="selectedOrder?.remaining_balance <= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'">
+                      {{ selectedOrder?.remaining_balance <= 0 ? 'Facture Réglée' : 'Paiement en attente' }}
                     </span>
                     <DialogTitle as="h3" class="text-3xl font-black text-slate-900 tracking-tight">
                       Reçu {{ selectedOrder?.display_reference }}
@@ -299,7 +305,7 @@
 
                 <div class="p-8">
                   <!-- Payment Banner (Glassmorphism) -->
-                  <div v-if="(Number(selectedOrder?.total_sell_price) - Number(selectedOrder?.amount_paid)) > 0.01" 
+                  <div v-if="selectedOrder?.remaining_balance > 0.01" 
                     class="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100 rounded-3xl p-6 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-inner">
                     <div>
                       <p class="text-emerald-900 font-black text-xl tracking-tight">Reste à payer</p>
@@ -310,7 +316,7 @@
                         <span class="absolute left-4 top-1/2 transform -translate-y-1/2 text-emerald-400 font-black text-lg">DH</span>
                         <input type="number" v-model="paymentAmount" 
                           class="w-full pl-12 pr-4 py-3 bg-slate-50 border-0 rounded-xl focus:ring-0 focus:bg-emerald-50 transition-colors font-black text-slate-800 text-lg" 
-                          :placeholder="(Number(selectedOrder?.total_sell_price) - Number(selectedOrder?.amount_paid)).toFixed(2)">
+                          :placeholder="selectedOrder?.remaining_balance.toFixed(2)">
                       </div>
                       <button @click="addPayment" :disabled="!paymentAmount || paymentAmount <= 0" 
                         class="bg-emerald-500 text-white p-3 rounded-xl font-black hover:bg-emerald-600 disabled:opacity-50 shadow-md transition-all flex items-center justify-center">
@@ -393,15 +399,24 @@
                     
                     <div class="flex justify-between items-end relative z-10">
                       <div>
-                        <p class="text-slate-400 font-bold text-sm mb-1">Montant Total</p>
-                        <p class="text-4xl font-black tracking-tight">{{ Number(selectedOrder?.total_sell_price).toFixed(2) }} <span class="text-lg text-slate-500">DH</span></p>
+                        <p class="text-slate-400 font-bold text-sm mb-1">{{ selectedOrder?.total_refunded > 0 ? 'Montant Net' : 'Montant Total' }}</p>
+                        <div class="flex flex-col">
+                          <span v-if="selectedOrder?.total_refunded > 0" class="text-xs font-bold text-slate-500 line-through decoration-rose-500/50 mb-1">Initial: {{ Number(selectedOrder?.total_sell_price).toFixed(2) }} DH</span>
+                          <p class="text-4xl font-black tracking-tight">
+                            {{ Number(selectedOrder?.net_total ?? (selectedOrder?.total_sell_price - selectedOrder?.total_refunded)).toFixed(2) }} 
+                            <span class="text-lg text-slate-500">DH</span>
+                          </p>
+                        </div>
                       </div>
                       
                       <div class="text-right">
                         <p v-if="selectedOrder?.total_refunded > 0" class="text-rose-400 font-bold text-xs mb-1 uppercase tracking-widest">Retourné: {{ Number(selectedOrder?.total_refunded).toFixed(2) }}</p>
                         <p class="text-emerald-400/80 font-bold text-xs mb-1 uppercase tracking-widest">Payé: {{ Number(selectedOrder?.amount_paid).toFixed(2) }}</p>
-                        <p v-if="(Number(selectedOrder?.total_sell_price) - Number(selectedOrder?.amount_paid)) > 0.01" class="text-amber-400 font-black text-lg">
-                          Reste: {{ (Number(selectedOrder?.total_sell_price) - Number(selectedOrder?.amount_paid)).toFixed(2) }}
+                        <p v-if="selectedOrder?.remaining_balance > 0.01" class="text-amber-400 font-black text-lg">
+                          Reste: {{ selectedOrder?.remaining_balance.toFixed(2) }}
+                        </p>
+                        <p v-else-if="selectedOrder?.remaining_balance < -0.01" class="text-emerald-400 font-black text-lg">
+                          Crédit client: {{ Math.abs(selectedOrder?.remaining_balance).toFixed(2) }}
                         </p>
                       </div>
                     </div>
@@ -417,7 +432,12 @@
                     <RotateCcwIcon class="w-4 h-4 mr-2" /> Retour / Avoir
                   </button>
 
-                  <div class="flex gap-3">
+                    <div class="flex gap-3">
+                    <button v-if="userRole === 'admin'" type="button" 
+                      class="px-5 py-2.5 text-sm font-black text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-xl hover:bg-indigo-100 focus:outline-none transition-all flex items-center shadow-sm"
+                      @click="openAppendModal(selectedOrder)">
+                      <PlusIcon class="w-4 h-4 mr-2" /> Ajouter Articles
+                    </button>
                     <button type="button" class="px-6 py-2.5 text-sm font-black text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 focus:outline-none transition-colors" @click="closeModal">
                       Fermer
                     </button>
@@ -500,6 +520,19 @@
       </Dialog>
     </TransitionRoot>
 
+    <!-- Append Item Modal -->
+    <AppendItemModal
+      v-if="isAppendModalOpen"
+      :show="isAppendModalOpen"
+      :order="orderToAppend"
+      :panels="panels"
+      :cantos="cantos"
+      :services="services"
+      :consumables="consumables"
+      @close="isAppendModalOpen = false"
+      @success="loadOrders"
+    />
+
   </div>
 </template>
 
@@ -515,9 +548,10 @@ const userRole = computed(() => authUser.value?.role);
 import { 
   FileTextIcon, FilterIcon, CheckCircleIcon, ClockIcon, 
   PrinterIcon, ReceiptIcon, SearchIcon, CreditCardIcon, CalendarIcon,
-  RotateCwIcon, FileDownIcon, RotateCcwIcon, MessageCircleIcon
+  RotateCwIcon, FileDownIcon, RotateCcwIcon, MessageCircleIcon, PlusIcon
 } from 'lucide-vue-next';
 import { TransitionRoot, TransitionChild, Dialog, DialogPanel, DialogTitle } from '@headlessui/vue';
+import AppendItemModal from '@/Components/Order/AppendItemModal.vue';
 
 const orders = ref([]);
 const searchQuery = ref('');
@@ -527,8 +561,14 @@ const selectedOrder = ref(null);
 const paymentAmount = ref(null);
 const isLoading = ref(true);
 const isReturnModalOpen = ref(false);
+const isAppendModalOpen = ref(false);
+const orderToAppend = ref(null);
 const isSubmittingReturn = ref(false);
 const returnFocusRef = ref(null);
+const panels = ref([]);
+const cantos = ref([]);
+const services = ref([]);
+const consumables = ref([]);
 const returnForm = ref({
   order_id: null,
   reason: '',
@@ -542,7 +582,7 @@ const customEndDate = ref('');
 
 // Stats Calculation
 const stats = computed(() => {
-  const totalSales = filteredOrders.value.reduce((sum, o) => sum + Number(o.total_sell_price), 0);
+  const totalSales = filteredOrders.value.reduce((sum, o) => sum + Number(o.net_total ?? (o.total_sell_price - o.total_refunded)), 0);
   const totalReturns = filteredOrders.value.reduce((sum, o) => sum + Number(o.total_refunded || 0), 0);
   return { totalSales, totalReturns };
 });
@@ -577,7 +617,7 @@ const filteredOrders = computed(() => {
     }
 
     // 2. Status Filter
-    const isPaid = Number(o.amount_paid) >= Number(o.total_sell_price);
+    const isPaid = o.remaining_balance <= 0.01;
     if (statusFilter.value === 'paid' && !isPaid) return false;
     if (statusFilter.value === 'unpaid' && isPaid) return false;
 
@@ -620,11 +660,11 @@ const closeModal = () => {
 const addPayment = async () => {
   if(!paymentAmount.value || paymentAmount.value <= 0) return;
   
-  const reste = Number(selectedOrder.value.total_sell_price) - Number(selectedOrder.value.amount_paid);
-  if (paymentAmount.value > (reste + 0.01)) {
-    toast.error('Le montant (' + paymentAmount.value + ' DH) est supérieur au reste à payer (' + reste.toFixed(2) + ' DH).');
-    return;
-  }
+    const reste = selectedOrder.value.remaining_balance;
+    if (paymentAmount.value > (reste + 0.01)) {
+        toast.error('Le montant (' + paymentAmount.value + ' DH) est supérieur au reste à payer (' + reste.toFixed(2) + ' DH).');
+        return;
+    }
 
   try {
     const res = await axios.post(`/api/admin/orders/${selectedOrder.value.id}/pay`, { 
@@ -703,7 +743,9 @@ const printInvoice = (order) => {
     detail: {
       order: order,
       items: order.lines || [],
-      total: Number(order.total_sell_price),
+      total: Number(order.net_total ?? order.total_sell_price),
+      grossTotal: Number(order.total_sell_price),
+      totalRefunded: Number(order.total_refunded || 0),
       amountPaid: Number(order.amount_paid) || 0,
       clientName: order.client?.name || 'Client'
     }
@@ -738,6 +780,42 @@ const shareOnWhatsApp = (order) => {
   // 4. Open WhatsApp
   window.open(waUrl, '_blank');
 };
+
+const openAppendModal = (order) => {
+  orderToAppend.value = { ...order }; // Clone to preserve state
+  isAppendModalOpen.value = true;
+};
+
+const fetchProducts = async () => {
+  try {
+    const [pRes, cRes, sRes, conRes] = await Promise.all([
+      axios.get('/api/admin/panels'),
+      axios.get('/api/admin/cantos'),
+      axios.get('/api/admin/services'),
+      axios.get('/api/admin/expenses?type=consumable'), // Consumables might need a specific endpoint
+    ]);
+    panels.value = pRes.data.data || pRes.data;
+    cantos.value = cRes.data.data || cRes.data;
+    services.value = sRes.data.data || sRes.data;
+    
+    // Consumables logic
+    let rawConsumables = conRes.data.data || conRes.data;
+    if (!Array.isArray(rawConsumables) || rawConsumables.length === 0) {
+      const fallback = await axios.get('/api/admin/invoices/stock-items');
+      const fallbackData = fallback.data.data || fallback.data;
+      consumables.value = Array.isArray(fallbackData) ? fallbackData.filter(i => i.type === 'consumable') : [];
+    } else {
+      consumables.value = rawConsumables;
+    }
+  } catch (e) {
+    console.error('Failed to fetch product lists', e);
+  }
+};
+
+onMounted(() => {
+  loadOrders();
+  fetchProducts();
+});
 
 const loadOrders = async () => {
   isLoading.value = true;
@@ -800,7 +878,6 @@ const formatItemName = (name) => {
     .replace(/Sel3a\s*(?:d|y|n)?\s*Client/gi, 'Fourniture Client');
 };
 
-onMounted(() => loadOrders());
 </script>
 
 <style scoped>

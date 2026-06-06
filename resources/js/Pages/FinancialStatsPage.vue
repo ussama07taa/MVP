@@ -157,7 +157,7 @@
                  </div>
                  <div>
                     <h3 class="text-xs font-black text-slate-800 uppercase tracking-widest">Trésorerie Réelle (Net Cash)</h3>
-                    <p class="text-[9px] font-bold text-slate-400 uppercase mt-0.5">Ce qui reste f jibi (Encaissé - Payé)</p>
+                    <p class="text-[9px] font-bold text-slate-400 uppercase mt-0.5">Ce qui reste dans la Caisse Physique</p>
                  </div>
               </div>
            </div>
@@ -166,12 +166,12 @@
            </div>
            <div class="mt-6 grid grid-cols-2 gap-4">
               <div class="p-4 bg-slate-50 rounded-3xl">
-                 <span class="text-[9px] font-black text-slate-400 uppercase block mb-1">Total Encaissé</span>
+                 <span class="text-[9px] font-black text-slate-400 uppercase block mb-1">Encaissé (Caisse)</span>
                  <span class="text-sm font-black text-emerald-600">+{{ format(stats.cash_collected) }} DH</span>
               </div>
               <div class="p-4 bg-slate-50 rounded-3xl">
-                 <span class="text-[9px] font-black text-slate-400 uppercase block mb-1">Total Sorties</span>
-                 <span class="text-sm font-black text-rose-600">-{{ format(stats.opex + stats.purchases_paid) }} DH</span>
+                 <span class="text-[9px] font-black text-slate-400 uppercase block mb-1">Sorties (Caisse)</span>
+                 <span class="text-sm font-black text-rose-600">-{{ format(stats.opex + stats.purchases_paid_cash) }} DH</span>
               </div>
            </div>
         </div>
@@ -192,13 +192,19 @@
            <div class="text-4xl font-black text-slate-900 tracking-tighter">
              {{ format(stats.total_purchases) }}<span class="text-lg font-bold text-slate-300 ml-1">DH</span>
            </div>
-           <div class="mt-6 flex items-center justify-between">
-              <div class="flex flex-col">
-                 <span class="text-[9px] font-black text-slate-400 uppercase block mb-1">Payé aux Fournisseurs</span>
-                 <span class="text-sm font-black text-indigo-600">{{ format(stats.purchases_paid) }} DH</span>
+           <div class="mt-6 flex flex-col gap-3">
+              <div class="flex items-center justify-between pb-3 border-b border-slate-50">
+                 <div class="flex flex-col">
+                    <span class="text-[9px] font-black text-slate-400 uppercase block mb-1">💵 Espèces (Caisse)</span>
+                    <span class="text-sm font-black text-amber-500">{{ format(stats.purchases_paid_cash) }} DH</span>
+                 </div>
+                 <div class="flex flex-col text-right">
+                    <span class="text-[9px] font-black text-slate-400 uppercase block mb-1">🏦 Banque (Ch/Vir)</span>
+                    <span class="text-sm font-black text-indigo-500">{{ format(stats.purchases_paid_bank) }} DH</span>
+                 </div>
               </div>
-              <div class="text-right">
-                 <span class="text-[9px] font-black text-slate-400 uppercase block mb-1">Reste à payer (Dettes)</span>
+              <div class="flex items-center justify-between">
+                 <span class="text-[9px] font-black text-slate-400 uppercase">Reste à payer (Dettes)</span>
                  <span class="text-sm font-black text-rose-500">{{ format(stats.total_purchases - stats.purchases_paid) }} DH</span>
               </div>
            </div>
@@ -415,6 +421,8 @@ const stats = ref({
     unpaid_revenue: 0,
     total_purchases: 0,
     purchases_paid: 0,
+    purchases_paid_cash: 0,
+    purchases_paid_bank: 0,
     net_cash_flow: 0,
     cogs: 0,
     gross_margin: 0,

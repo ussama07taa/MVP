@@ -354,7 +354,7 @@ import {
   UsersIcon, SettingsIcon, BellIcon, HardHatIcon, TruckIcon, ReceiptIcon,
   PieChartIcon, SlidersIcon, ChevronDownIcon, ActivityIcon, ShieldIcon,
   MenuIcon, XIcon, LogOutIcon, ChevronRightIcon, ClipboardListIcon,
-  UserCheckIcon, BarChart3Icon, DatabaseIcon, ZapIcon, SearchIcon
+  UserCheckIcon, BarChart3Icon, DatabaseIcon, ZapIcon, SearchIcon, WalletIcon
 } from 'lucide-vue-next';
 
 // ─── Inline sub-components ──────────────────────────────────────
@@ -543,15 +543,33 @@ const closeMobileOnNav = (e) => {
 const fetchNotifications = async () => {
   try {
     const res = await axios.get('/api/admin/dashboard');
-    const lowStock = res.data.low_stock_count || 0;
+    const lowStock = res.data.alerts?.low_stock_count || res.data.low_stock_count || 0;
+    const chequesStr = res.data.alerts?.upcoming_cheques_count || 0;
     notifications.value = [];
+    
     if (lowStock > 0) {
       notifications.value.push({
-        id: 1,
+        id: 'stock_alert',
         title: 'Alerte Stock Bas',
-        message: `${lowStock} produit(s) atteignent le seuil critique.`,
+        message: `${lowStock} article(s) atteignent le seuil critique.`,
         icon: LayersIcon,
         colorClass: 'bg-amber-100 text-amber-600'
+      });
+    }
+
+    if (chequesStr > 0) {
+      const cheques = res.data.alerts?.upcoming_cheques || [];
+      cheques.forEach(cheque => {
+        let daysStr = cheque.days_remaining === 0 ? "Aujourd'hui" : `Dans ${cheque.days_remaining} jours`;
+        if (cheque.days_remaining < 0) daysStr = `En retard de ${Math.abs(cheque.days_remaining)} jours`;
+        
+        notifications.value.push({
+          id: `cheque_${cheque.id}`,
+          title: `Chèque Fournisseur imminent`,
+          message: `${cheque.supplier_name} - ${cheque.amount} DH (${daysStr})`,
+          icon: WalletIcon, // Reusing existing icon, importing underneath if needed
+          colorClass: 'bg-indigo-100 text-indigo-600'
+        });
       });
     }
   } catch (e) { /* silent */ }

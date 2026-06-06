@@ -78,7 +78,21 @@ class ClientController extends Controller
     public function history($id)
     {
         $client = Client::withTrashed()->findOrFail($id);
-        $orders = Order::withTrashed()->with(['lines.item', 'payments'])->where('client_id', $id)->latest()->get();
+        $orders = Order::withTrashed()
+            ->with(['lines.item', 'lines.returns', 'payments', 'returns'])
+            ->where('client_id', $id)
+            ->latest()
+            ->get()
+            ->map(function ($order) {
+                $order->lines = $order->lines->map(function ($line) {
+                    $line->quantity_returned = (float) $line->returns->sum('quantity_returned');
+                    return $line;
+                });
+                // Compute net_total for frontend usage
+                $order->net_total = (float) $order->total_sell_price - (float) $order->returns->sum('total_refunded');
+                $order->total_refunded_amount = (float) $order->returns->sum('total_refunded');
+                return $order;
+            });
 
         // Devis & Factures models for internal processing
         $invoices_models = Invoice::withTrashed()
@@ -202,8 +216,9 @@ class ClientController extends Controller
 
         $sortedTimeline = $timeline->sortByDesc('date')->values();
 
-        // Stats
-        $totalRevenue = $orders->sum('total_sell_price') + $invoices_models->whereNotNull('validated_at')->where('type', 'invoice')->sum('total');
+        // Stats — Use Net Revenue (Gross - Returns)
+        $totalRefunds = $orders->sum('total_refunded_amount');
+        $totalRevenue = ($orders->sum('total_sell_price') - $totalRefunds) + $invoices_models->whereNotNull('validated_at')->where('type', 'invoice')->sum('total');
         $totalPaid = $orders->sum('amount_paid') + $invoices_models->where('type', 'invoice')->sum('amount_paid');
         $lastOrder = $orders->first();
         $orderCount = $orders->count();

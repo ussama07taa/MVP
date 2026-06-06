@@ -1,17 +1,25 @@
 <template>
-  <div class="min-h-screen bg-[#f8fafc] p-4 lg:p-8 font-sans">
+  <div class="min-h-screen bg-[#f8fafc] font-sans relative overflow-hidden">
     
-    <!-- Header -->
-    <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-      <div class="flex items-center gap-6">
-        <div class="w-16 h-16 bg-white rounded-3xl flex items-center justify-center shadow-sm border border-slate-100">
-          <UsersIcon class="w-10 h-10 text-brand-600" />
+    <!-- Ambient Background (Master UI) -->
+    <div class="fixed top-0 left-0 w-full h-[600px] pointer-events-none z-0">
+      <div class="absolute -top-32 -right-32 w-[35rem] h-[35rem] bg-indigo-100/80 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob"></div>
+      <div class="absolute top-20 -left-32 w-[30rem] h-[30rem] bg-brand-100/80 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob animation-delay-2000"></div>
+    </div>
+
+    <div class="relative z-10 w-full max-w-[1400px] mx-auto p-4 lg:p-8">
+      <!-- Header -->
+      <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div class="flex items-center gap-6">
+          <div class="w-16 h-16 bg-white rounded-[1.5rem] flex items-center justify-center shadow-sm border border-slate-100 shrink-0 relative overflow-hidden group">
+            <div class="absolute inset-0 bg-gradient-to-br from-brand-500/10 to-indigo-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            <UsersIcon class="w-8 h-8 text-brand-600 relative z-10 group-hover:scale-110 transition-transform duration-500" />
+          </div>
+          <div>
+            <h1 class="text-3xl font-black text-slate-900 tracking-tight leading-none mb-1">Répertoire Clients</h1>
+            <p class="text-slate-500 font-medium text-sm">Gérez votre base client et suivez les crédits en cours.</p>
+          </div>
         </div>
-        <div>
-          <h1 class="text-3xl font-black text-slate-900 tracking-tight leading-none mb-1">Répertoire Clients</h1>
-          <p class="text-slate-500 font-medium text-sm">Gérez votre base client et suivez les crédits en cours.</p>
-        </div>
-      </div>
       <div class="flex items-center gap-4 w-full md:w-auto">
         <button @click="loadClients" 
           :class="isLoading ? 'opacity-50 pointer-events-none' : ''"
@@ -37,8 +45,9 @@
     </div>
 
     <!-- Client Dossier Slide-over (CRM View) -->
-    <transition name="slide-right">
-      <div v-if="selectedClientDossier" class="fixed inset-y-0 right-0 z-50 w-full max-w-4xl mx-0 sm:mx-auto bg-[#FDFCFE] shadow-2xl flex flex-col border-l border-slate-200/50" style="transform: translateX(0);">
+    <Teleport to="body">
+      <transition name="slide-right">
+        <div v-if="selectedClientDossier" class="fixed inset-y-0 right-0 z-[100] w-full max-w-4xl mx-0 sm:mx-auto bg-[#FDFCFE] shadow-2xl flex flex-col border-l border-slate-200/50" style="transform: translateX(0);">
         <!-- Drawer Header (HERO STYLE) -->
         <div class="relative overflow-hidden bg-white px-8 py-10 border-b border-slate-100/80 z-10">
           <!-- Abstract Background Decor -->
@@ -248,26 +257,32 @@
                        <span class="px-5 py-2 bg-slate-900 text-white font-black text-xs rounded-xl border border-slate-800 uppercase tracking-[0.2em] shadow-xl shadow-slate-900/10 transform hover:scale-105 transition-transform cursor-default">
                          FAC-{{ order.id }}
                        </span>
-                       <span :class="Number(order.total_sell_price) - Number(order.amount_paid) > 0.01 ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'" 
+                       <span :class="Number(order.net_total ?? order.total_sell_price) - Number(order.amount_paid) > 0.01 ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'" 
                              class="px-3 py-1 font-black text-[9px] rounded-lg border uppercase tracking-[0.1em]">
-                         {{ Number(order.total_sell_price) - Number(order.amount_paid) > 0.01 ? 'En Dette' : 'À Jour' }}
+                         {{ Number(order.net_total ?? order.total_sell_price) - Number(order.amount_paid) > 0.01 ? 'En Dette' : 'À Jour' }}
+                       </span>
+                       <span v-if="order.total_refunded_amount > 0" class="px-3 py-1 font-black text-[9px] rounded-lg border uppercase tracking-[0.1em] bg-rose-50 text-rose-600 border-rose-100">
+                         Retour: {{ safeNumber(order.total_refunded_amount) }} DH
                        </span>
                      </div>
                    </div>
                    
                    <div class="grid grid-cols-3 gap-6">
                      <div>
-                       <p class="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Montant Total</p>
-                       <p class="font-black text-slate-800 text-lg tracking-tight">{{ safeNumber(order.total_sell_price) }} <span class="text-[10px] text-slate-400">DH</span></p>
+                       <p class="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">{{ order.total_refunded_amount > 0 ? 'Montant Net' : 'Montant Total' }}</p>
+                       <div class="flex flex-col">
+                         <span v-if="order.total_refunded_amount > 0" class="text-[10px] font-bold text-slate-300 line-through decoration-rose-400/50">{{ safeNumber(order.total_sell_price) }}</span>
+                         <p class="font-black text-slate-800 text-lg tracking-tight">{{ safeNumber(order.net_total ?? order.total_sell_price) }} <span class="text-[10px] text-slate-400">DH</span></p>
+                       </div>
                      </div>
                      <div>
                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Total Payé</p>
                        <p class="font-black text-emerald-600 text-lg tracking-tight">{{ safeNumber(order.amount_paid) }} <span class="text-[10px] opacity-50">DH</span></p>
                      </div>
                       <div class="text-right">
-                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">{{ (Number(order.total_sell_price) - Number(order.amount_paid)) > 0.01 ? 'Reste à régler' : 'Surplus' }}</p>
-                        <p class="font-black text-lg tracking-tight" :class="(Number(order.total_sell_price) - Number(order.amount_paid)) > 0.01 ? 'text-red-500' : 'text-emerald-500'">
-                          {{ safeNumber(Math.abs(Number(order.total_sell_price) - Number(order.amount_paid))) }} <span class="text-[10px] opacity-50">DH</span>
+                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">{{ (Number(order.net_total ?? order.total_sell_price) - Number(order.amount_paid)) > 0.01 ? 'Reste à régler' : 'Surplus' }}</p>
+                        <p class="font-black text-lg tracking-tight" :class="(Number(order.net_total ?? order.total_sell_price) - Number(order.amount_paid)) > 0.01 ? 'text-red-500' : 'text-emerald-500'">
+                          {{ safeNumber(Math.abs(Number(order.net_total ?? order.total_sell_price) - Number(order.amount_paid))) }} <span class="text-[10px] opacity-50">DH</span>
                         </p>
                       </div>
                    </div>
@@ -279,13 +294,25 @@
                         <ActivityIcon class="w-3 h-3 mr-2 text-indigo-500" /> Composition du panier
                       </p>
                       <div class="space-y-3">
-                        <div v-for="line in order.lines" :key="line.id" class="flex justify-between items-center text-xs animate-in fade-in slide-in-from-left-1 duration-300">
+                        <div v-for="line in order.lines" :key="line.id" 
+                             class="flex justify-between items-center text-xs animate-in fade-in slide-in-from-left-1 duration-300"
+                             :class="line.quantity_returned >= line.quantity ? 'opacity-40 grayscale pointer-events-none select-none' : ''">
                           <div class="font-bold flex items-center gap-3">
                             <span class="w-9 h-6 bg-white text-slate-900 border border-slate-200 font-black rounded-lg flex items-center justify-center text-[10px] shadow-sm">x{{ Number(line.quantity) }}</span>
-                            <span class="text-slate-700">{{ getLineItemName(line) }}</span>
+                            <div class="flex flex-col">
+                              <span class="text-slate-700" :class="line.quantity_returned >= line.quantity ? 'line-through decoration-rose-500/50 decoration-2' : ''">{{ getLineItemName(line) }}</span>
+                              <span v-if="line.quantity_returned > 0 && line.quantity_returned < line.quantity" class="text-[9px] text-rose-500 font-black flex items-center gap-1">
+                                <RotateCwIcon class="w-2.5 h-2.5" /> -{{ line.quantity_returned }} Retourné
+                              </span>
+                            </div>
                             <span class="text-[10px] text-slate-400 bg-slate-100/50 px-2 py-0.5 rounded-md font-medium">{{ Number(line.unit_sell_price).toFixed(2) }} DH</span>
                           </div>
-                          <span class="font-black text-slate-900">{{ safeNumber(line.total_line_sell) }} <span class="text-[9px] font-bold text-slate-400">DH</span></span>
+                          <div class="flex flex-col items-end">
+                            <span class="font-black text-slate-900" :class="line.quantity_returned >= line.quantity ? 'line-through text-slate-300' : ''">{{ safeNumber(line.total_line_sell) }} <span class="text-[9px] font-bold text-slate-400">DH</span></span>
+                            <span v-if="line.quantity_returned >= line.quantity" class="text-[8px] font-black uppercase text-rose-500 tracking-widest mt-1 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-100">
+                               Totalement Retourné
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -303,7 +330,7 @@
                          <PrinterIcon class="w-3.5 h-3.5" /> Imprimer
                        </button>
                     </div>
-                    <button v-if="(Number(order.total_sell_price) - Number(order.amount_paid)) > 0.01" 
+                    <button v-if="(Number(order.net_total ?? order.total_sell_price) - Number(order.amount_paid)) > 0.01" 
                             @click="openPaymentModal(order)" 
                             class="h-9 px-5 bg-emerald-600 text-white font-black text-[10px] uppercase tracking-widest rounded-xl shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all flex items-center gap-2 active:scale-95">
                        <CreditCardIcon class="w-3.5 h-3.5" /> Encaisser
@@ -494,10 +521,10 @@
       </div>
     </transition>
     
-    <!-- Dimmer for Drawer -->
-    <transition name="fade">
-      <div v-if="selectedClientDossier" @click="selectedClientDossier = null" class="fixed inset-0 z-40 bg-slate-900/20 backdrop-blur-sm"></div>
-    </transition>
+      <transition name="fade">
+        <div v-if="selectedClientDossier" @click="selectedClientDossier = null" class="fixed inset-0 z-[90] bg-slate-900/20 backdrop-blur-sm"></div>
+      </transition>
+    </Teleport>
     
     <!-- Custom Delete Modal -->
     <transition name="fade-slide">
@@ -537,7 +564,7 @@
           <div class="mb-6 p-4 bg-slate-50 rounded-2xl">
             <div class="flex justify-between mb-1">
                <span class="text-xs font-bold text-slate-400 uppercase">Reste à payer</span>
-               <span class="font-black text-red-500">{{ (Number(orderToPay.total_sell_price) - Number(orderToPay.amount_paid)).toFixed(2) }} DH</span>
+               <span class="font-black text-red-500">{{ (Number(orderToPay.net_total ?? orderToPay.total_sell_price) - Number(orderToPay.amount_paid)).toFixed(2) }} DH</span>
             </div>
           </div>
 
@@ -590,29 +617,29 @@
     </transition>
 
     <!-- Invoice Payment Modal -->
-    <transition name="fade-slide">
-      <div v-if="invoiceToPay" class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-        <div class="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl border border-slate-100">
-          <h3 class="text-xl font-black mb-2 text-slate-800">Encaisser Facture</h3>
-          <p class="text-sm text-slate-500 font-bold mb-6">{{ invoiceToPay.invoice_number }}</p>
+    <transition name="fade">
+      <div v-if="invoiceToPay" class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xl">
+        <div class="bg-white/95 backdrop-blur-3xl rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl border border-white/20">
+          <h3 class="text-xl font-black mb-2 text-slate-800 tracking-tight">Encaisser Facture</h3>
+          <p class="text-sm text-slate-500 font-bold mb-6">N° {{ invoiceToPay.invoice_number }}</p>
           
-          <div class="mb-6 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+          <div class="mb-6 p-4 bg-slate-50/80 rounded-2xl border border-slate-100">
             <div class="flex justify-between mb-1">
-               <span class="text-xs font-bold text-slate-400 uppercase">Reste à payer</span>
-               <span class="font-black text-red-600">{{ (Number(invoiceToPay.total) - Number(invoiceToPay.amount_paid)).toFixed(2) }} DH</span>
+               <span class="text-xs font-black text-slate-400 uppercase tracking-widest">Reste à payer</span>
+               <span class="font-black text-red-600 text-lg tracking-tight">{{ (Number(invoiceToPay.total) - Number(invoiceToPay.amount_paid)).toFixed(2) }} DH</span>
             </div>
           </div>
 
           <div class="space-y-2 mb-6">
-            <label class="text-xs font-bold text-slate-500 uppercase">Montant Reçu (DH)</label>
-            <input v-model="invoicePaymentAmount" type="number" step="0.01" class="w-full bg-slate-50 border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-emerald-500 transition-all font-black text-xl text-slate-900" placeholder="0.00">
+            <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Montant Reçu (DH)</label>
+            <input v-model="invoicePaymentAmount" type="number" step="0.01" class="w-full bg-slate-50/50 border border-slate-200 rounded-2xl p-4 focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all font-black text-2xl text-slate-900" placeholder="0.00">
           </div>
 
-          <div class="flex justify-end gap-3">
-            <button @click="invoiceToPay = null" class="bg-slate-100 text-slate-600 px-4 py-2 rounded-xl font-bold hover:bg-slate-200 transition-all">
+          <div class="flex justify-end gap-3 mt-8">
+            <button @click="invoiceToPay = null" class="bg-white border border-slate-200 text-slate-500 px-6 py-3 rounded-2xl font-black hover:bg-slate-50 hover:text-slate-700 transition-all text-xs uppercase tracking-widest">
               Annuler
             </button>
-            <button @click="submitInvoicePayment" class="bg-emerald-500 text-white px-6 py-2 rounded-xl font-black shadow-lg shadow-emerald-200 hover:bg-emerald-600 transition-all">
+            <button @click="submitInvoicePayment" class="bg-emerald-500 text-white px-8 py-3 rounded-2xl font-black shadow-lg shadow-emerald-200 hover:bg-emerald-600 transition-all text-xs uppercase tracking-widest active:scale-95">
               Confirmer
             </button>
           </div>
@@ -622,36 +649,36 @@
 
     <!-- Add Form -->
     <transition name="fade-slide">
-      <div v-if="showAddForm" class="bg-white p-8 rounded-3xl border border-slate-100 shadow-soft mb-8">
-        <h3 class="text-xl font-black mb-6 text-slate-800">{{ form.id ? 'Modifier le Client' : 'Ajouter un Client' }}</h3>
+      <div v-if="showAddForm" class="relative z-10 bg-white/80 backdrop-blur-2xl p-8 rounded-[2.5rem] border border-white/40 shadow-xl mb-8">
+        <h3 class="text-2xl font-black mb-8 text-slate-900 tracking-tight">{{ form.id ? 'Modifier' : 'Ajouter' }} un Client</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div class="space-y-2">
-            <label class="text-xs font-bold text-slate-500 uppercase">Nom Complet / Société *</label>
-            <input v-model="form.name" type="text" class="w-full bg-slate-50 border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-brand-500 transition-all font-medium">
+            <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">Nom Complet / Société *</label>
+            <input v-model="form.name" type="text" class="w-full bg-white/50 border border-slate-200/60 rounded-2xl p-4 focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all font-bold text-sm">
           </div>
           <div class="space-y-2">
-            <label class="text-xs font-bold text-slate-500 uppercase">Numéro de Téléphone</label>
-            <input v-model="form.phone" type="text" class="w-full bg-slate-50 border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-brand-500 transition-all font-medium">
+            <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">Numéro de Téléphone</label>
+            <input v-model="form.phone" type="text" class="w-full bg-white/50 border border-slate-200/60 rounded-2xl p-4 focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all font-bold text-sm">
           </div>
           <div class="space-y-2">
-            <label class="text-xs font-bold text-slate-500 uppercase">Adresse</label>
-            <input v-model="form.address" type="text" class="w-full bg-slate-50 border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-brand-500 transition-all font-medium" placeholder="Rue, Quartier...">
+            <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">Adresse</label>
+            <input v-model="form.address" type="text" class="w-full bg-white/50 border border-slate-200/60 rounded-2xl p-4 focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all font-bold text-sm" placeholder="Rue, Quartier...">
           </div>
           <div class="space-y-2">
-            <label class="text-xs font-bold text-slate-500 uppercase">Ville</label>
-            <input v-model="form.city" type="text" class="w-full bg-slate-50 border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-brand-500 transition-all font-medium" placeholder="Ville...">
+            <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">Ville</label>
+            <input v-model="form.city" type="text" class="w-full bg-white/50 border border-slate-200/60 rounded-2xl p-4 focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all font-bold text-sm" placeholder="Ville...">
           </div>
           <div class="md:col-span-2 space-y-2">
-            <label class="text-xs font-bold text-slate-500 uppercase">Notes internes</label>
-            <textarea v-model="form.notes" rows="2" class="w-full bg-slate-50 border-slate-200 rounded-xl p-3 focus:ring-2 focus:ring-brand-500 transition-all font-medium resize-none" placeholder="VIP, remarques, préférences..."></textarea>
+            <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">Notes internes</label>
+            <textarea v-model="form.notes" rows="2" class="w-full bg-white/50 border border-slate-200/60 rounded-2xl p-4 focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all font-bold text-sm resize-none" placeholder="VIP, remarques, préférences..."></textarea>
           </div>
         </div>
-        <div class="mt-8 flex justify-end gap-3">
-          <button @click="showAddForm = false" class="bg-slate-100 text-slate-600 px-6 py-3 rounded-2xl font-bold hover:bg-slate-200 transition-all">
+        <div class="mt-8 flex justify-end gap-3 pt-6 border-t border-slate-100/50">
+          <button @click="showAddForm = false" class="bg-white border border-slate-200 text-slate-500 px-8 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all">
             ANNULER
           </button>
-          <button @click="saveClient" class="bg-brand-600 text-white px-4 md:px-10 py-3 rounded-2xl font-black shadow-lg shadow-brand-100 hover:bg-brand-700 transition-all">
-            {{ form.id ? 'ENREGISTRER LES MODIFICATIONS' : 'CRÉER LE PROFIL CLIENT' }}
+          <button @click="saveClient" class="bg-brand-600 text-white px-8 py-3.5 rounded-2xl font-black shadow-lg shadow-brand-200 hover:bg-brand-700 transition-all text-xs uppercase tracking-widest flex items-center active:scale-95">
+            {{ form.id ? 'ENREGISTRER' : 'CRÉER LE CLIENT' }}
           </button>
         </div>
       </div>
@@ -663,24 +690,28 @@
     </div>
 
     <!-- Client Grid -->
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-      <div v-for="cl in (filteredClients || [])" :key="cl?.id || Math.random()" class="bg-white p-6 rounded-3xl border border-slate-100 shadow-soft hover:border-brand-200 transition-all group relative overflow-hidden flex flex-col justify-between">
-        <!-- Visual Decor -->
-        <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform pointer-events-none">
-           <UserIcon class="w-20 h-20 text-slate-900" />
+    <div v-else class="relative z-10 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div v-for="cl in (filteredClients || [])" :key="cl?.id || Math.random()" 
+           class="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 hover:border-brand-200 transition-all duration-300 group relative overflow-hidden flex flex-col justify-between cursor-pointer"
+           @click="openClientDetails(cl)">
+        
+        <!-- Premium Ambient Decor -->
+        <div class="absolute -top-10 -right-10 w-32 h-32 bg-brand-50 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+        <div class="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-125 transition-transform duration-500 pointer-events-none">
+           <UserIcon class="w-24 h-24 text-slate-900" />
         </div>
 
-        <div class="flex items-center mb-4">
-          <div class="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 group-hover:bg-brand-50 transition-colors">
-            <span class="text-xl font-black text-brand-600">{{ cl.name?.charAt(0) || '?' }}</span>
+        <div class="flex items-center mb-5 relative z-10">
+          <div class="w-16 h-16 bg-slate-50 rounded-[1.25rem] flex items-center justify-center border border-slate-100 group-hover:bg-brand-50 transition-colors shadow-sm relative overflow-hidden">
+            <span class="text-2xl font-black text-brand-600 font-heading">{{ cl.name?.charAt(0) || '?' }}</span>
           </div>
           <div class="ml-4">
-            <h3 class="text-xl font-black text-slate-900 leading-tight">{{ cl.name }}</h3>
+            <h3 class="text-xl font-black text-slate-900 tracking-tight leading-tight group-hover:text-brand-600 transition-colors">{{ cl.name }}</h3>
             <p class="text-sm font-bold text-slate-400 flex items-center mt-1">
-              <PhoneIcon class="w-3 h-3 mr-1" /> {{ cl.phone || 'N/A' }}
+              <PhoneIcon class="w-3.5 h-3.5 mr-1.5" /> {{ cl.phone || 'N/A' }}
             </p>
             <p v-if="cl.city" class="text-xs font-medium text-slate-400 flex items-center mt-0.5">
-              <MapPinIcon class="w-3 h-3 mr-1" /> {{ cl.city }}
+              <MapPinIcon class="w-3.5 h-3.5 mr-1.5" /> {{ cl.city }}
             </p>
           </div>
         </div>
@@ -729,6 +760,8 @@
                   :message="searchQuery ? 'Vérifiez l\'orthographe ou essayez un autre nom.' : 'Commencez par ajouter votre premier client pour centraliser vos données.'"
                   :actionLabel="!searchQuery ? 'Ajouter un Client' : ''"
                   @action="openAddForm" />
+    </div>
+
     </div>
 
   </div>
@@ -868,13 +901,17 @@ const formatItemName = (name) => {
 
 const printOrderInvoice = (order) => {
   const clientName = selectedClientDossier.value?.client?.name || order.client?.name || 'Client';
+  const refunded = Number(order.total_refunded_amount || 0);
+  const gross = Number(order.total_sell_price);
   
   // Dispatch global print event
   window.dispatchEvent(new CustomEvent('global-print', {
     detail: {
       order: order,
       items: order.lines || [],
-      total: Number(order.total_sell_price),
+      total: Number(order.net_total ?? (gross - refunded)),
+      grossTotal: gross,
+      totalRefunded: refunded,
       amountPaid: Number(order.amount_paid) || 0,
       clientName: clientName
     }
@@ -904,7 +941,7 @@ const openClientDetails = async (cl) => {
 
 const openPaymentModal = (order) => {
   orderToPay.value = order;
-  paymentAmount.value = (Number(order.total_sell_price) - Number(order.amount_paid)).toFixed(2);
+  paymentAmount.value = (Number(order.net_total ?? order.total_sell_price) - Number(order.amount_paid)).toFixed(2);
 };
 
 const submitPayment = async () => {
