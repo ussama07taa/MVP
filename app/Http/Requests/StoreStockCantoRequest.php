@@ -25,6 +25,7 @@ class StoreStockCantoRequest extends FormRequest
             'width_mm' => 'required|numeric|min:0',
             'thickness_mm' => 'required|numeric|min:0',
             'base_price_sell_per_m' => 'required|numeric|min:0',
+            'total_length_remaining' => 'nullable|numeric|min:0',
             'alert_threshold' => 'nullable|numeric|min:0',
             'supplier_id' => [
                 'nullable',

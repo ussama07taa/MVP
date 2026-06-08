@@ -18,44 +18,87 @@ class InitialStockCantoImport implements ToModel, WithHeadingRow, SkipsEmptyRows
  
     public function model(array $row)
     {
-        // Validation: skip if code is missing
         if (empty($row['code'])) {
             return null;
         }
 
-        // mapping 'code' to 'color_code' and 'nom' to 'name'
+        $type = strtolower(trim((string) ($row['type'] ?? 'canto')));
+        if (in_array($type, ['panel', 'mdf', 'panneau'], true)) {
+            return null;
+        }
+
         $canto = StockCanto::firstOrNew([
             'tenant_id' => $this->tenantId,
             'color_code' => trim($row['code']),
             'name' => $row['nom'] ?? $row['name'] ?? 'BANDCHANT',
         ]);
- 
+
         $canto->provider_catalog = $row['marque'] ?? $row['catalogue'] ?? $canto->provider_catalog ?? 'STOCK INITIAL';
-        
-        // Setting required fields if new
+
         if (!$canto->exists) {
             $canto->width_mm = $row['largeur'] ?? $row['width'] ?? 22;
             $canto->thickness_mm = $row['epaisseur'] ?? $row['thickness'] ?? 0.8;
         }
-        
-        $canto->total_length_remaining = ($canto->total_length_remaining ?? 0) + (float) ($row['metrage'] ?? $row['quantite'] ?? $row['qty'] ?? 0);
+
+        $addedLength = $this->resolveAddedLength($row);
+        if ($addedLength <= 0) {
+            return null;
+        }
+
+        $canto->total_length_remaining = ($canto->total_length_remaining ?? 0) + $addedLength;
         $canto->cost_price_per_m = (float) ($row['prix_achat'] ?? $row['prix'] ?? 0);
         $canto->base_price_sell_per_m = (float) ($row['prix_vente'] ?? 0);
-        
-        // Custom activity log description for Opening Stock
+
         activity()->withoutLogs(function () use ($canto) {
             $canto->save();
         });
-        
+
         activity()
             ->performedOn($canto)
             ->withProperties([
-                'type' => 'STOCK_INITIAL', 
-                'added_length' => $row['metrage'] ?? $row['quantite'] ?? $row['qty'] ?? 0,
-                'source' => 'Excel Import'
+                'type' => 'STOCK_INITIAL',
+                'added_length' => $addedLength,
+                'rolls' => $this->resolveRollCount($row),
+                'meters_per_roll' => $this->resolveMetersPerRoll($row),
+                'source' => 'Excel Import',
             ])
             ->log('Stock initial (Canto) importé via Excel');
- 
+
         return $canto;
+    }
+
+    protected function resolveRollCount(array $row): int
+    {
+        return (int) ($row['rouleaux'] ?? $row['nombre_rouleaux'] ?? $row['rolls'] ?? $row['rouleau'] ?? 0);
+    }
+
+    protected function resolveMetersPerRoll(array $row): float
+    {
+        $explicit = (float) ($row['metrage_par_rouleau'] ?? $row['meters_per_roll'] ?? $row['metrage_rouleau'] ?? 0);
+        if ($explicit > 0) {
+            return $explicit;
+        }
+
+        $rolls = $this->resolveRollCount($row);
+        $quantity = (float) ($row['metrage'] ?? $row['quantite'] ?? $row['qty'] ?? 0);
+
+        if ($rolls > 0 && $quantity > 0) {
+            return $quantity;
+        }
+
+        return 150;
+    }
+
+    protected function resolveAddedLength(array $row): float
+    {
+        $rolls = $this->resolveRollCount($row);
+        $metersPerRoll = $this->resolveMetersPerRoll($row);
+        $quantity = (float) ($row['metrage'] ?? $row['quantite'] ?? $row['qty'] ?? 0);
+
+        if ($rolls > 0) {
+            return $rolls * $metersPerRoll;
+        }
+
+        return $quantity;
     }
 }

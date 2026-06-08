@@ -18,11 +18,13 @@ class StockTemplateExport implements FromArray, WithHeadings, WithStyles
             'marque',
             'finition',
             'quantite',
+            'rouleaux',
+            'metrage_par_rouleau',
             'prix_achat',
             'prix_vente',
             'longueur',
             'largeur',
-            'epaisseur'
+            'epaisseur',
         ];
     }
 
@@ -36,11 +38,13 @@ class StockTemplateExport implements FromArray, WithHeadings, WithStyles
                 'Kronospan',
                 'Capella',
                 '50',
+                '',
+                '',
                 '350',
                 '450',
                 '2800',
                 '2070',
-                '18'
+                '18',
             ],
             [
                 'canto',
@@ -48,13 +52,15 @@ class StockTemplateExport implements FromArray, WithHeadings, WithStyles
                 'BANDCHANT',
                 'Kronospan',
                 'Standard',
-                '250',
+                '',
+                '2',
+                '125',
                 '1.5',
                 '3.5',
                 '',
                 '22',
-                '0.8'
-            ]
+                '0.8',
+            ],
         ];
     }
 

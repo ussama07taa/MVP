@@ -18,8 +18,12 @@ class InitialStockImport implements ToModel, WithHeadingRow, SkipsEmptyRows
  
     public function model(array $row)
     {
-        // Validation: skip if code is missing
         if (empty($row['code'])) {
+            return null;
+        }
+
+        $type = strtolower(trim((string) ($row['type'] ?? 'panel')));
+        if (in_array($type, ['canto', 'bandchant'], true)) {
             return null;
         }
 

@@ -58,7 +58,7 @@
             
             <button @click="triggerImport" 
                     class="p-4 bg-white text-indigo-600 hover:bg-indigo-50 rounded-[22px] shadow-sm border border-slate-100 transition-all active:scale-95 group" 
-                    title="Importer Stock Initial (Colonnes: code, nom, marque, metrage, prix_achat, prix_vente, largeur, epaisseur)">
+                    title="Importer Stock Initial (Colonnes: code, rouleaux, metrage_par_rouleau, prix_achat, prix_vente)">
               <FileUpIcon class="w-5 h-5" />
             </button>
             <input type="file" ref="importInput" @change="handleImportFile" class="hidden" accept=".xlsx,.xls,.csv">
@@ -126,33 +126,33 @@
                 <input v-model="form.thickness_mm" type="number" step="0.01" class="w-full bg-emerald-50 border-emerald-200 rounded-2xl p-4 focus:ring-2 focus:ring-emerald-500 font-black text-center text-emerald-900 text-sm italic">
               </div>
             </div>
-            <!-- Secure Edit Section (Premium UX) -->
+            <!-- Edit Section -->
             <div v-if="editingId" class="md:col-span-2 mt-4 pt-8 border-t border-slate-100 animate-in fade-in slide-in-from-bottom duration-500">
                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 items-stretch">
-                  
-                  <!-- AUDIT DATA (Locked) -->
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-slate-50/50 p-6 rounded-[32px] border border-slate-200/50 shadow-inner">
-                     <div class="space-y-1.5">
-                        <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center">
-                           <ShieldCheckIcon class="w-3 h-3 mr-1.5 text-slate-400" /> Stock Linéaire
-                        </label>
-                        <div class="flex items-baseline gap-1.5">
-                           <span class="text-3xl font-black text-slate-700 tracking-tighter">{{ totalMeters }}</span>
-                           <span class="text-[10px] font-bold text-slate-400 uppercase">Mètres</span>
-                        </div>
-                        <p class="text-[8px] text-slate-400 font-bold italic leading-tight">Total combiné des rouleaux</p>
-                     </div>
 
-                     <div class="space-y-1.5 sm:border-l sm:border-slate-200 sm:pl-6">
-                        <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center">
-                           <TrendingDownIcon class="w-3 h-3 mr-1.5 text-slate-400" /> Coût (CUMP)
-                        </label>
-                        <div class="flex items-baseline gap-1.5">
-                           <span class="text-3xl font-black text-slate-700 tracking-tighter">{{ parseFloat(form.unit_cost_m).toFixed(2) }}</span>
-                           <span class="text-[10px] font-bold text-slate-400 uppercase">DH/M</span>
+                  <!-- STOCK (Editable via rouleaux) -->
+                  <div class="bg-emerald-50/30 p-6 rounded-[32px] border border-emerald-100/50 shadow-inner space-y-5">
+                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                           <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Nombre de Rouleaux</label>
+                           <input type="number" v-model="form.rolls" min="1" class="w-full bg-white border-slate-200 rounded-2xl p-4 focus:ring-2 focus:ring-emerald-500 font-black text-sm">
                         </div>
-                        <p class="text-[8px] text-slate-400 font-bold italic leading-tight">Valeur d'achat moyenne</p>
+                        <div class="space-y-2">
+                           <label class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Mètres / Rouleau</label>
+                           <input type="number" v-model="form.meters_per_roll" min="0.1" step="0.1" class="w-full bg-white border-slate-200 rounded-2xl p-4 focus:ring-2 focus:ring-emerald-500 font-black text-sm">
+                        </div>
                      </div>
+                     <div class="flex items-center justify-between bg-white rounded-2xl p-4 border border-emerald-100">
+                        <div>
+                           <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Stock Total</p>
+                           <p class="text-3xl font-black text-emerald-700 tracking-tighter">{{ totalMeters }}<span class="text-sm ml-1">m</span></p>
+                        </div>
+                        <div class="text-right">
+                           <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Coût (CUMP)</p>
+                           <p class="text-lg font-black text-slate-700">{{ parseFloat(form.unit_cost_m || 0).toFixed(2) }} DH/m</p>
+                        </div>
+                     </div>
+                     <p class="text-[9px] text-emerald-600 font-bold italic">Modifiez le nombre de rouleaux ou les mètres par rouleau pour ajuster le stock.</p>
                   </div>
 
                   <!-- COMMERCIAL DATA (Editable) -->
@@ -580,7 +580,10 @@
                     <div class="w-12 h-12 rounded-2xl bg-amber-50 flex flex-shrink-0 items-center justify-center text-amber-600 font-black text-xl shadow-sm group-hover:bg-amber-600 group-hover:text-white transition-all duration-300">2</div>
                     <div class="flex-1">
                         <h4 class="text-lg font-black text-slate-900 mb-1">Préparer vos données</h4>
-                        <p class="text-sm text-slate-500 font-medium leading-relaxed">Remplissez le fichier avec vos quantités actuelles. Respectez bien les colonnes <code class="bg-slate-100 px-1.5 py-0.5 rounded text-indigo-600 font-bold">code</code> et <code class="bg-slate-100 px-1.5 py-0.5 rounded text-indigo-600 font-bold">quantite</code>.</p>
+                        <p class="text-sm text-slate-500 font-medium leading-relaxed">
+                          Pour le <strong>bandchant</strong>, utilisez <code class="bg-slate-100 px-1.5 py-0.5 rounded text-indigo-600 font-bold">rouleaux</code> + <code class="bg-slate-100 px-1.5 py-0.5 rounded text-indigo-600 font-bold">metrage_par_rouleau</code>
+                          (ex: 2 rouleaux × 125m = 250m). Sinon, mettez le total en <code class="bg-slate-100 px-1.5 py-0.5 rounded text-indigo-600 font-bold">quantite</code>.
+                        </p>
                     </div>
                 </div>
 
@@ -725,7 +728,20 @@ const saveNewSupplier = async () => {
 };
 
 const toggleAddForm = () => { if (showAddForm.value && editingId.value) { editingId.value = null; resetForm(); } showAddForm.value = !showAddForm.value; };
-const resetForm = () => { form.value = { existing_id: null, name: '', color_code: '', color_name: '', finish_type: '', provider_catalog: '', rolls: 1, meters_per_roll: 150, width_mm: 22, thickness_mm: 0.8, unit_cost_m: 3.5, sell_price_m: 6, supplier_id: null, amount_paid: 0, reference_invoice: '' }; invoiceFile.value = null; };
+const DEFAULT_ROLL_SIZE = 150;
+
+const decomposeStock = (totalMeters) => {
+  const total = Number(totalMeters) || 0;
+  if (total <= 0) {
+    return { rolls: 1, meters_per_roll: DEFAULT_ROLL_SIZE };
+  }
+  if (total % DEFAULT_ROLL_SIZE === 0) {
+    return { rolls: total / DEFAULT_ROLL_SIZE, meters_per_roll: DEFAULT_ROLL_SIZE };
+  }
+  return { rolls: 1, meters_per_roll: total };
+};
+
+const resetForm = () => { form.value = { existing_id: null, name: '', color_code: '', color_name: '', finish_type: '', provider_catalog: '', rolls: 1, meters_per_roll: DEFAULT_ROLL_SIZE, width_mm: 22, thickness_mm: 0.8, unit_cost_m: 3.5, sell_price_m: 6, supplier_id: null, amount_paid: 0, reference_invoice: '' }; invoiceFile.value = null; };
 const handleExistingSelection = (event) => {
   const id = event.target.value;
   if (!id) {
@@ -744,8 +760,8 @@ const handleExistingSelection = (event) => {
     form.value.unit_cost_m = c.cost_price_per_m;
     form.value.width_mm = c.width_mm;
     form.value.thickness_mm = c.thickness_mm;
-    form.value.meters_per_roll = 150; // Default reset for new entry logic
     form.value.rolls = 1;
+    form.value.meters_per_roll = DEFAULT_ROLL_SIZE;
     form.value.supplier_id = c.supplier_id;
   }
 };
@@ -754,8 +770,12 @@ const selectColor = (color) => { form.value.color_code = color.code; if(!form.va
 const saveCanto = async () => {
   const calculatedTotal = parseFloat(globalCost.value);
 
-  if (!form.value.supplier_id || calculatedTotal <= 0) {
+  if (!editingId.value && (!form.value.supplier_id || calculatedTotal <= 0)) {
     return toast.warning('Fournisseur et Prix Achat sont obligatoires !');
+  }
+
+  if (editingId.value && totalMeters.value <= 0) {
+    return toast.warning('Le stock doit être supérieur à 0 mètres.');
   }
 
   try {
@@ -777,6 +797,7 @@ const saveCanto = async () => {
           supplier_id: form.value.supplier_id
       };
       await axios.put(`/api/admin/cantos/${editingId.value}`, payload);
+      toast.success('Stock mis à jour !');
     } else {
       // New Entry: Use Purchase API with FormData
       const payloadItems = [
@@ -825,6 +846,7 @@ const saveCanto = async () => {
 };
 
 const editCanto = (canto) => {
+  const stock = decomposeStock(canto.total_length_remaining);
   editingId.value = canto.id;
   form.value = { 
       existing_id: canto.id,
@@ -833,12 +855,15 @@ const editCanto = (canto) => {
       color_name: canto.color_name,
       finish_type: canto.finish_type, 
       provider_catalog: canto.provider_catalog, 
-      rolls: 1,
-      meters_per_roll: canto.total_length_remaining, 
+      rolls: stock.rolls,
+      meters_per_roll: stock.meters_per_roll,
+      width_mm: canto.width_mm,
+      thickness_mm: canto.thickness_mm,
       unit_cost_m: canto.cost_price_per_m, 
       amount_paid: 0,
       sell_price_m: canto.base_price_sell_per_m,
-      supplier_id: canto.supplier_id
+      supplier_id: canto.supplier_id,
+      reference_invoice: '',
   };
   showAddForm.value = true;
   window.scrollTo({ top: 0, behavior: 'smooth' });
