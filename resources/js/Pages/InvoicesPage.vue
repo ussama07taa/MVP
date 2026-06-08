@@ -389,6 +389,7 @@ import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
 import { usePage } from '@inertiajs/vue3';
 import { useToast } from '@/composables/useToast';
+import { useWhatsApp } from '@/composables/useWhatsApp';
 import SkeletonLoader from '@/Components/SkeletonLoader.vue';
 import EmptyState from '@/Components/EmptyState.vue';
 
@@ -621,30 +622,33 @@ const printInvoice = (inv) => {
   }));
 };
 
-const shareOnWhatsApp = (inv) => {
+const shareOnWhatsApp = async (inv) => {
   if (!inv.client?.phone) {
     toast.warning("Le client n'a pas de numéro de téléphone.");
     return;
   }
-
-  // 1. Generate PDF URL
-  const pdfUrl = `/api/admin/invoices/${inv.id}/pdf`;
-  
-  // 2. Open PDF in a new tab so user can save/see it
-  window.open(pdfUrl, '_blank');
-
-  // 3. Prepare WhatsApp message
-  const phone = inv.client.phone.replace(/\D/g, '');
-  const text = `Bonjour ${inv.client.name}, voici votre ${inv.type === 'invoice' ? 'facture' : 'devis'} ${inv.invoice_number} d'un montant de ${inv.total.toFixed(2)} DH.`;
-  
-  // Use web.whatsapp.com for more "Direct" desktop feel, or wa.me for universal
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  const waUrl = isMobile 
-    ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
-    : `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(text)}`;
-  
-  // 4. Open WhatsApp
-  window.open(waUrl, '_blank');
+  try {
+    const { data } = await axios.get(`/api/admin/invoices/${inv.id}/share-link`);
+    const { shareDocument } = useWhatsApp();
+    const result = await shareDocument({
+      client: inv.client,
+      pdfPath: data.url,
+      reference: inv.invoice_number,
+      total: inv.total,
+      type: inv.type,
+    });
+    if (result.ok && result.mode === 'file') {
+      toast.success('PDF joint — choisissez WhatsApp et le client.');
+    } else if (result.ok && result.mode === 'link') {
+      toast.success('WhatsApp ouvert avec le lien PDF.');
+    } else if (result.error === 'cancelled') {
+      return;
+    } else if (!result.ok) {
+      toast.warning("Le client n'a pas de numéro de téléphone.");
+    }
+  } catch (e) {
+    toast.error('Impossible d\'envoyer sur WhatsApp.');
+  }
 };
 
 const formatItemName = (name) => {

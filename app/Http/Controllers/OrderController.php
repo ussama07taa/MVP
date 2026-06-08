@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Requests\StoreOrderRequest;
 use App\Models\{Order, OrderLine, StockPanel, StockCanto, Service, Client, Payment, User, Tenant, OrderReturn, OrderReturnLine, Consumable, Setting};
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\URL;
 use App\Http\Resources\OrderResource;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -156,6 +157,19 @@ class OrderController extends Controller {
         ]);
 
         return $pdf->stream("Order-{$order->id}.pdf");
+    }
+
+    public function shareLink($id)
+    {
+        Order::findOrFail($id);
+
+        return response()->json([
+            'url' => URL::temporarySignedRoute(
+                'share.orders.pdf',
+                now()->addDays(7),
+                ['id' => $id]
+            ),
+        ]);
     }
 
     public function store(StoreOrderRequest $request) {

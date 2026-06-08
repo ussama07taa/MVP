@@ -95,8 +95,8 @@ fi
 log "Running migrations..."
 $PHP_BIN artisan migrate --force
 
-log "Seeding database (admin user)..."
-$PHP_BIN artisan db:seed --force
+log "Seeding database (client handover: users, settings, services)..."
+$PHP_BIN artisan db:seed --class=ClientHandoverSeeder --force
 
 log "Creating storage link..."
 $PHP_BIN artisan storage:link --force 2>/dev/null || true
@@ -115,7 +115,11 @@ echo ""
 log "Deployment complete!"
 echo ""
 echo "  URL:   https://$DOMAIN"
-echo "  Admin: admin@taaouati.com / password"
+echo "  Admin:   admin@taaouati.com"
+echo "  Caisse:  caisse@taaouati.com"
+echo "  Atelier: atelier@taaouati.com"
+echo "  (passwords: see ClientHandoverSeeder / FORMATION_CLIENT.md)"
 echo ""
-warn "Change the admin password after first login!"
+warn "Run ./setup-cron.sh for automatic backups!"
+warn "Change passwords + fill Paramètres + enter stock before Go Live."
 warn "Ensure CloudPanel Root Directory is set to: $DOMAIN/public"

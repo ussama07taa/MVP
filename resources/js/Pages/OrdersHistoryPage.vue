@@ -541,6 +541,7 @@ import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
 import { usePage } from '@inertiajs/vue3';
 import { useToast } from '@/composables/useToast';
+import { useWhatsApp } from '@/composables/useWhatsApp';
 const toast = useToast();
 const page = usePage();
 const authUser = computed(() => page.props.auth.user);
@@ -752,33 +753,36 @@ const printInvoice = (order) => {
   }));
 };
 
-const shareOnWhatsApp = (order) => {
+const shareOnWhatsApp = async (order) => {
   if (!order.client?.phone) {
     toast.warning("Le client n'a pas de numéro de téléphone.");
     return;
   }
-
-  // 1. Generate PDF URL
-  // If it's a 'pos' source, use /orders/{id}/pdf, if it's 'invoice', use /invoices/{id}/pdf
-  const pdfUrl = order.source === 'pos' 
-    ? `/api/admin/orders/${order.id}/pdf` 
-    : `/api/admin/invoices/${order.id}/pdf`;
-  
-  // 2. Open PDF in a new tab
-  window.open(pdfUrl, '_blank');
-
-  // 3. Prepare WhatsApp message
-  const phone = order.client.phone.replace(/\D/g, '');
-  const ref = order.display_reference || `#${order.id}`;
-  const text = `Bonjour ${order.client.name}, voici votre facture ${ref} d'un montant de ${Number(order.total_sell_price).toFixed(2)} DH.`;
-  
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  const waUrl = isMobile 
-    ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
-    : `https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(text)}`;
-  
-  // 4. Open WhatsApp
-  window.open(waUrl, '_blank');
+  try {
+    const linkPath = order.source === 'pos'
+      ? `/api/admin/orders/${order.id}/share-link`
+      : `/api/admin/invoices/${order.id}/share-link`;
+    const { data } = await axios.get(linkPath);
+    const { shareDocument } = useWhatsApp();
+    const result = await shareDocument({
+      client: order.client,
+      pdfPath: data.url,
+      reference: order.display_reference || `FAC-${order.id}`,
+      total: order.total_sell_price,
+      type: 'invoice',
+    });
+    if (result.ok && result.mode === 'file') {
+      toast.success('PDF joint — choisissez WhatsApp et le client.');
+    } else if (result.ok && result.mode === 'link') {
+      toast.success('WhatsApp ouvert avec le lien PDF.');
+    } else if (result.error === 'cancelled') {
+      return;
+    } else if (!result.ok) {
+      toast.warning("Le client n'a pas de numéro de téléphone.");
+    }
+  } catch (e) {
+    toast.error('Impossible d\'envoyer sur WhatsApp.');
+  }
 };
 
 const openAppendModal = (order) => {

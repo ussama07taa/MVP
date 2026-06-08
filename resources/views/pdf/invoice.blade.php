@@ -183,8 +183,8 @@
         <div class="client-section">
             <div class="section-title">Client / Destinataire</div>
             <div class="client-box">
-                <div class="client-name">{{ $invoice->client->name }}</div>
-                <div class="client-phone">{{ $invoice->client->phone }}</div>
+                <div class="client-name">{{ $invoice->client?->name ?? 'Client' }}</div>
+                <div class="client-phone">{{ $invoice->client?->phone ?? '—' }}</div>
             </div>
             
             <div class="meta-box">

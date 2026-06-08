@@ -73,6 +73,8 @@ APP_NAME="Menuiserie ERP"
 APP_ENV=production
 APP_DEBUG=false
 APP_URL=https://erp.votredomaine.com
+# Important : APP_URL doit être l'URL publique du site (pas 127.0.0.1).
+# Les liens PDF WhatsApp envoyés aux clients utilisent cette URL.
 
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\URL;
 use App\Models\{Invoice, InvoiceItem, Client, StockPanel, StockCanto, Service, Setting};
 use App\Services\{StockService, ClientLedgerService};
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -369,7 +370,7 @@ class InvoiceController extends Controller
      */
     public function downloadPdf($id)
     {
-        $invoice = Invoice::with(['client', 'items'])->findOrFail($id);
+        $invoice = Invoice::with(['client' => fn($q) => $q->withTrashed(), 'items'])->findOrFail($id);
         $settings = Setting::first(); // General settings for logo/company info
 
         $pdf = Pdf::loadView('pdf.invoice', [
@@ -379,6 +380,19 @@ class InvoiceController extends Controller
         ]);
 
         return $pdf->stream("{$invoice->invoice_number}.pdf");
+    }
+
+    public function shareLink($id)
+    {
+        Invoice::findOrFail($id);
+
+        return response()->json([
+            'url' => URL::temporarySignedRoute(
+                'share.invoices.pdf',
+                now()->addDays(7),
+                ['id' => $id]
+            ),
+        ]);
     }
 
     /**

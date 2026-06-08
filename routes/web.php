@@ -6,10 +6,19 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\InvoiceController;
 
 Route::get('/', function () {
     return redirect()->route('dashboard');
 });
+
+// Public signed PDF links (for WhatsApp sharing — valid 7 days, no login required)
+Route::get('/share/invoices/{id}/pdf', [InvoiceController::class, 'downloadPdf'])
+    ->name('share.invoices.pdf')
+    ->middleware('signed');
+Route::get('/share/orders/{id}/pdf', [OrderController::class, 'downloadPdf'])
+    ->name('share.orders.pdf')
+    ->middleware('signed');
 
 Route::get('/login', [AuthController::class, 'create'])->name('login');
 Route::post('/login', [AuthController::class, 'store'])->middleware('throttle:5,1');

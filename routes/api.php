@@ -83,6 +83,7 @@ Route::middleware(['auth', 'identify.tenant', 'throttle:100,1'])->group(function
         Route::post('/admin/services', [ServiceController::class, 'store']);
         Route::put('/admin/services/{id}', [ServiceController::class, 'update']);
         Route::get('/admin/orders/{id}/pdf', [OrderController::class, 'downloadPdf']);
+        Route::get('/admin/orders/{id}/share-link', [OrderController::class, 'shareLink']);
         Route::post('/admin/orders/{id}/pay', [OrderController::class, 'pay']);
         Route::get('/admin/orders', [OrderController::class, 'index']);
         Route::post('/admin/orders/checkout', [OrderController::class, 'store']);
@@ -131,6 +132,7 @@ Route::middleware(['auth', 'identify.tenant', 'throttle:100,1'])->group(function
         Route::post('/admin/invoices/{id}/pay', [InvoiceController::class, 'payInvoice']);
         Route::post('/admin/invoices/{id}/duplicate', [InvoiceController::class, 'duplicate']);
         Route::get('/admin/invoices/{id}/pdf', [InvoiceController::class, 'downloadPdf']);
+        Route::get('/admin/invoices/{id}/share-link', [InvoiceController::class, 'shareLink']);
         Route::get('/admin/invoices-summary', [InvoiceController::class, 'summary']);
         Route::delete('/admin/invoices/{id}', [InvoiceController::class, 'destroy']);
     });
