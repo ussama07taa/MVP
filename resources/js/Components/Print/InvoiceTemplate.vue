@@ -70,7 +70,7 @@
               :class="item.is_fully_returned ? 'opacity-40' : ''">
             <td class="py-3 px-2 text-[10px] font-bold text-slate-300">0{{ index + 1 }}</td>
             <td class="py-3 px-2">
-              <p class="text-[11px] font-black text-slate-800 leading-tight" :class="item.is_fully_returned ? 'line-through text-rose-400' : ''">{{ formatItemName(item.name || item.label) }}</p>
+              <p class="text-[11px] font-black text-slate-800 leading-tight" :class="item.is_fully_returned ? 'line-through text-rose-400' : ''">{{ formatItemName(item.description || item.name || item.label) }}</p>
               <div v-if="item.width_mm && item.thickness_mm" class="flex gap-2 mt-0.5">
                 <span class="text-[8px] text-slate-400 font-bold uppercase tracking-wider">Specs: {{ item.width_mm }}x{{ item.thickness_mm }}mm</span>
               </div>
@@ -81,7 +81,7 @@
               <span class="text-[10px] font-black text-slate-900 leading-none" :class="item.is_fully_returned ? 'line-through text-rose-300' : ''">x{{ item.quantity }}</span>
             </td>
             <td class="py-3 px-2 text-right text-[10px] font-bold text-slate-500" :class="item.is_fully_returned ? 'line-through text-rose-300' : ''">{{ Number(item.unit_price || item.unit_sell_price).toFixed(2) }}</td>
-            <td class="py-3 px-2 text-right text-[11px] font-black" :class="item.is_fully_returned ? 'text-rose-300 line-through' : 'text-slate-900'">{{ Number(item.total_price || item.total_line_sell).toFixed(2) }} DH</td>
+            <td class="py-3 px-2 text-right text-[11px] font-black" :class="item.is_fully_returned ? 'text-rose-300 line-through' : 'text-slate-900'">{{ Number(item.total || item.total_price || item.total_line_sell).toFixed(2) }} DH</td>
           </tr>
         </tbody>
       </table>
@@ -186,38 +186,47 @@ const formatItemName = (name) => {
     .replace(/Collage Chant:\s*/gi, '');
 };
 
+const getItemLabel = (item) => item.description || item.name || item.label || '';
+
+const getItemTotal = (item) => Number(
+  item.total
+  || item.total_price
+  || item.total_line_sell
+  || (item.quantity * (item.unit_price || item.unit_sell_price))
+);
+
 const groupedItems = computed(() => {
   if (!props.items) return [];
-  
+
   const groups = {};
-  
-  props.items.forEach(item => {
-    // Determine the "base" name by stripping prefixes
-    const rawName = item.name || item.label || '';
+
+  props.items.forEach((item, index) => {
+    const rawName = getItemLabel(item);
     const baseName = rawName
       .replace(/Fourniture:\s*/gi, '')
       .replace(/Collage Chant:\s*/gi, '')
-      .trim();
-    
-    // We group by baseName AND quantity to ensure we don't accidentally group different orders
-    const key = `${baseName}_${item.quantity}`;
-    
+      .trim() || `Article ${index + 1}`;
+
+    // Invoice items have a DB id — keep each line separate
+    const key = item.id
+      ? `invoice_item_${item.id}`
+      : `${baseName}_${item.quantity}_${item.item_type || ''}_${item.item_id || index}`;
+
     if (!groups[key]) {
       groups[key] = {
         ...item,
-        name: baseName, // Use the clean name
-        total_price: Number(item.total_price || item.total_line_sell || (item.quantity * (item.unit_price || item.unit_sell_price))),
+        name: baseName,
+        total_price: getItemTotal(item),
         is_grouped: false,
-        is_fully_returned: Number(item.quantity_returned || 0) >= Number(item.quantity || 1)
+        is_fully_returned: Number(item.quantity_returned || 0) >= Number(item.quantity || 1),
       };
     } else {
-      groups[key].total_price += Number(item.total_price || item.total_line_sell || (item.quantity * (item.unit_price || item.unit_sell_price)));
+      groups[key].total_price += getItemTotal(item);
       groups[key].is_grouped = true;
     }
   });
-  
+
   return Object.values(groups).map(item => {
-    // Recalculate unit price for grouped items
     if (item.is_grouped) {
       item.unit_price = item.total_price / item.quantity;
     }

@@ -83,13 +83,30 @@
                         <button @click="appendCart.splice(idx, 1)" class="absolute -right-2 -top-2 w-7 h-7 bg-white border border-slate-200 rounded-full flex items-center justify-center text-rose-500 shadow-sm opacity-0 group-hover/item:opacity-100 transition-opacity">
                           <Trash2Icon class="w-3.5 h-3.5" />
                         </button>
-                        <p class="font-black text-slate-900 text-[10px] uppercase line-clamp-1 mb-2">{{ item.name }}</p>
+                        <p class="font-black text-slate-900 text-[10px] uppercase line-clamp-2 mb-2 pr-4">{{ item.name }}</p>
                         <div class="flex items-center justify-between">
                            <div class="flex items-center gap-2">
-                             <input type="number" v-model="item.quantity" class="w-14 h-8 bg-white border border-slate-200 rounded-lg text-center font-black text-xs p-0 focus:ring-0 focus:border-amber-500">
+                             <input type="number" v-model="item.quantity" min="0.1" step="0.1" class="w-14 h-8 bg-white border border-slate-200 rounded-lg text-center font-black text-xs p-0 focus:ring-0 focus:border-amber-500">
                              <span class="text-[9px] font-bold text-slate-400 uppercase">{{ item.unit }}</span>
                            </div>
                            <span class="font-black text-slate-950 text-xs">{{ (item.quantity * item.unit_price).toFixed(2) }} DH</span>
+                        </div>
+
+                        <!-- Collage toggle (same as POS) -->
+                        <div v-if="item.type === 'canto'" class="mt-3 pt-3 border-t border-slate-100">
+                          <label class="flex items-center gap-2 cursor-pointer group/toggle">
+                            <div class="relative w-8 h-4 bg-slate-200 rounded-full transition-colors group-has-[:checked]:bg-amber-500">
+                              <input type="checkbox" v-model="item.with_canto_service" @change="updateCantoPrices(item)" class="sr-only">
+                              <div class="absolute left-0.5 top-0.5 w-3 h-3 bg-white rounded-full transition-transform group-has-[:checked]:translate-x-4"></div>
+                            </div>
+                            <span class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Collage de chant</span>
+                          </label>
+                          <div v-if="item.with_canto_service" class="mt-2 flex items-center justify-between bg-white px-3 py-2 rounded-xl border border-slate-100">
+                            <span class="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Tarif (DH/m)</span>
+                            <input type="number" v-model.number="item.custom_canto_service_price"
+                              @input="updateCantoPrices(item)" min="0" step="0.5"
+                              class="w-12 text-right bg-transparent border-none text-slate-900 font-black text-[10px] focus:ring-0 p-0">
+                          </div>
                         </div>
                       </div>
                     </TransitionGroup>
@@ -172,12 +189,19 @@ const filteredItems = computed(() => {
   if (selectedCategory.value === 'all' || selectedCategory.value === 'canto') {
     (props.cantos || []).forEach(c => {
       if (!q || (c.color_name && c.color_name.toLowerCase().includes(q)) || (c.color_code && c.color_code.toLowerCase().includes(q))) {
+        const cantoName = `CHANT ${c.color_name || c.color_code} [${c.finish_type || 'STD'}]`;
         results.push({
           type: 'canto',
           id: c.id,
-          name: `CHANT ${c.color_name || c.color_code} [${c.finish_type}]`,
+          name: cantoName,
+          base_name: cantoName,
+          base_canto_price: Number(c.base_price_sell_per_m),
           price: c.base_price_sell_per_m,
           unit_price: c.base_price_sell_per_m,
+          with_canto_service: false,
+          custom_canto_service_price: 0,
+          width_mm: c.width_mm,
+          thickness_mm: c.thickness_mm,
           unit: 'm',
           icon: PaletteIcon,
           iconBg: 'bg-amber-100 text-amber-700',
@@ -228,12 +252,56 @@ const filteredItems = computed(() => {
   return results;
 });
 
+const recalculateCantoPriceAndName = (item) => {
+  if (item.type !== 'canto') return;
+
+  let price = Number(item.base_canto_price ?? item.unit_price);
+  const prefixes = [];
+
+  if (item.with_canto_service) {
+    price += Number(item.custom_canto_service_price || 0);
+    prefixes.push('Collage');
+  }
+
+  item.unit_price = price;
+  item.name = prefixes.length > 0
+    ? `[${prefixes.join(' + ')}] ${item.base_name}`
+    : item.base_name;
+};
+
+const updateCantoPrices = (item) => {
+  if (item.type !== 'canto') return;
+
+  if (item.base_canto_price === undefined || item.base_canto_price === null) {
+    item.base_canto_price = Number(item.unit_price);
+  }
+  if (!item.base_name) {
+    item.base_name = item.name.replace(/\[.*?\]\s*/g, '').trim();
+  }
+  if (item.with_canto_service && !item.custom_canto_service_price) {
+    item.custom_canto_service_price = 2;
+  }
+
+  recalculateCantoPriceAndName(item);
+};
+
 const addToAppendCart = (item) => {
-  const existing = appendCart.value.find(i => i.id === item.id && i.type === item.type);
+  const existing = appendCart.value.find(i =>
+    i.id === item.id &&
+    i.type === item.type &&
+    !!i.with_canto_service === !!item.with_canto_service
+  );
   if (existing) {
-    existing.quantity++;
+    existing.quantity = Number(existing.quantity) + 1;
   } else {
-    appendCart.value.push({ ...item, quantity: 1 });
+    appendCart.value.push({
+      ...item,
+      quantity: 1,
+      base_name: item.base_name || item.name,
+      base_canto_price: item.type === 'canto' ? Number(item.base_canto_price ?? item.unit_price) : null,
+      with_canto_service: false,
+      custom_canto_service_price: 0,
+    });
   }
 };
 
@@ -251,7 +319,13 @@ const submitAppend = async () => {
         id: i.id,
         quantity: i.quantity,
         unit_price: i.unit_price,
-        name: i.name
+        name: i.name,
+        with_canto_service: i.with_canto_service || false,
+        custom_canto_service_price: i.custom_canto_service_price || 0,
+        base_canto_price: i.base_canto_price || 0,
+        base_name: i.base_name,
+        width_mm: i.width_mm,
+        thickness_mm: i.thickness_mm,
       }))
     };
     const res = await axios.post(`/api/admin/orders/${props.order.id}/append`, payload);

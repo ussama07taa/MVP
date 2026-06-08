@@ -120,19 +120,20 @@
             $rb = $invoice->remaining_balance ?? 0;
         }
 
-        // Grouping Logic
+        // Grouping Logic — invoice items keep separate lines via DB id
         $groupedItems = [];
-        foreach ($invoice->items as $item) {
-            $desc = $item->description ?? $item->label ?? '';
-            
-            // Clean name
+        foreach ($invoice->items as $index => $item) {
+            $desc = $item->description ?? $item->label ?? $item->name ?? '';
+
             $baseName = preg_replace('/(Fourniture:|Collage Chant:)\s*/i', '', $desc);
             $baseName = preg_replace('/Pose Canto\s*\(?Sel3a\s*(?:d|y|n)?\s*Client\)?/i', 'Pose de Chant (Fourniture Client)', $baseName);
             $baseName = preg_replace('/Sel3a\s*(?:d|y|n)?\s*Client/i', 'Fourniture Client', $baseName);
-            $baseName = trim($baseName);
+            $baseName = trim($baseName) ?: 'Article ' . ($index + 1);
 
             $qty = (float) $item->quantity;
-            $key = $baseName . '_' . $qty;
+            $key = isset($item->id)
+                ? 'invoice_item_' . $item->id
+                : $baseName . '_' . $qty . '_' . ($item->item_type ?? '') . '_' . ($item->item_id ?? $index);
 
             if (!isset($groupedItems[$key])) {
                 $groupedItems[$key] = [
