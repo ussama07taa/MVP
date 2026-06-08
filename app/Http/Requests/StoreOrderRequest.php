@@ -10,6 +10,22 @@ class StoreOrderRequest extends FormRequest
      * Determine if the user is authorized to make this request.
      */
     public function authorize() { return true; }
+
+    protected function prepareForValidation(): void
+    {
+        if (is_string($this->items)) {
+            $this->merge([
+                'items' => json_decode($this->items, true) ?? [],
+            ]);
+        }
+
+        if ($this->has('send_to_workshop')) {
+            $this->merge([
+                'send_to_workshop' => filter_var($this->send_to_workshop, FILTER_VALIDATE_BOOLEAN),
+            ]);
+        }
+    }
+
     public function rules() {
         return [
             'client_id' => [

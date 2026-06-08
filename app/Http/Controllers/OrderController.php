@@ -160,7 +160,11 @@ class OrderController extends Controller {
 
     public function store(StoreOrderRequest $request) {
         try {
-            $order = $this->checkout->execute($request->validated());
+            $data = $request->validated();
+            if ($request->hasFile('tefsil_file')) {
+                $data['tefsil_file'] = $request->file('tefsil_file');
+            }
+            $order = $this->checkout->execute($data);
             
             if ($request->wantsJson()) {
                 return response()->json([

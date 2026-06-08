@@ -23,6 +23,7 @@ Route::middleware(['auth', 'identify.tenant', 'throttle:100,1'])->group(function
 
     // Workshop Queue — accessible to ALL authenticated users (admin + cashier + worker)
     Route::get('/workshop/queue',                            [WorkshopQueueController::class, 'mobileIndex']);
+    Route::get('/workshop/queue/{id}/tefsil',               [WorkshopQueueController::class, 'downloadTefsil']);
     Route::post('/workshop/queue/{id}/hide',                 [WorkshopQueueController::class, 'hideFromWorkshop']);
     Route::post('/workshop/services/{serviceId}/toggle',     [WorkshopQueueController::class, 'toggleService']);
     

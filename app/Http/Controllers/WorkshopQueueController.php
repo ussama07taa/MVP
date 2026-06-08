@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use App\Models\{WorkshopQueue, WorkshopQueueService};
 
@@ -81,7 +82,7 @@ class WorkshopQueueController extends Controller
                 'started_at'        => $q->started_at?->format('H:i'),
                 'done_at_time'      => $q->done_at?->format('H:i'),
                 'delivered_at_time' => $q->delivered_at?->format('H:i'),
-                'tefsil_url'        => $q->tefsil_path ? asset('storage/' . $q->tefsil_path) : null,
+                'tefsil_url'        => $q->tefsil_path ? url("/api/workshop/queue/{$q->id}/tefsil") : null,
             ];
         })->toArray();
     }
@@ -241,5 +242,23 @@ class WorkshopQueueController extends Controller
             'is_priority' => (bool)$queue->is_priority,
             'message' => $queue->is_priority ? 'Mode Express activé !' : 'Mode standard rétabli.'
         ]);
+    }
+
+    /**
+     * Serve SketchCut / tefsil file (avoids broken public/storage symlinks on some servers).
+     */
+    public function downloadTefsil($id)
+    {
+        $queue = WorkshopQueue::findOrFail($id);
+
+        if ($queue->tenant_id !== auth()->user()->tenant_id) {
+            abort(403);
+        }
+
+        if (!$queue->tefsil_path || !Storage::disk('public')->exists($queue->tefsil_path)) {
+            abort(404);
+        }
+
+        return Storage::disk('public')->response($queue->tefsil_path);
     }
 }

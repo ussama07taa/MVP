@@ -188,7 +188,7 @@
 
 <script setup>
 import { ref, nextTick } from 'vue';
-import { router } from '@inertiajs/vue3';
+import axios from 'axios';
 import { useCartStore } from '@/stores/cart';
 import { usePrint } from '@/composables/usePrint';
 import { useToast } from '@/composables/useToast';
@@ -227,50 +227,61 @@ const submitOrder = async () => {
   }
   isProcessing.value = true;
   const hasServices = cartStore.cart.some(i => i.type === 'service' || i.type === 'custom_labor' || i.with_canto_service);
-  const payload = {
-    client_id: cartStore.selectedClient,
-    amount_paid: cartStore.amountPaid || 0,
-    send_to_workshop: sendToWorkshop.value && hasServices,
-    workshop_notes: workshopNotes.value || '',
-    items: cartStore.cart.map(i => ({
-      type: i.type,
-      id: i.id,
-      quantity: i.quantity,
-      unit_price: i.unit_price,
-      name: i.name,
-      with_pose: i.with_pose || false,
-      custom_pose_price: i.custom_pose_price || 0,
-      with_canto_service: i.with_canto_service || false,
-      custom_canto_service_price: i.custom_canto_service_price || 0,
-      base_canto_price: i.base_canto_price || 0,
-      base_name: i.base_name,
-      width_mm: i.width_mm,
-      thickness_mm: i.thickness_mm,
-    })),
-    tefsil_file: tefsilFile.value
-  };
 
-  router.post('/api/admin/orders/checkout', payload, {
-    onSuccess: (page) => {
-      lastOrder.value = {
-        id: page.props.flash?.order_id || 'TEMP',
-        items: [...cartStore.cart],
-        total: cartStore.cartTotal,
-        amount_paid: cartStore.amountPaid || 0,
-        client_name: props.clients.find(c => c.id === cartStore.selectedClient)?.name || 'Client'
-      };
-      nextTick(() => {
-        printOrder();
-        toast.success('Facture validée avec succès !');
-        cartStore.clearCart();
-        workshopNotes.value = '';
-        tefsilFile.value = null;
-        emit('orderSubmitted');
-      });
-    },
-    onError: (errors) => toast.error('Erreur: ' + Object.values(errors).join(', ')),
-    onFinish: () => { isProcessing.value = false; }
-  });
+  const formData = new FormData();
+  formData.append('client_id', cartStore.selectedClient);
+  formData.append('amount_paid', cartStore.amountPaid || 0);
+  formData.append('send_to_workshop', sendToWorkshop.value && hasServices ? '1' : '0');
+  formData.append('workshop_notes', workshopNotes.value || '');
+  formData.append('items', JSON.stringify(cartStore.cart.map(i => ({
+    type: i.type,
+    id: i.id,
+    quantity: i.quantity,
+    unit_price: i.unit_price,
+    name: i.name,
+    with_pose: i.with_pose || false,
+    custom_pose_price: i.custom_pose_price || 0,
+    with_canto_service: i.with_canto_service || false,
+    custom_canto_service_price: i.custom_canto_service_price || 0,
+    base_canto_price: i.base_canto_price || 0,
+    base_name: i.base_name,
+    width_mm: i.width_mm,
+    thickness_mm: i.thickness_mm,
+  }))));
+  if (tefsilFile.value) {
+    formData.append('tefsil_file', tefsilFile.value);
+  }
+
+  try {
+    const res = await axios.post('/api/admin/orders/checkout', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    lastOrder.value = {
+      id: res.data?.order_id || 'TEMP',
+      items: [...cartStore.cart],
+      total: cartStore.cartTotal,
+      amount_paid: cartStore.amountPaid || 0,
+      client_name: props.clients.find(c => c.id === cartStore.selectedClient)?.name || 'Client',
+    };
+
+    await nextTick();
+    printOrder();
+    toast.success('Facture validée avec succès !');
+    cartStore.clearCart();
+    workshopNotes.value = '';
+    tefsilFile.value = null;
+    emit('orderSubmitted');
+  } catch (error) {
+    const msg = error.response?.data?.error
+      || error.response?.data?.message
+      || Object.values(error.response?.data?.errors || {}).flat().join(', ')
+      || error.message
+      || 'Erreur lors de la validation.';
+    toast.error(msg);
+  } finally {
+    isProcessing.value = false;
+  }
 };
 </script>
 
