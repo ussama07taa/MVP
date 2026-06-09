@@ -831,9 +831,8 @@ const submitInvoicePayment = async () => {
     return;
   }
   try {
-    await axios.post(`/api/admin/orders/${invoiceToPay.value.id}/pay`, { 
+    await axios.post(`/api/admin/invoices/${invoiceToPay.value.id}/pay`, {
       amount: parseFloat(invoicePaymentAmount.value),
-      source: 'invoice'
     });
     const clientId = selectedClientDossier.value.client.id;
     toast.success('Paiement encaissé !');

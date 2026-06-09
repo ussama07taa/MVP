@@ -9,8 +9,10 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Expand status enum to include quote-specific statuses
-        DB::statement("ALTER TABLE invoices MODIFY COLUMN status ENUM('draft','sent','paid','partial','cancelled','accepted','refused','expired') DEFAULT 'draft'");
+        // Expand status enum to include quote-specific statuses (MySQL only — SQLite uses string)
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE invoices MODIFY COLUMN status ENUM('draft','sent','paid','partial','cancelled','accepted','refused','expired') DEFAULT 'draft'");
+        }
 
         Schema::table('invoices', function (Blueprint $table) {
             $table->unsignedSmallInteger('validity_days')->nullable()->after('due_date')->comment('Number of days the quote is valid');
@@ -24,6 +26,8 @@ return new class extends Migration
             $table->dropColumn(['validity_days', 'expiry_date']);
         });
 
-        DB::statement("ALTER TABLE invoices MODIFY COLUMN status ENUM('draft','sent','paid','partial','cancelled') DEFAULT 'draft'");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE invoices MODIFY COLUMN status ENUM('draft','sent','paid','partial','cancelled') DEFAULT 'draft'");
+        }
     }
 };

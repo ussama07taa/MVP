@@ -335,12 +335,23 @@ class PurchaseController extends Controller
                 $line->decrement('quantity_remaining', min($qtyToReturn, (float) $line->quantity_remaining));
             }
 
+            $existingReturns = (float) $purchase->returns()->sum('refund_amount');
+            $netBeforeReturn = max(0, (float) $purchase->total_amount - $existingReturns);
+            $unpaidOnPurchase = max(0, $netBeforeReturn - (float) $purchase->amount_paid);
+            $debtReduction = min($refundAmount, $unpaidOnPurchase);
+
             $supplier = Supplier::withoutGlobalScopes()->lockForUpdate()->findOrFail($purchase->supplier_id);
-            $supplier->decrement('total_debt', $refundAmount);
+            if ($debtReduction > 0.01) {
+                $supplier->decrement('total_debt', $debtReduction);
+            }
+
+            $message = $debtReduction > 0.01
+                ? "Retour traité avec succès. Stock réduit et dette fournisseur diminuée de {$debtReduction} DH."
+                : "Retour traité avec succès. Stock réduit (achat déjà réglé, dette inchangée).";
 
             return response()->json([
                 'success' => true,
-                'message' => "Retour traité avec succès. Stock réduit et dette fournisseur diminuée de {$refundAmount} DH."
+                'message' => $message,
             ]);
         });
     }

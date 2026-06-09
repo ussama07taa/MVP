@@ -13,11 +13,16 @@ use Barryvdh\DomPDF\Facade\Pdf;
 class OrderController extends Controller {
     protected $checkout;
     protected $ledger;
+    protected $stock;
 
-    public function __construct(\App\Services\CheckoutService $checkout, \App\Services\ClientLedgerService $ledger)
-    {
+    public function __construct(
+        \App\Services\CheckoutService $checkout,
+        \App\Services\ClientLedgerService $ledger,
+        \App\Services\StockService $stock
+    ) {
         $this->checkout = $checkout;
         $this->ledger = $ledger;
+        $this->stock = $stock;
     }
 
     public function index() {
@@ -219,36 +224,9 @@ class OrderController extends Controller {
         try {
             return DB::transaction(function() use ($request, $id) {
                 if ($request->source === 'invoice') {
-                    $invoice = \App\Models\Invoice::withoutGlobalScopes()->findOrFail($id);
-                    
-                    $this->ledger->recordPayment(
-                        $invoice->client_id, 
-                        $request->amount, 
-                        'reglement', 
-                        null,
-                        "Paiement facture {$invoice->invoice_number}",
-                        $invoice->id
-                    );
-
-                    $invoice->increment('amount_paid', $request->amount);
-                    
-                    // Update status for Invoice
-                    $newPaid = (float) $invoice->amount_paid;
-                    $status = $newPaid >= (float) $invoice->total ? 'paid' : 'partial';
-                    $invoice->update(['status' => $status]);
-
-                    $invoice->load(['client' => fn($q) => $q->withTrashed(), 'items', 'payments']);
-                    
-                    // Map items to lines for resource consistency
-                    $invoice->total_sell_price = (float) $invoice->total;
-                    $invoice->display_reference = $invoice->invoice_number;
-                    $invoice->source = 'invoice';
-                    $invoice->setRelation('lines', $invoice->items);
-
                     return response()->json([
-                        'message' => 'Paiement facture ajouté', 
-                        'order' => new OrderResource($invoice)
-                    ]);
+                        'error' => 'Paiement facture via POST /api/admin/invoices/{id}/pay uniquement.',
+                    ], 422);
                 } else {
                     $order = Order::withoutGlobalScopes()->findOrFail($id);
                     $remaining = $this->ledger->orderNetRemaining($order);
@@ -343,10 +321,12 @@ class OrderController extends Controller {
                     StockPanel::whereId($orderLine->item_id)
                         ->lockForUpdate()
                         ->increment('quantity', $qtyToReturn);
+                    $this->stock->restoreFifoToPurchaseLines('StockPanel', (int) $orderLine->item_id, (float) $qtyToReturn);
                 } elseif ($orderLine->item_type === StockCanto::class) {
                     StockCanto::whereId($orderLine->item_id)
                         ->lockForUpdate()
                         ->increment('total_length_remaining', $qtyToReturn);
+                    $this->stock->restoreFifoToPurchaseLines('StockCanto', (int) $orderLine->item_id, (float) $qtyToReturn);
                 } elseif ($orderLine->item_type === Consumable::class) {
                     Consumable::whereId($orderLine->item_id)
                         ->lockForUpdate()
@@ -367,6 +347,9 @@ class OrderController extends Controller {
 
             $totalRefunded = (float) \App\Models\OrderReturn::where('order_id', $order->id)->sum('total_refunded');
             $netOrderTotal = max(0, (float) $order->total_sell_price - $totalRefunded);
+            $order->update([
+                'amount_paid' => min((float) $order->amount_paid, $netOrderTotal),
+            ]);
             if ($netOrderTotal <= 0.01) {
                 \App\Models\WorkshopQueue::where('order_id', $order->id)->delete();
             }

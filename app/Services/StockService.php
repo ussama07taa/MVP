@@ -29,7 +29,40 @@ class StockService
         return $canto;
     }
 
-    private function deductFifoFromPurchaseLines(string $stockType, int $stockItemId, float $qty): void
+    public function restoreFifoToPurchaseLines(string $stockType, int $stockItemId, float $qty): void
+    {
+        $remaining = $qty;
+
+        $lines = DB::table('purchase_lines')
+            ->join('purchases', 'purchase_lines.purchase_id', '=', 'purchases.id')
+            ->where('purchase_lines.stock_item_id', $stockItemId)
+            ->where('purchase_lines.stock_item_type', $stockType)
+            ->whereNotNull('purchase_lines.quantity_remaining')
+            ->orderBy('purchases.created_at', 'desc')
+            ->lockForUpdate()
+            ->get(['purchase_lines.id', 'purchase_lines.quantity', 'purchase_lines.quantity_remaining']);
+
+        foreach ($lines as $line) {
+            if ($remaining <= 0) {
+                break;
+            }
+
+            $capacity = (float) $line->quantity - (float) $line->quantity_remaining;
+            if ($capacity <= 0) {
+                continue;
+            }
+
+            $restore = min($remaining, $capacity);
+
+            DB::table('purchase_lines')
+                ->where('id', $line->id)
+                ->increment('quantity_remaining', $restore);
+
+            $remaining -= $restore;
+        }
+    }
+
+    public function deductFifoFromPurchaseLines(string $stockType, int $stockItemId, float $qty): void
     {
         $remaining = $qty;
 

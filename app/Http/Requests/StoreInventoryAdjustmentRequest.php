@@ -22,6 +22,7 @@ class StoreInventoryAdjustmentRequest extends FormRequest
             'quantity' => 'required|numeric|min:0.01',
             'reason' => 'required|string|in:kosor,chute,erreur,autre',
             'notes' => 'nullable|string|max:1000',
+            'purchase_line_id' => 'nullable|integer|exists:purchase_lines,id',
         ];
     }
 }

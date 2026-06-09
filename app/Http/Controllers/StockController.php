@@ -17,6 +17,7 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class StockController extends Controller 
 {
+    public function __construct(protected \App\Services\StockService $stockService) {}
     public function panels()
     {
         $panels = StockPanel::withoutGlobalScopes()->with('supplier')->latest()->get();
@@ -170,8 +171,14 @@ class StockController extends Controller
 
             if (!empty($validated['purchase_line_id'])) {
                 $batch = \App\Models\PurchaseLine::withoutGlobalScopes()->lockForUpdate()->find($validated['purchase_line_id']);
-                $batch->quantity -= $validated['quantity'];
-                $batch->save();
+                if ($batch && $batch->quantity_remaining !== null) {
+                    $take = min($qty, (float) $batch->quantity_remaining);
+                    if ($take > 0) {
+                        $batch->decrement('quantity_remaining', $take);
+                    }
+                }
+            } elseif (in_array($validated['item_type'], ['StockPanel', 'StockCanto'], true)) {
+                $this->stockService->deductFifoFromPurchaseLines($validated['item_type'], (int) $item->id, $qty);
             }
 
             return response()->json(['success' => true, 'message' => 'Stock ajusté avec succès.']);
