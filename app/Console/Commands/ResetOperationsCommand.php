@@ -63,9 +63,10 @@ class ResetOperationsCommand extends Command
 
         $deleted = [];
 
-        DB::transaction(function () use (&$deleted) {
-            Schema::disableForeignKeyConstraints();
+        // TRUNCATE fait un commit implicite en MySQL — pas de DB::transaction()
+        Schema::disableForeignKeyConstraints();
 
+        try {
             foreach ($this->operationalTables as $table) {
                 if (!Schema::hasTable($table)) {
                     continue;
@@ -75,11 +76,11 @@ class ResetOperationsCommand extends Command
                 $deleted[$table] = $count;
             }
 
+            Client::withTrashed()->update(['total_credit' => 0]);
+            Supplier::withTrashed()->update(['total_debt' => 0]);
+        } finally {
             Schema::enableForeignKeyConstraints();
-
-            $clientsReset = Client::withTrashed()->update(['total_credit' => 0]);
-            $suppliersReset = Supplier::withTrashed()->update(['total_debt' => 0]);
-        });
+        }
 
         $this->info('✅ Système remis à zéro avec succès.');
         $this->line('');
