@@ -68,40 +68,53 @@
           class="relative bg-white/[0.02] border border-white/[0.08] rounded-[2.5rem] overflow-hidden transition-all duration-500"
           :class="{'ring-2 ring-brand-500/40 bg-slate-800/30 scale-[1.01] shadow-2xl shadow-brand-500/10': job.status === 'in_progress'}">
           
-          <!-- Job Header (Thumb Optimized) -->
-          <div class="p-5 sm:p-6 border-b border-white/[0.04] flex items-center justify-between bg-gradient-to-b from-white/[0.01] to-transparent">
-             <div class="flex items-center gap-4">
-                <div class="w-14 h-14 bg-white text-slate-950 rounded-2xl flex items-center justify-center shadow-lg shrink-0 transition-transform group-hover:rotate-2">
-                  <span class="text-xl font-black">{{ job.queue_number.replace('Q-', '') }}</span>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center justify-between mb-1">
-                    <h3 class="text-white font-black text-xl tracking-tight truncate">{{ job.client_name }}</h3>
-                    <div class="flex items-center gap-2">
-                      <a v-if="job.tefsil_url" :href="job.tefsil_url" target="_blank"
-                        class="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-slate-950 rounded-xl text-[9px] font-black uppercase tracking-wider shadow-lg shadow-amber-500/20 active:scale-95 transition-all">
-                        <FileTextIcon class="w-3 h-3" />
-                        Plan
-                      </a>
-                      <div v-if="job.is_priority" class="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-rose-500 text-white rounded-xl text-[9px] font-black uppercase tracking-wider shadow-lg shadow-rose-500/30 animate-pulse transition-all">
-                        <ZapIcon class="w-3 h-3 fill-current" />
-                        Urgent
-                      </div>
-                      <span class="text-slate-400 font-black text-lg tracking-tighter">{{ job.queue_number }}</span>
-                    </div>
+          <!-- Job Header — mobile-first, no overlapping ticket / plan -->
+          <div class="p-5 sm:p-6 border-b border-white/[0.04] bg-gradient-to-b from-white/[0.02] to-transparent space-y-4">
+            <div class="flex items-start gap-3 sm:gap-4">
+              <!-- Ticket number (shown once) -->
+              <div class="w-[3.75rem] h-[3.75rem] sm:w-16 sm:h-16 bg-white text-slate-950 rounded-2xl flex flex-col items-center justify-center shadow-lg shrink-0">
+                <span class="text-[7px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none">Ticket</span>
+                <span class="text-2xl font-black leading-none mt-1 tabular-nums">{{ ticketNumber(job) }}</span>
+              </div>
+
+              <!-- Client + meta -->
+              <div class="flex-1 min-w-0 pt-0.5">
+                <div class="flex items-start justify-between gap-2">
+                  <h3 class="text-white font-black text-lg sm:text-xl tracking-tight leading-tight break-words">
+                    {{ job.client_name }}
+                  </h3>
+                  <div class="text-right shrink-0 pl-1">
+                    <div class="text-base sm:text-lg font-black text-white tabular-nums leading-none">{{ formatWaitTime(job) }}</div>
+                    <div class="text-[7px] font-bold text-slate-500 uppercase tracking-wider mt-1">Attente</div>
                   </div>
-                  <div class="flex items-center gap-2">
-                    <div class="w-1.5 h-1.5 rounded-full" :class="job.status === 'in_progress' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-700'"></div>
-                    <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 mt-2">
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.06]">
+                    <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="job.status === 'in_progress' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-600'"></span>
+                    <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">
                       {{ job.status === 'in_progress' ? 'En cours' : 'Attente' }}
                     </span>
-                  </div>
+                  </span>
+                  <span v-if="job.is_priority" class="inline-flex items-center gap-1 px-2.5 py-1 bg-gradient-to-r from-amber-500 to-rose-500 text-white rounded-lg text-[8px] font-black uppercase tracking-wider shadow-md shadow-rose-500/20">
+                    <ZapIcon class="w-3 h-3 fill-current" />
+                    Urgent
+                  </span>
+                  <span v-if="invoiceRef(job)" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[9px] font-black text-amber-300 uppercase tracking-wider">
+                    <InfoIcon class="w-3 h-3" />
+                    Facture {{ invoiceRef(job) }}
+                  </span>
                 </div>
-             </div>
-             <div class="text-right shrink-0">
-                <div class="text-lg font-black text-white tabular-nums">{{ job.waiting_since }}'</div>
-                <div class="text-[8px] font-bold text-slate-600 uppercase tracking-tighter">Depuis</div>
-             </div>
+              </div>
+            </div>
+
+            <!-- Plan CTA — full width, thumb-friendly -->
+            <a v-if="job.tefsil_url" :href="job.tefsil_url" target="_blank" rel="noopener"
+              class="flex items-center justify-center gap-3 w-full py-3.5 px-4 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-2xl text-[11px] font-black uppercase tracking-[0.15em] shadow-lg shadow-amber-500/25 active:scale-[0.98] transition-all">
+              <FileTextIcon class="w-5 h-5 shrink-0" />
+              <span>Ouvrir le Plan de Découpe</span>
+              <ExternalLinkIcon class="w-4 h-4 shrink-0 opacity-60" />
+            </a>
           </div>
 
           <!-- Task Execution Area -->
@@ -152,10 +165,10 @@
             </div>
           </Transition>
 
-          <!-- Notes Insight (Compact) -->
-          <div v-if="job.notes" class="px-6 py-4 bg-amber-500/[0.04] border-t border-white/[0.03] flex items-start gap-3">
+          <!-- Notes (sans ref facture déjà affichée en haut) -->
+          <div v-if="cleanNotes(job)" class="px-6 py-4 bg-amber-500/[0.04] border-t border-white/[0.03] flex items-start gap-3">
              <InfoIcon class="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-             <p class="text-[11px] font-medium text-amber-200/50 leading-tight italic line-clamp-2">"{{ job.notes }}"</p>
+             <p class="text-[11px] font-medium text-amber-200/60 leading-relaxed italic">"{{ cleanNotes(job) }}"</p>
           </div>
         </div>
       </div>
@@ -193,8 +206,28 @@ import {
   RefreshCwIcon, CheckIcon, HammerIcon, 
   InfoIcon, CheckCircle2Icon, ClockIcon, ScissorsIcon, 
   LayoutIcon, DrillIcon, WrenchIcon, LayersIcon,
-  Volume2Icon, VolumeXIcon, SearchIcon, FileTextIcon, ZapIcon
+  Volume2Icon, VolumeXIcon, SearchIcon, FileTextIcon, ZapIcon, ExternalLinkIcon
 } from 'lucide-vue-next';
+
+const ticketNumber = (job) => (job.queue_number || '').replace(/^Q-?/i, '') || '—';
+
+const invoiceRef = (job) => {
+  const match = (job.notes || '').match(/Facture\s*#?\s*(\d+)/i);
+  return match ? `#${match[1]}` : null;
+};
+
+const cleanNotes = (job) => {
+  if (!job.notes) return '';
+  return job.notes.replace(/\s*\|?\s*Facture\s*#?\s*\d+/gi, '').trim();
+};
+
+const formatWaitTime = (job) => {
+  const mins = Number(job.waiting_minutes ?? 0);
+  if (mins < 60) return `${mins} min`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+};
 
 const queue = ref([]);
 const isLoading = ref(false);
