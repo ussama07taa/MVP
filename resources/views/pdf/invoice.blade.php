@@ -120,24 +120,33 @@
             $rb = $invoice->remaining_balance ?? 0;
         }
 
-        // Grouping Logic — invoice items keep separate lines via DB id
+        // Grouping Logic — merge bandchant material + collage lines on print
         $groupedItems = [];
         foreach ($invoice->items as $index => $item) {
             $desc = $item->description ?? $item->label ?? $item->name ?? '';
 
-            $baseName = preg_replace('/(Fourniture:|Collage Chant:)\s*/i', '', $desc);
+            $baseName = preg_replace('/^(Fourniture:|Collage Chant:)\s*/i', '', $desc);
+            $baseName = preg_replace('/^\[(?:Collage(?:\s*\+\s*\w+)*)\]\s*/i', '', $baseName);
             $baseName = preg_replace('/Pose Canto\s*\(?Sel3a\s*(?:d|y|n)?\s*Client\)?/i', 'Pose de Chant (Fourniture Client)', $baseName);
             $baseName = preg_replace('/Sel3a\s*(?:d|y|n)?\s*Client/i', 'Fourniture Client', $baseName);
             $baseName = trim($baseName) ?: 'Article ' . ($index + 1);
 
             $qty = (float) $item->quantity;
-            $key = isset($item->id)
-                ? 'invoice_item_' . $item->id
-                : $baseName . '_' . $qty . '_' . ($item->item_type ?? '') . '_' . ($item->item_id ?? $index);
+            $isCantoSplit = preg_match('/^(Fourniture:|Collage Chant:|\[Collage\])/i', trim($desc));
+            $hasCollage = preg_match('/^(Collage Chant:|\[Collage\])/i', trim($desc));
+
+            if ($isCantoSplit) {
+                $key = 'canto_' . $baseName . '_' . $qty;
+            } elseif (isset($item->id) && !empty($item->description)) {
+                $key = 'invoice_item_' . $item->id;
+            } else {
+                $key = $baseName . '_' . $qty . '_' . ($item->item_type ?? '') . '_' . ($item->item_id ?? $index);
+            }
 
             if (!isset($groupedItems[$key])) {
                 $groupedItems[$key] = [
                     'description' => $baseName,
+                    'has_collage' => (bool) $hasCollage,
                     'quantity' => $qty,
                     'unit' => $item->unit ?? 'unité',
                     'unit_price' => (float) $item->unit_price,
@@ -146,8 +155,16 @@
             } else {
                 $groupedItems[$key]['total'] += (float) $item->total;
                 $groupedItems[$key]['unit_price'] = $groupedItems[$key]['total'] / $qty;
+                $groupedItems[$key]['has_collage'] = $groupedItems[$key]['has_collage'] || (bool) $hasCollage;
             }
         }
+
+        foreach ($groupedItems as &$groupItem) {
+            if (!empty($groupItem['has_collage'])) {
+                $groupItem['description'] = '[Collage] ' . $groupItem['description'];
+            }
+        }
+        unset($groupItem);
     @endphp
 
     <div class="header">

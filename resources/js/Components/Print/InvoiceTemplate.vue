@@ -70,11 +70,10 @@
               :class="item.is_fully_returned ? 'opacity-40' : ''">
             <td class="py-3 px-2 text-[10px] font-bold text-slate-300">0{{ index + 1 }}</td>
             <td class="py-3 px-2">
-              <p class="text-[11px] font-black text-slate-800 leading-tight" :class="item.is_fully_returned ? 'line-through text-rose-400' : ''">{{ formatItemName(item.description || item.name || item.label) }}</p>
+              <p class="text-[11px] font-black text-slate-800 leading-tight" :class="item.is_fully_returned ? 'line-through text-rose-400' : ''">{{ formatItemName(item.displayLabel || item.name || item.description || item.label) }}</p>
               <div v-if="item.width_mm && item.thickness_mm" class="flex gap-2 mt-0.5">
                 <span class="text-[8px] text-slate-400 font-bold uppercase tracking-wider">Specs: {{ item.width_mm }}x{{ item.thickness_mm }}mm</span>
               </div>
-              <p v-if="item.description" class="text-[8px] text-slate-400 font-bold mt-0.5 uppercase tracking-wider">{{ item.description }}</p>
               <span v-if="item.is_fully_returned" class="text-[8px] font-black text-rose-500 uppercase tracking-widest">RETOURNÉ</span>
             </td>
             <td class="py-3 px-2 text-center">
@@ -182,11 +181,26 @@ const formatItemName = (name) => {
   return name
     .replace(/Pose Canto\s*\(?Sel3a\s*(?:d|y|n)?\s*Client\)?/gi, 'Pose de Chant (Fourniture Client)')
     .replace(/Sel3a\s*(?:d|y|n)?\s*Client/gi, 'Fourniture Client')
-    .replace(/Fourniture:\s*/gi, '')
-    .replace(/Collage Chant:\s*/gi, '');
+    .replace(/^Fourniture:\s*/gi, '')
+    .replace(/^Collage Chant:\s*/gi, '');
 };
 
 const getItemLabel = (item) => item.description || item.name || item.label || '';
+
+const normalizeBaseName = (rawName) => {
+  if (!rawName) return '';
+  return rawName
+    .replace(/Pose Canto\s*\(?Sel3a\s*(?:d|y|n)?\s*Client\)?/gi, 'Pose de Chant (Fourniture Client)')
+    .replace(/Sel3a\s*(?:d|y|n)?\s*Client/gi, 'Fourniture Client')
+    .replace(/^Fourniture:\s*/gi, '')
+    .replace(/^Collage Chant:\s*/gi, '')
+    .replace(/^\[(?:Collage(?:\s*\+\s*\w+)*)\]\s*/gi, '')
+    .trim();
+};
+
+const isCantoSplitLine = (rawName) => /^(Fourniture:|Collage Chant:|\[Collage\])/i.test((rawName || '').trim());
+
+const hasCollageComponent = (rawName) => /^(Collage Chant:|\[Collage\])/i.test((rawName || '').trim());
 
 const getItemTotal = (item) => Number(
   item.total
@@ -202,20 +216,24 @@ const groupedItems = computed(() => {
 
   props.items.forEach((item, index) => {
     const rawName = getItemLabel(item);
-    const baseName = rawName
-      .replace(/Fourniture:\s*/gi, '')
-      .replace(/Collage Chant:\s*/gi, '')
-      .trim() || `Article ${index + 1}`;
+    const baseName = normalizeBaseName(rawName) || `Article ${index + 1}`;
+    const qty = Number(item.quantity);
 
-    // Invoice items have a DB id — keep each line separate
-    const key = item.id
-      ? `invoice_item_${item.id}`
-      : `${baseName}_${item.quantity}_${item.item_type || ''}_${item.item_id || index}`;
+    // Merge bandchant material + collage lines (POS split or [Collage] duplicates)
+    let key;
+    if (isCantoSplitLine(rawName)) {
+      key = `canto_${baseName}_${qty}`;
+    } else if (item.id && item.description) {
+      key = `invoice_item_${item.id}`;
+    } else {
+      key = `${baseName}_${qty}_${item.item_type || ''}_${item.item_id || index}`;
+    }
 
     if (!groups[key]) {
       groups[key] = {
         ...item,
         name: baseName,
+        has_collage: hasCollageComponent(rawName),
         total_price: getItemTotal(item),
         is_grouped: false,
         is_fully_returned: Number(item.quantity_returned || 0) >= Number(item.quantity || 1),
@@ -223,6 +241,7 @@ const groupedItems = computed(() => {
     } else {
       groups[key].total_price += getItemTotal(item);
       groups[key].is_grouped = true;
+      groups[key].has_collage = groups[key].has_collage || hasCollageComponent(rawName);
     }
   });
 
@@ -230,6 +249,7 @@ const groupedItems = computed(() => {
     if (item.is_grouped) {
       item.unit_price = item.total_price / item.quantity;
     }
+    item.displayLabel = item.has_collage ? `[Collage] ${item.name}` : item.name;
     return item;
   });
 });
