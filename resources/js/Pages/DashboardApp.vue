@@ -618,19 +618,23 @@ const totalStockAlerts = computed(() =>
   (props.alerts?.low_canto_stock?.length || 0) + (props.alerts?.low_panel_stock?.length || 0)
 );
 
-// Month progress (day of month / days in month)
+// Progression CA mois (0% si pas encore de ventes)
 const monthProgress = computed(() => {
+  const revenue = Number(props.stats?.revenue_today || 0);
+  if (revenue <= 0) return 0;
   const now = new Date();
   const day = now.getDate();
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   return Math.round((day / daysInMonth) * 100);
 });
 
-// Revenue/debt ratios
+// Répartition crédit client / dette fournisseur (barres à 0 si tout est à zéro)
 const creditRatioPercent = computed(() => {
-  const total = Number(props.stats?.total_credit_market || 0) + Number(props.stats?.total_supplier_debt || 0);
-  if (total === 0) return 50;
-  return Math.round((Number(props.stats?.total_credit_market || 0) / total) * 100);
+  const credit = Number(props.stats?.total_credit_market || 0);
+  const debt = Number(props.stats?.total_supplier_debt || 0);
+  const total = credit + debt;
+  if (total <= 0) return 0;
+  return Math.round((credit / total) * 100);
 });
 
 const servicesPct = computed(() => {
