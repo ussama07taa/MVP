@@ -238,7 +238,36 @@ export const commonTextures = [
   { name: 'Lati Sapin', code: 'LAT-SP', hex: '#EADFC9' },
 
   // ==========================================
-  // --- 17. MDF BOARD GUIDE — UNI & SOLID ---
+  // --- 17. MDF BOARD GUIDE — UNI & SOLID (Kronodesign Color) ---
   // ==========================================
+  // Warm neutrals & browns
   { name: 'Cappuccino Color MDF Board Guide', code: 'K301', hex: '#A48F7A' },
+  { name: 'Macchiato Color MDF Board Guide', code: 'K8533', hex: '#8B6E55' },
+  { name: 'Latte Color MDF Board Guide', code: 'K7166', hex: '#C5B39A' },
+  { name: 'Clay Grey Color MDF Board Guide', code: 'K096', hex: '#9A8B7E' },
+  { name: 'Stone Beige Color MDF Board Guide', code: 'K680', hex: '#B8AA9A' },
+  { name: 'Macadamia Color MDF Board Guide', code: 'K681', hex: '#C4B59C' },
+  { name: 'Alpaca Color MDF Board Guide', code: 'K682', hex: '#C4BDB5' },
+  { name: 'Cajun Color MDF Board Guide', code: 'K683', hex: '#9A6B45' },
+  { name: 'Sand Color MDF Board Guide', code: 'K515', hex: '#D6C9B4' },
+  { name: 'Chinchilla Grey Color MDF Board Guide', code: 'K0197', hex: '#9E9A94' },
+
+  // Whites & blacks
+  { name: 'Snow White Color MDF Board Guide', code: 'K8685', hex: '#F5F5F0' },
+  { name: 'Brilliant White Color MDF Board Guide', code: 'K8681', hex: '#FAFAFA' },
+  { name: 'Process Black Color MDF Board Guide', code: 'K8502', hex: '#1A1A1A' },
+
+  // Accent colors
+  { name: 'Powder Pink Color MDF Board Guide', code: 'K686', hex: '#E5D4D4' },
+  { name: 'Raspberry Pink Color MDF Board Guide', code: 'K100', hex: '#D4728C' },
+  { name: 'Rose Pink Color MDF Board Guide', code: 'K8534', hex: '#D4A0A8' },
+  { name: 'Ceramic Red Color MDF Board Guide', code: 'K098', hex: '#B5523D' },
+  { name: 'Dusk Blue Color MDF Board Guide', code: 'K097', hex: '#6B7D8E' },
+  { name: 'Midnight Blue Color MDF Board Guide', code: 'K099', hex: '#1A2433' },
+  { name: 'Navy Blue Color MDF Board Guide', code: 'K8984', hex: '#2C3E5A' },
+  { name: 'Sky Blue Color MDF Board Guide', code: 'K7179', hex: '#7BA7C9' },
+  { name: 'Mint Color MDF Board Guide', code: 'K7180', hex: '#A8C9B8' },
+  { name: 'Pastel Green Color MDF Board Guide', code: 'K7063', hex: '#B5C9A8' },
+  { name: 'Lavender Color MDF Board Guide', code: 'K8536', hex: '#B8A8C9' },
+  { name: 'Viola Color MDF Board Guide', code: 'K7167', hex: '#8B6B8E' },
 ];
