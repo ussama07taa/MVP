@@ -236,4 +236,9 @@ export const commonTextures = [
   { name: 'Lati Chêne', code: 'LAT-CH', hex: '#D2C4AE' },
   { name: 'Lati Noyer', code: 'LAT-NY', hex: '#6E5643' },
   { name: 'Lati Sapin', code: 'LAT-SP', hex: '#EADFC9' },
+
+  // ==========================================
+  // --- 17. MDF BOARD GUIDE — UNI & SOLID ---
+  // ==========================================
+  { name: 'Cappuccino Color MDF Board Guide', code: 'K301', hex: '#A48F7A' },
 ];
