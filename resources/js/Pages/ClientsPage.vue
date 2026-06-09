@@ -294,13 +294,13 @@
                         <ActivityIcon class="w-3 h-3 mr-2 text-indigo-500" /> Composition du panier
                       </p>
                       <div class="space-y-3">
-                        <div v-for="line in order.lines" :key="line.id" 
+                        <div v-for="(line, lineIdx) in groupOrderLines(order.lines)" :key="`${order.id}-${lineIdx}`" 
                              class="flex justify-between items-center text-xs animate-in fade-in slide-in-from-left-1 duration-300"
                              :class="line.quantity_returned >= line.quantity ? 'opacity-40 grayscale pointer-events-none select-none' : ''">
                           <div class="font-bold flex items-center gap-3">
                             <span class="w-9 h-6 bg-white text-slate-900 border border-slate-200 font-black rounded-lg flex items-center justify-center text-[10px] shadow-sm">x{{ Number(line.quantity) }}</span>
                             <div class="flex flex-col">
-                              <span class="text-slate-700" :class="line.quantity_returned >= line.quantity ? 'line-through decoration-rose-500/50 decoration-2' : ''">{{ getLineItemName(line) }}</span>
+                              <span class="text-slate-700" :class="line.quantity_returned >= line.quantity ? 'line-through decoration-rose-500/50 decoration-2' : ''">{{ line.displayName }}</span>
                               <span v-if="line.quantity_returned > 0 && line.quantity_returned < line.quantity" class="text-[9px] text-rose-500 font-black flex items-center gap-1">
                                 <RotateCwIcon class="w-2.5 h-2.5" /> -{{ line.quantity_returned }} Retourné
                               </span>
@@ -890,6 +890,54 @@ const getLineItemName = (line) => {
   }
   if (line.item_type) return `${line.item_type.replace('App\\Models\\', '')} ${line.item_id ? '#' + line.item_id : ''}`.trim();
   return 'Article Générique';
+};
+
+const normalizeLineBaseName = (rawName) => {
+  if (!rawName) return '';
+  return rawName
+    .replace(/Pose Canto\s*\(?Sel3a\s*(?:d|y|n)?\s*Client\)?/gi, 'Pose de Chant (Fourniture Client)')
+    .replace(/Sel3a\s*(?:d|y|n)?\s*Client/gi, 'Fourniture Client')
+    .replace(/^Fourniture:\s*/gi, '')
+    .replace(/^Collage Chant:\s*/gi, '')
+    .replace(/^\[(?:Collage(?:\s*\+\s*\w+)*)\]\s*/gi, '')
+    .trim();
+};
+
+const isCantoSplitLine = (rawName) => /^(Fourniture:|Collage Chant:|\[Collage\])/i.test((rawName || '').trim());
+
+const hasCollageComponent = (rawName) => /^(Collage Chant:|\[Collage\])/i.test((rawName || '').trim());
+
+const groupOrderLines = (lines) => {
+  if (!lines?.length) return [];
+  const groups = {};
+
+  lines.forEach((line, index) => {
+    const rawName = getLineItemName(line);
+    const baseName = normalizeLineBaseName(rawName) || `Article ${index + 1}`;
+    const qty = Number(line.quantity);
+    const key = isCantoSplitLine(rawName) ? `canto_${baseName}_${qty}` : `line_${line.id || index}`;
+
+    if (!groups[key]) {
+      groups[key] = {
+        ...line,
+        displayName: baseName,
+        has_collage: hasCollageComponent(rawName),
+        quantity: qty,
+        quantity_returned: Number(line.quantity_returned || 0),
+        unit_sell_price: Number(line.unit_sell_price),
+        total_line_sell: Number(line.total_line_sell),
+      };
+    } else {
+      groups[key].total_line_sell += Number(line.total_line_sell);
+      groups[key].unit_sell_price = groups[key].total_line_sell / qty;
+      groups[key].has_collage = groups[key].has_collage || hasCollageComponent(rawName);
+    }
+  });
+
+  return Object.values(groups).map((line) => ({
+    ...line,
+    displayName: line.has_collage ? `[Collage] ${line.displayName}` : line.displayName,
+  }));
 };
 
 const formatItemName = (name) => {
