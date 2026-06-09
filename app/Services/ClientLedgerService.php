@@ -26,8 +26,9 @@ class ClientLedgerService
                 'notes' => $notes
             ]);
 
-            // Adjust credit: Payment reduces credit (debt)
-            $client->decrement('total_credit', $amount);
+            // Adjust credit: payments reduce debt; returns also reduce debt (amount stored negative)
+            $creditAdjustment = $type === 'retour' ? abs($amount) : $amount;
+            $client->decrement('total_credit', $creditAdjustment);
 
             return $payment;
         });

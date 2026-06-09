@@ -312,11 +312,15 @@ class ClientController extends Controller
                 ->selectRaw('order_id, SUM(total_refunded) as total')
                 ->pluck('total', 'order_id'); // [order_id => refund_total]
 
-            $totalPayments = (float) Payment::where('client_id', $id)->sum('amount');
+            // Exclude retour rows — refunds are already reflected in net order totals
+            $totalPayments = (float) Payment::where('client_id', $id)
+                ->where('type', '!=', 'retour')
+                ->sum('amount');
 
             // ─── 2. SINGLE-PASS DISTRIBUTION (O(N) — no nested loops) ────────
             $paymentPool = $totalPayments;
             $revenueTotal = 0.0;
+            $outstandingDebt = 0.0;
 
             // Build update maps: [id => new_amount_paid]
             $orderUpdates   = [];
@@ -330,6 +334,7 @@ class ClientController extends Controller
                 $paid = min($paymentPool, $netTotal);
                 $orderUpdates[$order->id] = round($paid, 2);
                 $paymentPool -= $paid;
+                $outstandingDebt += max(0, $netTotal - $paid);
             }
 
             foreach ($invoices as $invoice) {
@@ -339,6 +344,7 @@ class ClientController extends Controller
                 $paid = min($paymentPool, $netTotal);
                 $invoiceUpdates[$invoice->id] = round($paid, 2);
                 $paymentPool -= $paid;
+                $outstandingDebt += max(0, $netTotal - $paid);
             }
 
             // ─── 3. BULK UPDATE (2 queries max, regardless of record count) ───
@@ -351,7 +357,7 @@ class ClientController extends Controller
             }
 
             // ─── 4. SYNC CLIENT CREDIT ────────────────────────────────────────
-            $newCredit = round($revenueTotal - $totalPayments, 2);
+            $newCredit = round($outstandingDebt, 2);
             $client->update(['total_credit' => $newCredit]);
 
             return response()->json([
