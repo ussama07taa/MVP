@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 use App\Models\{Invoice, InvoiceItem, Client, StockPanel, StockCanto, Service, Setting};
-use App\Services\{StockService, ClientLedgerService};
+use App\Services\{StockService, ClientLedgerService, PricingService};
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class InvoiceController extends Controller
@@ -137,10 +137,13 @@ class InvoiceController extends Controller
             $validityDays = $request->type === 'quote' ? ($request->validity_days ?? 15) : null;
             $expiryDate = $validityDays ? \Carbon\Carbon::parse($request->issue_date)->addDays($validityDays)->format('Y-m-d') : null;
 
-            // Calculate totals
+            $pricing = app(PricingService::class);
+
+            // Calculate totals from server-side prices for stock/service lines
             $subtotal = 0;
             foreach ($request->items as $item) {
-                $subtotal += (float) $item['quantity'] * (float) $item['unit_price'];
+                $unitPrice = $pricing->resolveInvoiceUnitSell($item);
+                $subtotal += (float) $item['quantity'] * $unitPrice;
             }
             $taxAmount = round($subtotal * ($taxRate / 100), 2);
             $total = round($subtotal + $taxAmount, 2);
@@ -169,7 +172,8 @@ class InvoiceController extends Controller
 
             // Create line items
             foreach ($request->items as $index => $item) {
-                $lineTotal = round((float) $item['quantity'] * (float) $item['unit_price'], 2);
+                $unitPrice = $pricing->resolveInvoiceUnitSell($item);
+                $lineTotal = round((float) $item['quantity'] * $unitPrice, 2);
                 $unitCost = $this->resolveUnitCost($item);
 
                 InvoiceItem::create([
@@ -179,7 +183,7 @@ class InvoiceController extends Controller
                     'category' => $item['category'],
                     'quantity' => $item['quantity'],
                     'unit' => $item['unit'] ?? 'unité',
-                    'unit_price' => $item['unit_price'],
+                    'unit_price' => $unitPrice,
                     'unit_cost' => $unitCost,
                     'total' => $lineTotal,
                     'sort_order' => $index,
@@ -232,15 +236,22 @@ class InvoiceController extends Controller
             DB::beginTransaction();
 
             $invoice = Invoice::findOrFail($id);
+
+            if ($invoice->validated_at) {
+                return response()->json(['error' => 'Impossible de modifier une facture validée. Créez un avoir ou annulez via l\'administration.'], 422);
+            }
+
             $tenantId = 1;
             $taxRate = (float) ($request->tax_rate ?? 0);
+            $pricing = app(PricingService::class);
             $validityDays = $request->type === 'quote' ? ($request->validity_days ?? $invoice->validity_days ?? 15) : null;
             $expiryDate = $validityDays ? \Carbon\Carbon::parse($request->issue_date)->addDays($validityDays)->format('Y-m-d') : null;
 
-            // Recalculate totals
+            // Recalculate totals from server-side prices
             $subtotal = 0;
             foreach ($request->items as $item) {
-                $subtotal += (float) $item['quantity'] * (float) $item['unit_price'];
+                $unitPrice = $pricing->resolveInvoiceUnitSell($item);
+                $subtotal += (float) $item['quantity'] * $unitPrice;
             }
             $taxAmount = round($subtotal * ($taxRate / 100), 2);
             $total = round($subtotal + $taxAmount, 2);
@@ -264,7 +275,8 @@ class InvoiceController extends Controller
             $invoice->items()->delete();
 
             foreach ($request->items as $index => $item) {
-                $lineTotal = round((float) $item['quantity'] * (float) $item['unit_price'], 2);
+                $unitPrice = $pricing->resolveInvoiceUnitSell($item);
+                $lineTotal = round((float) $item['quantity'] * $unitPrice, 2);
                 $unitCost = $this->resolveUnitCost($item);
 
                 InvoiceItem::create([
@@ -274,7 +286,7 @@ class InvoiceController extends Controller
                     'category' => $item['category'],
                     'quantity' => $item['quantity'],
                     'unit' => $item['unit'] ?? 'unité',
-                    'unit_price' => $item['unit_price'],
+                    'unit_price' => $unitPrice,
                     'unit_cost' => $unitCost,
                     'total' => $lineTotal,
                     'sort_order' => $index,
@@ -352,6 +364,10 @@ class InvoiceController extends Controller
     public function destroy($id)
     {
         $invoice = Invoice::findOrFail($id);
+
+        if ($invoice->validated_at) {
+            return response()->json(['error' => 'Impossible de supprimer une facture validée.'], 422);
+        }
 
         if ($invoice->status === 'paid') {
             return response()->json(['error' => 'Impossible de supprimer une facture déjà payée.'], 422);

@@ -10,11 +10,13 @@ class CheckoutService
 {
     protected $stock;
     protected $ledger;
+    protected $pricing;
 
-    public function __construct(StockService $stock, ClientLedgerService $ledger)
+    public function __construct(StockService $stock, ClientLedgerService $ledger, PricingService $pricing)
     {
         $this->stock = $stock;
         $this->ledger = $ledger;
+        $this->pricing = $pricing;
     }
 
     public function execute(array $data)
@@ -37,12 +39,20 @@ class CheckoutService
                 }
             }
 
+            $totalSell = round($totalSell, 2);
+            $totalCost = round($totalCost, 2);
+            $amountPaid = round((float) $data['amount_paid'], 2);
+
+            if ($amountPaid > $totalSell + 0.01) {
+                throw new \Exception("Le montant payé ({$amountPaid} DH) dépasse le total ({$totalSell} DH).");
+            }
+
             // 2. PHASE 2: PERSISTENCE (Order and Lines)
             $order = Order::create([
                 'tenant_id' => $tenantId,
                 'client_id' => $data['client_id'],
                 'user_id' => $userId,
-                'amount_paid' => $data['amount_paid'],
+                'amount_paid' => $amountPaid,
                 'total_sell_price' => $totalSell,
                 'total_cost_price' => $totalCost,
                 'status' => 'Pending_Workshop'
@@ -55,8 +65,8 @@ class CheckoutService
             // 3. PHASE 3: FINANCIALS
             $this->ledger->adjustCreditForOrder($data['client_id'], $totalSell);
 
-            if ($data['amount_paid'] > 0) {
-                $this->ledger->recordPayment($data['client_id'], $data['amount_paid'], 'avance', $order->id);
+            if ($amountPaid > 0) {
+                $this->ledger->recordPayment($data['client_id'], $amountPaid, 'avance', $order->id);
             }
 
             // 4. WORKSHOP QUEUE
@@ -164,7 +174,8 @@ class CheckoutService
     protected function lockAndPrepareItems(array $item)
     {
         $lines = [];
-        $line_sell = $item['quantity'] * $item['unit_price'];
+        $serverUnitPrice = $this->pricing->resolveCheckoutUnitSell($item);
+        $line_sell = round($item['quantity'] * $serverUnitPrice, 2);
         $line_cost = 0;
         $item_type = null;
         $item_id = null;
@@ -187,11 +198,12 @@ class CheckoutService
                 $unit_buy = $canto->cost_price_per_m;
 
                 // Dynamic Splitting for Material and Collage/Façonnage only
-                $has_splitting = !empty($item['with_canto_service']) && !empty($item['custom_canto_service_price']);
+                $has_splitting = !empty($item['with_canto_service']);
 
                     if ($has_splitting) {
                         // Line 1: Canto Material (Fourniture)
-                        $base_price = $item['base_canto_price'] ?? $canto->base_price_sell_per_m;
+                        $base_price = (float) $canto->base_price_sell_per_m;
+                        $collage_price = $this->pricing->resolveCantoCollagePrice();
                         $lines[] = [
                             'type' => $item_type,
                             'id' => $item_id,
@@ -199,23 +211,26 @@ class CheckoutService
                             'quantity' => $item['quantity'],
                             'unit_price' => $base_price,
                             'unit_buy' => $unit_buy,
-                            'line_sell' => $item['quantity'] * $base_price,
+                            'line_sell' => round($item['quantity'] * $base_price, 2),
                             'line_cost' => $line_cost,
                             'width_mm' => $item['width_mm'] ?? null,
                             'thickness_mm' => $item['thickness_mm'] ?? null,
                         ];
 
                         // Line 2: Collage de Chant (Façonnage)
-                        $service = \App\Models\Service::where('name', 'like', '%chant%')->orWhere('name', 'like', '%coupe%')->first();
+                        $service = \App\Models\Service::where('name', 'like', '%collage%')
+                            ->orWhere('name', 'like', '%chant%')
+                            ->orWhere('name', 'like', '%coupe%')
+                            ->first();
                         $service_id = $service ? $service->id : null;
                         $lines[] = [
                             'type' => \App\Models\Service::class,
                             'id' => $service_id,
                             'label' => 'Collage Chant: ' . ($item['base_name'] ?? $item['name'] ?? 'Bandchant'),
                             'quantity' => $item['quantity'],
-                            'unit_price' => $item['custom_canto_service_price'],
+                            'unit_price' => $collage_price,
                             'unit_buy' => 0,
-                            'line_sell' => $item['quantity'] * $item['custom_canto_service_price'],
+                            'line_sell' => round($item['quantity'] * $collage_price, 2),
                             'line_cost' => 0,
                             'width_mm' => $item['width_mm'] ?? null,
                             'thickness_mm' => $item['thickness_mm'] ?? null,
@@ -249,7 +264,7 @@ class CheckoutService
             'id' => $item_id,
             'label' => $item['name'] ?? null,
             'quantity' => $item['quantity'],
-            'unit_price' => $item['unit_price'],
+            'unit_price' => $serverUnitPrice,
             'unit_buy' => $unit_buy,
             'line_sell' => $line_sell,
             'line_cost' => $line_cost,

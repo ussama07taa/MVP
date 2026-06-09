@@ -10,8 +10,6 @@ use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\UserController;
 
 Route::middleware(['auth', 'identify.tenant', 'throttle:100,1'])->group(function () {
-    // ... existing routes ...
-    Route::post('/export/{type}', [ExportController::class, 'export']);
     Route::get('/user', function (Request $request) { return $request->user(); });
 
     Route::get('/products/{id}/batches', [StockController::class, 'getProductBatches']);
@@ -27,16 +25,15 @@ Route::middleware(['auth', 'identify.tenant', 'throttle:100,1'])->group(function
     Route::post('/workshop/queue/{id}/hide',                 [WorkshopQueueController::class, 'hideFromWorkshop']);
     Route::post('/workshop/services/{serviceId}/toggle',     [WorkshopQueueController::class, 'toggleService']);
     
-    // Workshop Board - accessible to Admin & Cashier
-    Route::get('/admin/workshop-queue',                    [WorkshopQueueController::class, 'index']);
-    Route::post('/admin/workshop-queue',                   [WorkshopQueueController::class, 'store']);
-    Route::post('/admin/workshop-queue/{id}/deliver',      [WorkshopQueueController::class, 'deliver']);
-    Route::post('/admin/workshop-queue/{id}/undeliver',    [WorkshopQueueController::class, 'undeliver']);
-    Route::post('/admin/workshop-queue/{id}/toggle-priority', [WorkshopQueueController::class, 'togglePriority']);
-
     Route::middleware('admin')->group(function () {
+        Route::post('/export/{type}', [ExportController::class, 'export']);
         Route::get('/admin/dashboard', [DashboardController::class, 'index']);
 
+        Route::get('/admin/workshop-queue',                    [WorkshopQueueController::class, 'index']);
+        Route::post('/admin/workshop-queue',                   [WorkshopQueueController::class, 'store']);
+        Route::post('/admin/workshop-queue/{id}/deliver',      [WorkshopQueueController::class, 'deliver']);
+        Route::post('/admin/workshop-queue/{id}/undeliver',    [WorkshopQueueController::class, 'undeliver']);
+        Route::post('/admin/workshop-queue/{id}/toggle-priority', [WorkshopQueueController::class, 'togglePriority']);
         Route::delete('/admin/workshop-queue/{id}',            [WorkshopQueueController::class, 'destroy']);
         Route::get('/admin/statistics/financial', [FinancialReportController::class, 'index']);
         Route::get('/admin/statistics/workshop', [WorkshopStatsController::class, 'index']);

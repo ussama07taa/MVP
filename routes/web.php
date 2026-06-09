@@ -24,7 +24,7 @@ Route::get('/login', [AuthController::class, 'create'])->name('login');
 Route::post('/login', [AuthController::class, 'store'])->middleware('throttle:5,1');
 Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/pos', [PosController::class, 'index'])->name('pos');
     Route::post('/orders/checkout', [OrderController::class, 'store'])->name('orders.checkout');
 

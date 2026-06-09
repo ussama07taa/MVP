@@ -92,6 +92,7 @@ class WorkshopQueueController extends Controller
      */
     public function store(Request $request)
     {
+        if (!in_array(auth()->user()->role, ['admin', 'cashier'])) abort(403);
         $data = $request->all();
 
         // Handle services being JSON-encoded when using FormData for file uploads
@@ -208,6 +209,7 @@ class WorkshopQueueController extends Controller
      */
     public function deliver($id)
     {
+        if (!in_array(auth()->user()->role, ['admin', 'cashier'])) abort(403);
         $queue = WorkshopQueue::findOrFail($id);
         $queue->update(['status' => 'delivered', 'delivered_at' => now()]);
         return response()->json(['success' => true, 'message' => "Commande {$queue->queue_number} livrée!"]);
@@ -218,6 +220,7 @@ class WorkshopQueueController extends Controller
      */
     public function undeliver($id)
     {
+        if (!in_array(auth()->user()->role, ['admin', 'cashier'])) abort(403);
         $queue = WorkshopQueue::findOrFail($id);
         $queue->update(['status' => 'done', 'delivered_at' => null]);
         return response()->json(['success' => true, 'message' => "Livraison annulée pour {$queue->queue_number}!"]);
@@ -235,6 +238,7 @@ class WorkshopQueueController extends Controller
 
     public function togglePriority($id)
     {
+        if (!in_array(auth()->user()->role, ['admin', 'cashier'])) abort(403);
         $queue = WorkshopQueue::findOrFail($id);
         $queue->update(['is_priority' => !$queue->is_priority]);
         return response()->json([

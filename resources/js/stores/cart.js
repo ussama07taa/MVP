@@ -40,10 +40,13 @@ export const useCartStore = defineStore('cart', () => {
 
         if (!availableBatches || availableBatches.length === 0) {
             const fallbackPrice = type === 'canto' ? Number(product.base_price_sell_per_m) : Number(product.base_price_sell || product.unit_price);
+            const fallbackAvailable = type === 'canto'
+                ? Number(product.total_length_remaining || 0)
+                : (type === 'panel' ? 0 : 9999);
             availableBatches = [{
                 id: 'default',
                 price: fallbackPrice,
-                available: 9999
+                available: fallbackAvailable
             }];
         }
 
@@ -94,8 +97,9 @@ export const useCartStore = defineStore('cart', () => {
             remainingToFulfill -= qtyToTake;
         }
 
-        if (remainingToFulfill > 0 && type === 'panel') {
-            alert(`Stock insuffisant ! Il manque ${remainingToFulfill} pièces f l-inventaire.`);
+        if (remainingToFulfill > 0 && (type === 'panel' || type === 'canto')) {
+            const unit = type === 'canto' ? 'm' : 'pièces';
+            alert(`Stock insuffisant ! Il manque ${remainingToFulfill} ${unit} f l-inventaire.`);
         }
     };
 
@@ -104,6 +108,21 @@ export const useCartStore = defineStore('cart', () => {
     const handleQuantityChange = async (item, newQty) => {
         const val = parseFloat(newQty);
         if (isNaN(val) || val <= 0) return removeFromCart(cart.value.indexOf(item));
+
+        if (item.type === 'canto') {
+            const cantoProduct = cantos.value.find(c => c.id === item.id);
+            const maxAvail = cantoProduct ? Number(cantoProduct.total_length_remaining || 0) : 0;
+            const otherInCart = cart.value
+                .filter(i => i.id === item.id && i.type === 'canto' && i !== item)
+                .reduce((sum, i) => sum + Number(i.quantity), 0);
+            const capped = Math.min(val, Math.max(0, maxAvail - otherInCart));
+            if (capped <= 0) return removeFromCart(index);
+            item.quantity = capped;
+            if (capped < val) {
+                alert(`Stock insuffisant ! Maximum disponible: ${capped} m`);
+            }
+            return;
+        }
 
         if (item.type !== 'panel') {
             item.quantity = val;

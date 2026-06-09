@@ -176,7 +176,10 @@ class ClientController extends Controller
         }
 
         // Add Payments (Credit)
-        $payments = Payment::withoutGlobalScopes()->with('invoice')->where('client_id', $id)->get();
+        $payments = Payment::withoutGlobalScopes()->with('invoice')
+            ->where('client_id', $id)
+            ->where('type', '!=', 'retour')
+            ->get();
         foreach ($payments as $p) {
             $ref = 'Paiement';
             if ($p->order_id) $ref .= " (Vente #{$p->order_id})";
@@ -255,35 +258,13 @@ class ClientController extends Controller
                 'error' => "Le montant (" . number_format($request->amount, 2) . " DH) dépasse la dette actuelle (" . number_format($client->total_credit, 2) . " DH)."
             ], 422);
         }
-        return DB::transaction(function() use ($request, $id, $client) {
-            $amountToDistribute = $request->amount;
-            
-            $unpaidOrders = Order::withoutGlobalScopes()->where('client_id', $id)
-                ->whereRaw('amount_paid < total_sell_price')
-                ->orderBy('created_at', 'asc')
-                ->get();
-                
-            foreach ($unpaidOrders as $order) {
-                if ($amountToDistribute <= 0) break;
-                
-                $reste = $order->total_sell_price - $order->amount_paid;
-                $paymentForThisOrder = min($amountToDistribute, $reste);
-                
-                Payment::create([
-                    'order_id' => $order->id,
-                    'client_id' => $client->id,
-                    'amount' => $paymentForThisOrder,
-                    'type' => 'solde',
-                    'payment_method' => 'cash'
-                ]);
-                
-                $order->increment('amount_paid', $paymentForThisOrder);
-                $amountToDistribute -= $paymentForThisOrder;
-            }
-            
-            $client->decrement('total_credit', $request->amount);
-            return response()->json(['message' => 'Paiement effectué']);
-        });
+        app(\App\Services\ClientLedgerService::class)->distributeGlobalPayment(
+            (int) $id,
+            (float) $request->amount,
+            'solde'
+        );
+
+        return response()->json(['message' => 'Paiement effectué']);
     }
 
     public function recalculateCredit($id)

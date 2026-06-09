@@ -131,9 +131,7 @@ class DashboardController extends Controller
         $expenses = Expense::withoutGlobalScopes()->where('expense_date', '>=', $startDate)->sum('amount');
         $grossPurchases = Purchase::withoutGlobalScopes()->where('created_at', '>=', $startDate)->sum('total_amount');
         $supplierReturns = PurchaseReturn::withoutGlobalScopes()->where('created_at', '>=', $startDate)->sum('refund_amount');
-        $customerReturns = OrderReturn::withoutGlobalScopes()->where('created_at', '>=', $startDate)->sum('total_refunded');
-
-        $netProfit = $grossProfit - $expenses - $customerReturns;
+        $netProfit = $grossProfit - $expenses;
         $netMargin = $revenue > 0 ? ($netProfit / $revenue) * 100 : 0;
 
         return [
@@ -141,7 +139,7 @@ class DashboardController extends Controller
             'total_expenses' => $expenses,
             'gross_purchases' => $grossPurchases,
             'supplier_returns' => $supplierReturns,
-            'customer_returns' => $customerReturns,
+            'customer_returns' => OrderReturn::withoutGlobalScopes()->where('created_at', '>=', $startDate)->sum('total_refunded'),
             'net_margin_percent' => $netMargin,
         ];
     }

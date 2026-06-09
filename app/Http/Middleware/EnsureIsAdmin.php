@@ -30,6 +30,8 @@ class EnsureIsAdmin
             $isCashier = (method_exists($user, 'hasRole') && $user->hasRole('cashier')) || $user->role === 'cashier';
             if ($isCashier) {
                 $allowedPatterns = [
+                    'pos',
+                    'orders/checkout',
                     'admin/dashboard*',
                     'admin/workshop-queue*',
                     'admin/orders*',

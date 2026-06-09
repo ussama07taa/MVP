@@ -26,6 +26,14 @@ class AuthController extends Controller
             'password' => ['required'],
         ]);
 
+        $user = \App\Models\User::where('email', $credentials['email'])->first();
+
+        if ($user && $user->is_active === false) {
+            throw ValidationException::withMessages([
+                'email' => 'Ce compte est désactivé. Contactez l\'administrateur.',
+            ]);
+        }
+
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
 

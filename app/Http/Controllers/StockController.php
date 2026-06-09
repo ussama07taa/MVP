@@ -128,12 +128,23 @@ class StockController extends Controller
                 'user_id' => auth()->id()
             ]);
 
+            $qty = (float) $validated['quantity'];
+
             if ($validated['item_type'] === 'StockCanto') {
-                $item->total_length_remaining -= $validated['quantity'];
+                if ($item->total_length_remaining < $qty) {
+                    return response()->json(['error' => 'Stock insuffisant pour cet ajustement.'], 422);
+                }
+                $item->total_length_remaining -= $qty;
             } elseif ($validated['item_type'] === 'Consumable') {
-                $item->quantity_in_stock -= $validated['quantity'];
+                if ($item->quantity_in_stock < $qty) {
+                    return response()->json(['error' => 'Stock insuffisant pour cet ajustement.'], 422);
+                }
+                $item->quantity_in_stock -= $qty;
             } else {
-                $item->quantity -= $validated['quantity'];
+                if ($item->quantity < $qty) {
+                    return response()->json(['error' => 'Stock insuffisant pour cet ajustement.'], 422);
+                }
+                $item->quantity -= $qty;
             }
             $item->save();
             

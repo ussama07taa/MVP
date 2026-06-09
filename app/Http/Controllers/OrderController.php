@@ -148,7 +148,7 @@ class OrderController extends Controller {
             'tax_rate' => 0,
             'total' => $order->total_sell_price,
             'amount_paid' => $order->amount_paid,
-            'remaining_balance' => max(0, (float) $order->total_sell_price - (float) $order->amount_paid),
+            'remaining_balance' => $this->ledger->orderNetRemaining($order),
         ];
 
         $pdf = Pdf::loadView('pdf.invoice', [
@@ -173,6 +173,10 @@ class OrderController extends Controller {
     }
 
     public function store(StoreOrderRequest $request) {
+        if (!in_array(auth()->user()->role, ['admin', 'cashier'])) {
+            abort(403, 'Accès réservé à la caisse.');
+        }
+
         try {
             $data = $request->validated();
             if ($request->hasFile('tefsil_file')) {
@@ -241,7 +245,14 @@ class OrderController extends Controller {
                     ]);
                 } else {
                     $order = Order::withoutGlobalScopes()->findOrFail($id);
-                    
+                    $remaining = $this->ledger->orderNetRemaining($order);
+
+                    if ($request->amount > ($remaining + 0.01)) {
+                        return response()->json([
+                            'error' => "Le montant ({$request->amount} DH) dépasse le reste à payer ({$remaining} DH)."
+                        ], 422);
+                    }
+
                     $this->ledger->recordPayment(
                         $order->client_id, 
                         $request->amount, 
@@ -348,8 +359,11 @@ class OrderController extends Controller {
                 'Remboursement Retour #' . $orderReturn->id . ($request->reason ? ' : ' . $request->reason : '')
             );
 
-            // Clear Workshop Queue
-            \App\Models\WorkshopQueue::where('order_id', $order->id)->delete();
+            $totalRefunded = (float) \App\Models\OrderReturn::where('order_id', $order->id)->sum('total_refunded');
+            $netOrderTotal = max(0, (float) $order->total_sell_price - $totalRefunded);
+            if ($netOrderTotal <= 0.01) {
+                \App\Models\WorkshopQueue::where('order_id', $order->id)->delete();
+            }
             
             // Clear Stock Cache
             Cache::forget("global.panels");

@@ -28,24 +28,33 @@ class PurchaseController extends Controller
 
             $items = is_string($request->items) ? json_decode($request->items, true) : $request->items;
 
+            $computedTotal = 0;
+            foreach ($items as $item) {
+                $qtyAdded = (float)($item['data']['quantity'] ?? ($item['data']['total_length_remaining'] ?? 1));
+                $newUnitCost = (float)($item['data']['cost_price'] ?? ($item['data']['cost_price_per_m'] ?? ($item['data']['unit_cost'] ?? 0)));
+                $computedTotal += $qtyAdded * $newUnitCost;
+            }
+            $computedTotal = round($computedTotal, 2);
+            $amountPaid = round(min((float) $request->amount_paid, $computedTotal), 2);
+
             $purchase = Purchase::create([
                 'tenant_id' => 1,
                 'supplier_id' => $request->supplier_id,
                 'reference_invoice' => $request->reference_invoice,
-                'total_amount' => $request->total_amount,
-                'amount_paid' => $request->amount_paid,
+                'total_amount' => $computedTotal,
+                'amount_paid' => $amountPaid,
                 'document_path' => $documentPath
             ]);
 
-            if ($request->amount_paid < $request->total_amount) {
-                $debt = $request->total_amount - $request->amount_paid;
+            if ($amountPaid < $computedTotal) {
+                $debt = $computedTotal - $amountPaid;
                 Supplier::withoutGlobalScopes()->whereId($request->supplier_id)->lockForUpdate()->increment('total_debt', $debt);
             }
-            if ($request->amount_paid > 0) {
+            if ($amountPaid > 0) {
                  SupplierPayment::create([
                     'supplier_id' => $request->supplier_id, 
                     'purchase_id' => $purchase->id, 
-                    'amount' => $request->amount_paid, 
+                    'amount' => $amountPaid, 
                     'payment_method' => $request->payment_method ?? 'cash',
                     'cash_date' => ($request->payment_method === 'check') ? $request->cash_date : null,
                     'status' => ($request->payment_method === 'check' && $request->cash_date) ? 'pending' : 'cashed'
@@ -257,7 +266,7 @@ class PurchaseController extends Controller
             $stockItem = null;
             $availableQty = 0;
 
-            if ($line->category === 'mdf') {
+            if (in_array($line->category, ['mdf', 'panel'])) {
                 $stockItem = StockPanel::withoutGlobalScopes()->where('purchase_id', $purchase->id)->lockForUpdate()->first();
                 $availableQty = $stockItem ? (float)$stockItem->quantity : 0;
             } elseif ($line->category === 'canto') {
@@ -291,7 +300,7 @@ class PurchaseController extends Controller
             ]);
 
             if ($stockItem) {
-                if ($line->category === 'mdf') {
+                if (in_array($line->category, ['mdf', 'panel'])) {
                     $stockItem->decrement('quantity', $qtyToReturn);
                 } elseif ($line->category === 'canto') {
                     $stockItem->decrement('total_length_remaining', $qtyToReturn);
@@ -455,12 +464,13 @@ class PurchaseController extends Controller
                 ]);
             }
 
-            // Auto-sync: recalculate debt from actual purchase data to prevent desync
-            $realDebt = Purchase::withoutGlobalScopes()
+            $purchases = Purchase::withoutGlobalScopes()
                 ->where('supplier_id', $id)
-                ->selectRaw('COALESCE(SUM(total_amount) - SUM(amount_paid), 0) as real_debt')
-                ->value('real_debt');
-            $supplier->update(['total_debt' => max(0, round($realDebt, 2))]);
+                ->with('returns')
+                ->get();
+            $totalNet = $purchases->sum(fn ($p) => (float) $p->total_amount - (float) $p->returns->sum('refund_amount'));
+            $totalPaid = SupplierPayment::withoutGlobalScopes()->where('supplier_id', $id)->sum('amount');
+            $supplier->update(['total_debt' => max(0, round($totalNet - $totalPaid, 2))]);
 
             return response()->json(['success' => true]);
         });
