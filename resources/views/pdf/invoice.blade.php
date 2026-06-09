@@ -256,8 +256,15 @@
                     <span class="total-value">{{ number_format($invoice->subtotal, 2) }} DH</span>
                 </div>
                 
+                @if(($invoice->total_refunded ?? 0) > 0)
+                <div class="total-row">
+                    <span class="total-label">Retours / Avoirs</span>
+                    <span class="total-value" style="color: #f43f5e;">- {{ number_format($invoice->total_refunded, 2) }} DH</span>
+                </div>
+                @endif
+
                 <div class="total-row" style="margin-top: 10px;">
-                    <span class="total-main-label">TOTAL À PAYER</span>
+                    <span class="total-main-label">{{ ($invoice->total_refunded ?? 0) > 0 ? 'TOTAL NET À PAYER' : 'TOTAL À PAYER' }}</span>
                     <span class="total-main-value">{{ number_format($invoice->total, 2) }} DH</span>
                 </div>
                 

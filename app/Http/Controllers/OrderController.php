@@ -130,6 +130,10 @@ class OrderController extends Controller {
         $order = Order::withTrashed()->with(['client' => fn($q) => $q->withTrashed(), 'lines'])->findOrFail($id);
         $settings = Setting::first();
 
+        $grossTotal = (float) $order->total_sell_price;
+        $totalRefunded = (float) $order->returns()->sum('total_refunded');
+        $netTotal = max(0, $grossTotal - $totalRefunded);
+
         // Standardize data for the view
         $invoiceData = (object) [
             'invoice_number' => "#FAC-" . $order->id,
@@ -143,10 +147,12 @@ class OrderController extends Controller {
                 'unit_price' => $l->unit_sell_price,
                 'total' => $l->total_line_sell
             ]),
-            'subtotal' => $order->total_sell_price,
+            'subtotal' => $grossTotal,
             'tax_amount' => 0,
             'tax_rate' => 0,
-            'total' => $order->total_sell_price,
+            'gross_total' => $grossTotal,
+            'total_refunded' => $totalRefunded,
+            'total' => $netTotal,
             'amount_paid' => $order->amount_paid,
             'remaining_balance' => $this->ledger->orderNetRemaining($order),
         ];

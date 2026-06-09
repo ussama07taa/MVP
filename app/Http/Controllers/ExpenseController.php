@@ -3,13 +3,16 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Expense;
-use App\Models\Order;
-use App\Models\Invoice;
+use App\Services\FinancialReportService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class ExpenseController extends Controller {
+    public function __construct(private FinancialReportService $reports)
+    {
+    }
+
     public function index(Request $request) {
         $targetMonth = $request->query('month'); // YYYY-MM
         
@@ -29,19 +32,9 @@ class ExpenseController extends Controller {
         $totalThisMonth = (clone $thisMonth)->sum('amount');
         $totalLastMonth = (clone $lastMonth)->sum('amount');
 
-        // REVENUE CALCULATION (Invoices & POS Orders)
-        $revenueInvoices = Invoice::withoutGlobalScopes()
-            ->where('type', 'invoice')
-            ->whereNotNull('validated_at')
-            ->whereBetween('validated_at', [$startOfMonth, $endOfMonth])
-            ->sum('total');
-            
-        $revenuePOS = Order::withoutGlobalScopes()
-            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
-            ->sum('total_sell_price');
-            
-        $totalRevenue = $revenueInvoices + $revenuePOS;
-        $netProfit = $totalRevenue - $totalThisMonth;
+        $periodStats = $this->reports->getPeriodStats($startOfMonth, $endOfMonth);
+        $totalRevenue = $periodStats['revenue'];
+        $netProfit = $periodStats['net_profit'];
 
         // FIXED CHARGE LOGIC (Grouped)
         $fixedCategories = ['Charge Fixe (Mensuel)', 'Loyer', 'Salaire', '🏠 Loyer (K-ra)', '👥 Salaires (Kheddama)'];

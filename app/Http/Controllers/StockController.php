@@ -85,20 +85,35 @@ class StockController extends Controller
     public function getProductBatches($productId) 
     {
         $panel = StockPanel::withoutGlobalScopes()->findOrFail($productId);
-        
+
+        if ($panel->quantity <= 0) {
+            return response()->json([]);
+        }
+
         $batches = DB::table('purchase_lines')
             ->join('purchases', 'purchase_lines.purchase_id', '=', 'purchases.id')
-            ->where('purchase_lines.product_name_snapshot', $panel->type)
-            ->where('purchase_lines.category', 'mdf')
+            ->where('purchase_lines.stock_item_id', $panel->id)
+            ->where('purchase_lines.stock_item_type', 'StockPanel')
+            ->whereIn('purchase_lines.category', ['mdf', 'panel'])
+            ->where('purchase_lines.quantity_remaining', '>', 0)
             ->select(
-                'purchase_lines.id', 
-                'purchase_lines.quantity as available',
-                'purchase_lines.unit_sell_price as price',
+                'purchase_lines.id',
+                'purchase_lines.quantity_remaining as available',
+                DB::raw('COALESCE(purchase_lines.unit_sell_price, ' . (float) $panel->base_price_sell . ') as price'),
                 'purchases.created_at'
             )
             ->orderBy('purchases.created_at', 'asc')
             ->get();
-            
+
+        if ($batches->isEmpty()) {
+            return response()->json([[
+                'id' => 'stock_' . $panel->id,
+                'available' => (float) $panel->quantity,
+                'price' => (float) $panel->base_price_sell,
+                'created_at' => $panel->created_at,
+            ]]);
+        }
+
         return response()->json($batches);
     }
 

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\{StockPanel, StockCanto, Consumable};
+use Illuminate\Support\Facades\DB;
 
 class StockService
 {
@@ -13,6 +14,7 @@ class StockService
             throw new \Exception("Stock insuffisant pour le panneau ID: {$id}");
         }
         $panel->decrement('quantity', $qty);
+        $this->deductFifoFromPurchaseLines('StockPanel', (int) $panel->id, (float) $qty);
         return $panel;
     }
 
@@ -23,7 +25,37 @@ class StockService
             throw new \Exception("Stock insuffisant pour le chant ID: {$id}");
         }
         $canto->decrement('total_length_remaining', $qty);
+        $this->deductFifoFromPurchaseLines('StockCanto', (int) $canto->id, (float) $qty);
         return $canto;
+    }
+
+    private function deductFifoFromPurchaseLines(string $stockType, int $stockItemId, float $qty): void
+    {
+        $remaining = $qty;
+
+        $lines = DB::table('purchase_lines')
+            ->join('purchases', 'purchase_lines.purchase_id', '=', 'purchases.id')
+            ->where('purchase_lines.stock_item_id', $stockItemId)
+            ->where('purchase_lines.stock_item_type', $stockType)
+            ->where('purchase_lines.quantity_remaining', '>', 0)
+            ->orderBy('purchases.created_at', 'asc')
+            ->lockForUpdate()
+            ->get(['purchase_lines.id', 'purchase_lines.quantity_remaining']);
+
+        foreach ($lines as $line) {
+            if ($remaining <= 0) {
+                break;
+            }
+
+            $available = (float) $line->quantity_remaining;
+            $take = min($remaining, $available);
+
+            DB::table('purchase_lines')
+                ->where('id', $line->id)
+                ->decrement('quantity_remaining', $take);
+
+            $remaining -= $take;
+        }
     }
 
     public function deductConsumable($id, $qty)

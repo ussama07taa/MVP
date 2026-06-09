@@ -76,57 +76,58 @@ class PurchaseController extends Controller
                     $productName = $item['data']['name'] ?? 'Consommable';
                 }
 
-                \App\Models\PurchaseLine::create([
-                    'purchase_id' => $purchase->id,
-                    'category' => $item['category'],
-                    'product_name_snapshot' => $productName,
-                    'quantity' => $qtyAdded,
-                    'unit_cost' => $newUnitCost,
-                    'unit_sell_price' => $newSellPrice, 
-                    'total_line_cost' => $totalLineCost
-                ]);
+                $stockItemId = null;
+                $stockItemType = null;
 
                 if ($item['category'] === 'mdf' || $item['category'] === 'panel') {
                     if (!empty($item['data']['existing_id'])) {
-                        $this->stockService->recordPanelPurchase(
-                            $item['data']['existing_id'], 
-                            $qtyAdded, 
-                            $newUnitCost, 
-                            $newSellPrice, 
-                            $purchase->id, 
+                        $panel = $this->stockService->recordPanelPurchase(
+                            $item['data']['existing_id'],
+                            $qtyAdded,
+                            $newUnitCost,
+                            $newSellPrice,
+                            $purchase->id,
                             $request->supplier_id
                         );
+                        $stockItemId = $panel->id;
+                        $stockItemType = 'StockPanel';
                     } else {
                         $panelData = collect($item['data'])->only([
                             'type', 'size_x', 'size_y', 'thickness', 'color_code', 'color_name',
                             'finish_type', 'provider_catalog', 'quantity', 'cost_price', 'base_price_sell'
                         ])->toArray();
 
-                        StockPanel::create(array_merge($panelData, [
+                        $panel = StockPanel::create(array_merge($panelData, [
                             'supplier_id' => $request->supplier_id,
                             'purchase_id' => $purchase->id
                         ]));
+                        $stockItemId = $panel->id;
+                        $stockItemType = 'StockPanel';
                     }
                 } elseif ($item['category'] === 'canto') {
                     if (!empty($item['data']['existing_id'])) {
-                        $this->stockService->recordCantoPurchase(
-                            $item['data']['existing_id'], 
-                            $qtyAdded, 
-                            $newUnitCost, 
-                            $newSellPrice, 
-                            $purchase->id, 
+                        $canto = $this->stockService->recordCantoPurchase(
+                            $item['data']['existing_id'],
+                            $qtyAdded,
+                            $newUnitCost,
+                            $newSellPrice,
+                            $purchase->id,
                             $request->supplier_id
                         );
+                        $stockItemId = $canto->id;
+                        $stockItemType = 'StockCanto';
                     } else {
                         $cantoData = collect($item['data'])->only([
-                            'name', 'color_code', 'color_name', 'finish_type', 'provider_catalog', 'width_mm', 
+                            'name', 'color_code', 'color_name', 'finish_type', 'provider_catalog', 'width_mm',
                             'thickness_mm', 'total_length_remaining', 'cost_price_per_m', 'base_price_sell_per_m'
                         ])->toArray();
 
-                        StockCanto::create(array_merge($cantoData, [
+                        $canto = StockCanto::create(array_merge($cantoData, [
                             'supplier_id' => $request->supplier_id,
                             'purchase_id' => $purchase->id
                         ]));
+                        $stockItemId = $canto->id;
+                        $stockItemType = 'StockCanto';
                     }
                 } elseif ($item['category'] === 'consumable') {
                     $consumable = Consumable::withoutGlobalScopes()->firstOrCreate(
@@ -141,6 +142,19 @@ class PurchaseController extends Controller
                         $newSellPrice
                     );
                 }
+
+                \App\Models\PurchaseLine::create([
+                    'purchase_id' => $purchase->id,
+                    'stock_item_id' => $stockItemId,
+                    'stock_item_type' => $stockItemType,
+                    'category' => $item['category'],
+                    'product_name_snapshot' => $productName,
+                    'quantity' => $qtyAdded,
+                    'quantity_remaining' => $stockItemId ? $qtyAdded : null,
+                    'unit_cost' => $newUnitCost,
+                    'unit_sell_price' => $newSellPrice,
+                    'total_line_cost' => $totalLineCost,
+                ]);
             }
 
             DB::commit();
@@ -267,10 +281,18 @@ class PurchaseController extends Controller
             $availableQty = 0;
 
             if (in_array($line->category, ['mdf', 'panel'])) {
-                $stockItem = StockPanel::withoutGlobalScopes()->where('purchase_id', $purchase->id)->lockForUpdate()->first();
+                if ($line->stock_item_id) {
+                    $stockItem = StockPanel::withoutGlobalScopes()->where('id', $line->stock_item_id)->lockForUpdate()->first();
+                } else {
+                    $stockItem = StockPanel::withoutGlobalScopes()->where('purchase_id', $purchase->id)->lockForUpdate()->first();
+                }
                 $availableQty = $stockItem ? (float)$stockItem->quantity : 0;
             } elseif ($line->category === 'canto') {
-                $stockItem = StockCanto::withoutGlobalScopes()->where('purchase_id', $purchase->id)->lockForUpdate()->first();
+                if ($line->stock_item_id) {
+                    $stockItem = StockCanto::withoutGlobalScopes()->where('id', $line->stock_item_id)->lockForUpdate()->first();
+                } else {
+                    $stockItem = StockCanto::withoutGlobalScopes()->where('purchase_id', $purchase->id)->lockForUpdate()->first();
+                }
                 $availableQty = $stockItem ? (float)$stockItem->total_length_remaining : 0;
             } elseif ($line->category === 'consumable') {
                 $stockItem = Consumable::withoutGlobalScopes()->where('name', $line->product_name_snapshot)->lockForUpdate()->first();
@@ -307,6 +329,10 @@ class PurchaseController extends Controller
                 } else {
                     $stockItem->decrement('quantity_in_stock', $qtyToReturn);
                 }
+            }
+
+            if ($line->quantity_remaining !== null) {
+                $line->decrement('quantity_remaining', min($qtyToReturn, (float) $line->quantity_remaining));
             }
 
             $supplier = Supplier::withoutGlobalScopes()->lockForUpdate()->findOrFail($purchase->supplier_id);

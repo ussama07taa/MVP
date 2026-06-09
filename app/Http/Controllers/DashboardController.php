@@ -3,19 +3,23 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\{Order, OrderLine, Client, StockCanto, Service, OrderReturn, Invoice, InvoiceItem, Payment, Expense, Purchase, PurchaseReturn, StockPanel, Supplier, SupplierPayment};
+use App\Models\{Order, Client, StockCanto, OrderReturn, Invoice, Payment, Expense, StockPanel, Supplier, SupplierPayment};
+use App\Services\FinancialReportService;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
+    public function __construct(private FinancialReportService $reports)
+    {
+    }
+
     public function index(Request $request)
     {
         $period = $request->get('period', 'month');
         $startDate = $this->getStartDate($period);
+        $stats = $this->reports->getPeriodStats($startDate, Carbon::now());
 
-        $finStats = $this->getRevenueAndProfitStats($startDate);
-        $growthPercent = $this->getGrowthPercent($finStats['revenue']);
-        $netStats = $this->getNetProfitStats($startDate, $finStats['gross_profit'], $finStats['revenue']);
+        $growthPercent = $this->getGrowthPercent($stats['revenue']);
         $globalStats = $this->getGlobalAtelierStats();
         $stockAlerts = $this->getStockAlerts();
         $chequeAlerts = $this->getChequeAlerts();
@@ -23,20 +27,20 @@ class DashboardController extends Controller
 
         return \Inertia\Inertia::render('DashboardApp', [
             'stats' => [
-                'revenue_today' => round($finStats['revenue'], 2),
-                'services_revenue_today' => round($finStats['services_revenue'], 2),
-                'materials_revenue_today' => round($finStats['materials_revenue'], 2),
-                'profit_today' => round($netStats['net_profit'], 2),
-                'gross_profit' => round($finStats['gross_profit'], 2),
-                'total_expenses' => round($netStats['total_expenses'], 2),
-                'gross_purchases' => round($netStats['gross_purchases'], 2),
-                'supplier_returns' => round($netStats['supplier_returns'], 2),
-                'customer_returns' => round($netStats['customer_returns'], 2),
-                'margin_percent' => round($netStats['net_margin_percent'], 1),
+                'revenue_today' => $stats['revenue'],
+                'services_revenue_today' => $stats['services_revenue'],
+                'materials_revenue_today' => $stats['materials_revenue'],
+                'profit_today' => $stats['net_profit'],
+                'gross_profit' => $stats['gross_profit'],
+                'total_expenses' => $stats['total_expenses'],
+                'gross_purchases' => $stats['gross_purchases'],
+                'supplier_returns' => $stats['supplier_returns'],
+                'customer_returns' => $stats['customer_returns'],
+                'margin_percent' => $stats['margin_percent'],
                 'revenue_growth' => round($growthPercent, 1),
                 'total_credit_market' => round($globalStats['total_unpaid_credit'], 2),
                 'total_supplier_debt' => round($globalStats['total_supplier_debt'], 2),
-                'total_orders_month' => $finStats['orders_count'] + $finStats['invoices_count'],
+                'total_orders_month' => $stats['orders_count'] + $stats['invoices_count'],
                 'total_clients' => $globalStats['total_clients'],
                 'clients_with_credit' => $globalStats['clients_with_credit'],
             ],
@@ -55,93 +59,18 @@ class DashboardController extends Controller
         };
     }
 
-    private function getRevenueAndProfitStats(Carbon $startDate): array
-    {
-        $orders = Order::withoutGlobalScopes()->where('created_at', '>=', $startDate)->get();
-        $invoices = Invoice::withoutGlobalScopes()
-            ->where('type', 'invoice')
-            ->whereNotNull('validated_at')
-            ->where('validated_at', '>=', $startDate)
-            ->get();
-
-        $grossRevenue = $orders->sum('total_sell_price') + $invoices->sum('total');
-
-        // Subtract customer returns for Net Revenue
-        $customerReturns = OrderReturn::withoutGlobalScopes()
-            ->whereIn('order_id', $orders->pluck('id'))
-            ->sum('total_refunded');
-        $revenue = $grossRevenue - $customerReturns;
-
-        $posCost = $orders->sum('total_cost_price');
-        $invoiceCost = InvoiceItem::whereIn('invoice_id', $invoices->pluck('id'))
-            ->selectRaw('SUM(unit_cost * quantity) as total_cost')
-            ->value('total_cost') ?? 0;
-        $totalCost = $posCost + $invoiceCost;
-
-        // Gross Profit uses Net Revenue
-        $grossProfit = $revenue - $totalCost;
-
-        $servicesRevenue = 0;
-        if ($orders->isNotEmpty()) {
-            $servicesRevenue = OrderLine::withoutGlobalScopes()
-                ->whereIn('order_id', $orders->pluck('id'))
-                ->where('item_type', Service::class)
-                ->sum('total_line_sell');
-        }
-        $servicesRevenue += InvoiceItem::whereIn('invoice_id', $invoices->pluck('id'))
-            ->where('category', 'service')
-            ->sum('total');
-
-        return [
-            'revenue' => $revenue,
-            'gross_profit' => $grossProfit,
-            'services_revenue' => $servicesRevenue,
-            'materials_revenue' => $revenue - $servicesRevenue,
-            'orders_count' => $orders->count(),
-            'invoices_count' => $invoices->count(),
-        ];
-    }
-
     private function getGrowthPercent(float $currentRevenue): float
     {
         $start = Carbon::now()->subMonth()->startOfMonth();
         $end = Carbon::now()->subMonth()->endOfMonth();
-
-        $prevOrders = Order::withoutGlobalScopes()->whereBetween('created_at', [$start, $end])->get();
-        $prevPos = $prevOrders->sum('total_sell_price');
-        $prevReturns = OrderReturn::withoutGlobalScopes()
-            ->whereIn('order_id', $prevOrders->pluck('id'))
-            ->sum('total_refunded');
-        $prevInv = Invoice::withoutGlobalScopes()
-            ->where('type', 'invoice')
-            ->whereNotNull('validated_at')
-            ->whereBetween('validated_at', [$start, $end])
-            ->sum('total');
-
-        $prevRevenue = ($prevPos - $prevReturns) + $prevInv;
+        $prevStats = $this->reports->getPeriodStats($start, $end);
+        $prevRevenue = $prevStats['revenue'];
 
         if ($prevRevenue > 0) {
             return (($currentRevenue - $prevRevenue) / $prevRevenue) * 100;
         }
+
         return $currentRevenue > 0 ? 100 : 0;
-    }
-
-    private function getNetProfitStats(Carbon $startDate, float $grossProfit, float $revenue): array
-    {
-        $expenses = Expense::withoutGlobalScopes()->where('expense_date', '>=', $startDate)->sum('amount');
-        $grossPurchases = Purchase::withoutGlobalScopes()->where('created_at', '>=', $startDate)->sum('total_amount');
-        $supplierReturns = PurchaseReturn::withoutGlobalScopes()->where('created_at', '>=', $startDate)->sum('refund_amount');
-        $netProfit = $grossProfit - $expenses;
-        $netMargin = $revenue > 0 ? ($netProfit / $revenue) * 100 : 0;
-
-        return [
-            'net_profit' => $netProfit,
-            'total_expenses' => $expenses,
-            'gross_purchases' => $grossPurchases,
-            'supplier_returns' => $supplierReturns,
-            'customer_returns' => OrderReturn::withoutGlobalScopes()->where('created_at', '>=', $startDate)->sum('total_refunded'),
-            'net_margin_percent' => $netMargin,
-        ];
     }
 
     private function getGlobalAtelierStats(): array
