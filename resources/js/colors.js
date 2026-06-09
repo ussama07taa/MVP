@@ -387,7 +387,7 @@ export const commonTextures = [
   { name: 'Yildiz Cream Solid', code: 'VT-101', hex: '#F0E8DC' },
   { name: 'Yildiz Grey Solid', code: 'VT-200', hex: '#9A9A98' },
   { name: 'Yildiz Wenge Solid', code: 'VT-350', hex: '#3D3530' },
-  { name: 'Kastamonu Cappuccino', code: 'D126', hex: '#A4907A' },
+  { name: 'Kastamonu Cappuccino Mat D126', code: 'D126', hex: '#A4907A' },
   { name: 'Kastamonu Anthracite', code: 'D001', hex: '#404042' },
   { name: 'Kastamonu White', code: 'D100', hex: '#F8F8F6' },
   { name: 'Sonae Innovus Cashmere', code: 'M5981', hex: '#D8CFC0' },
@@ -405,4 +405,14 @@ export const commonTextures = [
   { name: 'MDF High Gloss Violet', code: 'HG-120', hex: '#7A6B8E' },
   { name: 'MDF High Gloss Turquoise', code: 'HG-121', hex: '#5A9E9E' },
   { name: 'MDF High Gloss Coral', code: 'HG-122', hex: '#E88B7A' },
+
+  // ==========================================
+  // --- 24. WHITEBLUE BANDCHANT — CODES ÉTIQUETTES ATELIER ---
+  // (marangoztedarik.com — Made in Türkiye)
+  // ==========================================
+  { name: 'WhiteBlue Chêne Cappuccino Veiné', code: 'UD-297', hex: '#C9B08A' },
+  { name: 'WhiteBlue Cappuccino Luisant HG', code: 'D126-HG', hex: '#B8A088' },
+  { name: 'Cappuccino Crème Mat Uni', code: 'CAP-CREME', hex: '#EDE6D8' },
+  { name: 'Cappuccino Beige Mat Uni', code: 'CAP-BEIGE', hex: '#D4C4B0' },
+  { name: 'Cappuccino Bois Clair Veiné', code: 'WB-WOOD-CAP', hex: '#C4A882' },
 ];
