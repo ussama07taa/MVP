@@ -22,6 +22,18 @@ class Order extends Model {
             ->dontSubmitEmptyLogs()
             ->setDescriptionForEvent(fn(string $eventName) => "Order has been {$eventName}");
     }
+
+    protected static function boot()
+    {
+        parent::boot();
+        static::deleting(function ($order) {
+            $order->lines()->delete();
+            $order->returns()->delete();
+            if ($order->workshopQueue) {
+                $order->workshopQueue->delete();
+            }
+        });
+    }
     
     // Relationships
     public function client() {
@@ -42,5 +54,9 @@ class Order extends Model {
 
     public function returns() {
         return $this->hasMany(OrderReturn::class);
+    }
+
+    public function workshopQueue() {
+        return $this->hasOne(WorkshopQueue::class);
     }
 }

@@ -10,9 +10,9 @@ class ClientLedgerService
     /**
      * Record a payment and adjust client credit.
      */
-    public function recordPayment($clientId, $amount, $type, $orderId = null, $notes = null, $invoiceId = null)
+    public function recordPayment($clientId, $amount, $type, $orderId = null, $notes = null, $invoiceId = null, $paymentMethod = 'cash')
     {
-        return DB::transaction(function() use ($clientId, $amount, $type, $orderId, $notes, $invoiceId) {
+        return DB::transaction(function() use ($clientId, $amount, $type, $orderId, $notes, $invoiceId, $paymentMethod) {
             $client = Client::withTrashed()->whereId($clientId)->lockForUpdate()->firstOrFail();
             
             $payment = Payment::create([
@@ -22,7 +22,7 @@ class ClientLedgerService
                 'invoice_id' => $invoiceId,
                 'amount' => $amount,
                 'type' => $type, // 'avance', 'reglement', 'retour'
-                'payment_method' => 'cash',
+                'payment_method' => $paymentMethod,
                 'notes' => $notes
             ]);
 
@@ -47,15 +47,16 @@ class ClientLedgerService
     /**
      * Distribute a global client payment across unpaid orders (net of returns) then invoices.
      */
-    public function distributeGlobalPayment(int $clientId, float $amount, string $type = 'solde', ?string $notes = null): void
+    public function distributeGlobalPayment(int $clientId, float $amount, string $type = 'solde', ?string $notes = null, string $paymentMethod = 'cash'): void
     {
-        DB::transaction(function () use ($clientId, $amount, $type, $notes) {
+        DB::transaction(function () use ($clientId, $amount, $type, $notes, $paymentMethod) {
             $client = Client::withTrashed()->whereId($clientId)->lockForUpdate()->firstOrFail();
             $remaining = $amount;
 
             $orders = Order::withoutGlobalScopes()
                 ->where('client_id', $clientId)
                 ->orderBy('created_at', 'asc')
+                ->lockForUpdate()
                 ->get();
 
             $refundsByOrder = OrderReturn::whereIn('order_id', $orders->pluck('id'))
@@ -63,30 +64,35 @@ class ClientLedgerService
                 ->selectRaw('order_id, SUM(total_refunded) as total')
                 ->pluck('total', 'order_id');
 
+            $paymentsToInsert = [];
+            
             foreach ($orders as $order) {
-                if ($remaining <= 0.01) {
+                if (bccomp((string)$remaining, '0', 2) <= 0) {
                     break;
                 }
 
                 $netTotal = max(0, (float) $order->total_sell_price - (float) ($refundsByOrder[$order->id] ?? 0));
-                $reste = max(0, $netTotal - (float) $order->amount_paid);
+                $reste = round(max(0, $netTotal - (float) $order->amount_paid), 2);
                 $payForOrder = min($remaining, $reste);
 
-                if ($payForOrder <= 0.01) {
+                if (bccomp((string)$payForOrder, '0', 2) <= 0) {
                     continue;
                 }
 
-                Payment::create([
+                $paymentsToInsert[] = [
                     'tenant_id' => $client->tenant_id,
                     'client_id' => $client->id,
                     'order_id' => $order->id,
                     'amount' => $payForOrder,
                     'type' => $type,
-                    'payment_method' => 'cash',
+                    'payment_method' => $paymentMethod,
                     'notes' => $notes,
-                ]);
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
 
-                $order->increment('amount_paid', $payForOrder);
+                $order->amount_paid = round((float) $order->amount_paid + $payForOrder, 2);
+                $order->save();
                 $remaining -= $payForOrder;
             }
 
@@ -95,31 +101,34 @@ class ClientLedgerService
                 ->where('type', 'invoice')
                 ->whereNotNull('validated_at')
                 ->orderBy('issue_date', 'asc')
+                ->lockForUpdate()
                 ->get();
 
             foreach ($invoices as $invoice) {
-                if ($remaining <= 0.01) {
+                if (bccomp((string)$remaining, '0', 2) <= 0) {
                     break;
                 }
 
-                $reste = max(0, (float) $invoice->total - (float) $invoice->amount_paid);
+                $reste = round(max(0, (float) $invoice->total - (float) $invoice->amount_paid), 2);
                 $payForInvoice = min($remaining, $reste);
 
-                if ($payForInvoice <= 0.01) {
+                if (bccomp((string)$payForInvoice, '0', 2) <= 0) {
                     continue;
                 }
 
-                Payment::create([
+                $paymentsToInsert[] = [
                     'tenant_id' => $client->tenant_id,
                     'client_id' => $client->id,
                     'invoice_id' => $invoice->id,
                     'amount' => $payForInvoice,
                     'type' => 'reglement',
-                    'payment_method' => 'cash',
+                    'payment_method' => $paymentMethod,
                     'notes' => $notes ?? "Paiement facture {$invoice->invoice_number}",
-                ]);
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
 
-                $newPaid = (float) $invoice->amount_paid + $payForInvoice;
+                $newPaid = round((float) $invoice->amount_paid + $payForInvoice, 2);
                 $invoice->update([
                     'amount_paid' => $newPaid,
                     'status' => $newPaid >= (float) $invoice->total ? 'paid' : 'partial',
@@ -128,15 +137,21 @@ class ClientLedgerService
                 $remaining -= $payForInvoice;
             }
 
-            if ($remaining > 0.01) {
-                Payment::create([
+            if (bccomp((string)$remaining, '0', 2) === 1) {
+                $paymentsToInsert[] = [
                     'tenant_id' => $client->tenant_id,
                     'client_id' => $client->id,
                     'amount' => $remaining,
                     'type' => $type,
-                    'payment_method' => 'cash',
+                    'payment_method' => $paymentMethod,
                     'notes' => $notes ?? 'Excédent de paiement',
-                ]);
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+
+            if (count($paymentsToInsert) > 0) {
+                Payment::insert($paymentsToInsert);
             }
 
             $client->decrement('total_credit', $amount);

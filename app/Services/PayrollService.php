@@ -15,11 +15,11 @@ class PayrollService
     public function calculateWeeklyPayroll($startDate, $endDate)
     {
         $employees = Employee::where('is_active', true)
-            ->where('is_active', true)
             ->with(['attendances' => function($query) use ($startDate, $endDate) {
                 $query->whereBetween('date', [$startDate, $endDate]);
-            }, 'advances' => function($query) {
-                $query->where('is_deducted', false);
+            }, 'advances' => function($query) use ($endDate) {
+                $query->where('is_deducted', false)
+                      ->where('date', '<=', $endDate);
             }])
             ->get();
 
@@ -111,13 +111,12 @@ class PayrollService
 
                 // 2. Mark advances as deducted for this specific employee
                 \App\Models\EmployeeAdvance::where('employee_id', $entry['employee_id'])
-                    ->where('employee_id', $entry['employee_id'])
                     ->where('is_deducted', false)
+                    ->where('date', '<=', $endDate)
                     ->update(['is_deducted' => true]);
 
                 // 3. Mark attendances as paid
                 \App\Models\EmployeeAttendance::where('employee_id', $entry['employee_id'])
-                    ->where('employee_id', $entry['employee_id'])
                     ->whereBetween('date', [$startDate, $endDate])
                     ->update(['is_paid' => true]);
             }
@@ -134,7 +133,6 @@ class PayrollService
     {
         return DB::transaction(function() use ($employeeIds) {
             return EmployeeAdvance::whereIn('employee_id', $employeeIds)
-                ->whereIn('employee_id', $employeeIds)
                 ->where('is_deducted', false)
                 ->update(['is_deducted' => true]);
         });

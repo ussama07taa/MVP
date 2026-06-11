@@ -11,12 +11,25 @@ class CheckoutService
     protected $stock;
     protected $ledger;
     protected $pricing;
+    protected $memoizedCollageServiceId = null;
 
     public function __construct(StockService $stock, ClientLedgerService $ledger, PricingService $pricing)
     {
         $this->stock = $stock;
         $this->ledger = $ledger;
         $this->pricing = $pricing;
+    }
+
+    protected function getSystemCollageServiceId()
+    {
+        if ($this->memoizedCollageServiceId === null) {
+            $service = \App\Models\Service::where('name', 'like', '%collage%')
+                ->orWhere('name', 'like', '%chant%')
+                ->orWhere('name', 'like', '%coupe%')
+                ->first();
+            $this->memoizedCollageServiceId = $service ? $service->id : false;
+        }
+        return $this->memoizedCollageServiceId ?: null;
     }
 
     public function execute(array $data)
@@ -43,7 +56,7 @@ class CheckoutService
             $totalCost = round($totalCost, 2);
             $amountPaid = round((float) $data['amount_paid'], 2);
 
-            if ($amountPaid > $totalSell + 0.01) {
+            if (bccomp((string)$amountPaid, (string)$totalSell, 2) === 1) {
                 throw new \Exception("Le montant payé ({$amountPaid} DH) dépasse le total ({$totalSell} DH).");
             }
 
@@ -140,6 +153,7 @@ class CheckoutService
         // Find existing non-delivered queue entry for this order
         $queue = WorkshopQueue::where('order_id', $order->id)
             ->where('status', '!=', 'delivered')
+            ->lockForUpdate()
             ->first();
 
         if (!$queue) {
@@ -184,7 +198,7 @@ class CheckoutService
         switch ($item['type']) {
             case 'panel':
                 $panel = $this->stock->deductPanel($item['id'], $item['quantity']);
-                $line_cost = $item['quantity'] * $panel->cost_price;
+                $line_cost = round($item['quantity'] * $panel->cost_price, 2);
                 $item_type = \App\Models\StockPanel::class;
                 $item_id = $panel->id;
                 $unit_buy = $panel->cost_price;
@@ -192,7 +206,7 @@ class CheckoutService
 
             case 'canto':
                 $canto = $this->stock->deductCanto($item['id'], $item['quantity']);
-                $line_cost = $item['quantity'] * $canto->cost_price_per_m;
+                $line_cost = round($item['quantity'] * $canto->cost_price_per_m, 2);
                 $item_type = \App\Models\StockCanto::class;
                 $item_id = $canto->id;
                 $unit_buy = $canto->cost_price_per_m;
@@ -218,11 +232,7 @@ class CheckoutService
                         ];
 
                         // Line 2: Collage de Chant (Façonnage)
-                        $service = \App\Models\Service::where('name', 'like', '%collage%')
-                            ->orWhere('name', 'like', '%chant%')
-                            ->orWhere('name', 'like', '%coupe%')
-                            ->first();
-                        $service_id = $service ? $service->id : null;
+                        $service_id = $this->getSystemCollageServiceId();
                         $lines[] = [
                             'type' => \App\Models\Service::class,
                             'id' => $service_id,
@@ -242,7 +252,7 @@ class CheckoutService
 
             case 'consumable':
                 $consumable = $this->stock->deductConsumable($item['id'], $item['quantity']);
-                $line_cost = $item['quantity'] * ($consumable->average_cost_price ?? 0);
+                $line_cost = round($item['quantity'] * ($consumable->average_cost_price ?? 0), 2);
                 $item_type = \App\Models\Consumable::class;
                 $item_id = $consumable->id;
                 $unit_buy = $consumable->average_cost_price ?? 0;

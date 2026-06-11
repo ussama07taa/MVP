@@ -63,11 +63,11 @@ class InvoiceController extends Controller
                 'stock_deducted' => (bool) $inv->stock_deducted,
                 'client' => $inv->client,
                 'user_name' => $inv->user?->name ?? 'Système',
-                'subtotal' => (float) $inv->subtotal,
-                'tax_rate' => (float) $inv->tax_rate,
-                'tax_amount' => (float) $inv->tax_amount,
-                'total' => (float) $inv->total,
-                'amount_paid' => (float) $inv->amount_paid,
+                'subtotal' => $inv->subtotal,
+                'tax_rate' => $inv->tax_rate,
+                'tax_amount' => $inv->tax_amount,
+                'total' => $inv->total,
+                'amount_paid' => $inv->amount_paid,
                 'remaining' => $inv->remainingBalance(),
                 'notes' => $inv->notes,
                 'items' => $inv->items,
@@ -95,11 +95,11 @@ class InvoiceController extends Controller
             'due_date' => $invoice->due_date?->format('Y-m-d'),
             'client' => $invoice->client,
             'user_name' => $invoice->user?->name ?? 'Système',
-            'subtotal' => (float) $invoice->subtotal,
-            'tax_rate' => (float) $invoice->tax_rate,
-            'tax_amount' => (float) $invoice->tax_amount,
-            'total' => (float) $invoice->total,
-            'amount_paid' => (float) $invoice->amount_paid,
+            'subtotal' => $invoice->subtotal,
+            'tax_rate' => $invoice->tax_rate,
+            'tax_amount' => $invoice->tax_amount,
+            'total' => $invoice->total,
+            'amount_paid' => $invoice->amount_paid,
             'remaining' => $invoice->remainingBalance(),
             'notes' => $invoice->notes,
             'items' => $invoice->items,
@@ -143,7 +143,8 @@ class InvoiceController extends Controller
             $subtotal = 0;
             foreach ($request->items as $item) {
                 $unitPrice = $pricing->resolveInvoiceUnitSell($item);
-                $subtotal += (float) $item['quantity'] * $unitPrice;
+                $lineTotal = round((float) $item['quantity'] * $unitPrice, 2);
+                $subtotal += $lineTotal;
             }
             $taxAmount = round($subtotal * ($taxRate / 100), 2);
             $total = round($subtotal + $taxAmount, 2);
@@ -251,7 +252,8 @@ class InvoiceController extends Controller
             $subtotal = 0;
             foreach ($request->items as $item) {
                 $unitPrice = $pricing->resolveInvoiceUnitSell($item);
-                $subtotal += (float) $item['quantity'] * $unitPrice;
+                $lineTotal = round((float) $item['quantity'] * $unitPrice, 2);
+                $subtotal += $lineTotal;
             }
             $taxAmount = round($subtotal * ($taxRate / 100), 2);
             $total = round($subtotal + $taxAmount, 2);
@@ -373,6 +375,7 @@ class InvoiceController extends Controller
             return response()->json(['error' => 'Impossible de supprimer une facture déjà payée.'], 422);
         }
 
+        $invoice->items()->delete();
         $invoice->delete();
 
         return response()->json([
@@ -522,22 +525,21 @@ class InvoiceController extends Controller
      */
     public function validateInvoice($id)
     {
-        $invoice = Invoice::with('items')->findOrFail($id);
-
-        if ($invoice->type !== 'invoice') {
-            return response()->json(['error' => 'Seules les factures peuvent être validées. Convertissez d\'abord le devis.'], 422);
-        }
-
-        if ($invoice->validated_at) {
-            return response()->json(['error' => 'Cette facture est déjà validée.'], 422);
-        }
-
-        if ($invoice->status === 'cancelled') {
-            return response()->json(['error' => 'Impossible de valider une facture annulée.'], 422);
-        }
-
         DB::beginTransaction();
         try {
+            $invoice = Invoice::with('items')->lockForUpdate()->findOrFail($id);
+
+            if ($invoice->type !== 'invoice') {
+                throw new \Exception('Seules les factures peuvent être validées. Convertissez d\'abord le devis.');
+            }
+
+            if ($invoice->validated_at) {
+                throw new \Exception('Cette facture est déjà validée.');
+            }
+
+            if ($invoice->status === 'cancelled') {
+                throw new \Exception('Impossible de valider une facture annulée.');
+            }
             $stockService = app(StockService::class);
             $ledgerService = app(ClientLedgerService::class);
 
@@ -594,11 +596,16 @@ class InvoiceController extends Controller
             return response()->json(['error' => 'Veuillez valider la facture avant d\'enregistrer un paiement.'], 422);
         }
 
-        $remaining = (float) $invoice->total - (float) $invoice->amount_paid;
-        $amount = (float) $request->amount;
+        $remaining = round((float) $invoice->total - (float) $invoice->amount_paid, 2);
+        $amount = round((float) $request->amount, 2);
 
-        if ($amount > ($remaining + 0.01)) {
-            return response()->json(['error' => "Le montant ({$amount} DH) dépasse le reste à payer ({$remaining} DH)."], 422);
+        if ($amount > $remaining) {
+            // Tolérance pour les erreurs d'arrondi
+            if (abs($amount - $remaining) <= 0.01) {
+                $amount = $remaining; // On force l'ajustement
+            } else {
+                return response()->json(['error' => "Le montant ({$amount} DH) dépasse le reste à payer ({$remaining} DH)."], 422);
+            }
         }
 
         DB::beginTransaction();
@@ -647,6 +654,7 @@ class InvoiceController extends Controller
         $panels = StockPanel::withoutGlobalScopes()
             ->select('id', 'type', 'finish_type', 'color_code', 'color_name', 'size_x', 'size_y', 'thickness', 'quantity', 'base_price_sell', 'cost_price')
             ->where('quantity', '>', 0)
+            ->limit(200)
             ->get()
             ->map(fn($p) => [
                 'item_type' => 'stock_panel',
@@ -662,6 +670,7 @@ class InvoiceController extends Controller
         $cantos = StockCanto::withoutGlobalScopes()
             ->select('id', 'name', 'color_code', 'color_name', 'finish_type', 'width_mm', 'thickness_mm', 'total_length_remaining', 'base_price_sell_per_m', 'cost_price_per_m')
             ->where('total_length_remaining', '>', 0)
+            ->limit(200)
             ->get()
             ->map(fn($c) => [
                 'item_type' => 'stock_canto',

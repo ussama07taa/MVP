@@ -19,7 +19,7 @@ class DashboardController extends Controller
         $startDate = $this->getStartDate($period);
         $stats = $this->reports->getPeriodStats($startDate, Carbon::now());
 
-        $growthPercent = $this->getGrowthPercent($stats['revenue']);
+        $growthPercent = $this->getGrowthPercent($stats['revenue'], $period);
         $globalStats = $this->getGlobalAtelierStats();
         $stockAlerts = $this->getStockAlerts();
         $chequeAlerts = $this->getChequeAlerts();
@@ -59,10 +59,26 @@ class DashboardController extends Controller
         };
     }
 
-    private function getGrowthPercent(float $currentRevenue): float
+    private function getGrowthPercent(float $currentRevenue, string $period): float
     {
-        $start = Carbon::now()->subMonth()->startOfMonth();
-        $end = Carbon::now()->subMonth()->endOfMonth();
+        $now = Carbon::now();
+
+        switch ($period) {
+            case 'day':
+                $start = (clone $now)->subDay()->startOfDay();
+                $end = (clone $now)->subDay()->endOfDay();
+                break;
+            case 'week':
+                $start = (clone $now)->subWeek()->startOfWeek();
+                $end = (clone $start)->addDays($now->dayOfWeekIso - 1)->endOfDay();
+                break;
+            case 'month':
+            default:
+                $start = (clone $now)->subMonth()->startOfMonth();
+                $end = (clone $start)->addDays(min($start->daysInMonth - 1, $now->day - 1))->endOfDay();
+                break;
+        }
+
         $prevStats = $this->reports->getPeriodStats($start, $end);
         $prevRevenue = $prevStats['revenue'];
 
@@ -75,12 +91,14 @@ class DashboardController extends Controller
 
     private function getGlobalAtelierStats(): array
     {
-        return [
-            'total_unpaid_credit' => Client::withoutGlobalScopes()->sum('total_credit'),
-            'total_supplier_debt' => Supplier::withoutGlobalScopes()->sum('total_debt'),
-            'total_clients' => Client::withoutGlobalScopes()->count(),
-            'clients_with_credit' => Client::withoutGlobalScopes()->where('total_credit', '>', 0.05)->count(),
-        ];
+        return \Illuminate\Support\Facades\Cache::remember('global_atelier_stats', 3600, function () {
+            return [
+                'total_unpaid_credit' => Client::withoutGlobalScopes()->sum('total_credit'),
+                'total_supplier_debt' => Supplier::withoutGlobalScopes()->sum('total_debt'),
+                'total_clients' => Client::withoutGlobalScopes()->count(),
+                'clients_with_credit' => Client::withoutGlobalScopes()->where('total_credit', '>', 0.05)->count(),
+            ];
+        });
     }
 
     private function getStockAlerts(): array

@@ -24,35 +24,52 @@ class AttendanceController extends Controller
     public function store(Request $request)
     {
         $date = $request->input('date');
-        $attendances = $request->input('attendances');
-        
-        DB::transaction(function() use ($date, $attendances) {
-            foreach ($attendances as $att) {
-                // Fetch employee to get daily_salary
-                $employee = Employee::find($att['employee_id']);
+        $attendances = collect($request->input('attendances'));
+        $employeeIds = $attendances->pluck('employee_id');
 
+        DB::transaction(function() use ($date, $attendances, $employeeIds) {
+            $employees = Employee::whereIn('id', $employeeIds)->lockForUpdate()->get()->keyBy('id');
+            $upsertData = [];
+
+            foreach ($attendances as $att) {
+                $employee = $employees->get($att['employee_id']);
                 if (!$employee) continue;
 
-                // Calculate wage earned based on status
-                $dailySalary = (float) $employee->daily_salary;
-                $wageEarned = match($att['status']) {
-                    'present'  => $dailySalary,
-                    'half_day' => $dailySalary / 2,
-                    default    => 0.0,  // absent
+                $dailySalary = round((float) $employee->daily_salary, 2);
+                
+                // Allow database-driven taxonomy references instead of strict code matching when possible.
+                // For now, mapping mathematically via ratio configuration variable logic.
+                $wageRatio = match($att['status'] ?? 'absent') {
+                    'present'  => 1.0,
+                    'half_day' => 0.5,
+                    'quarter_day' => 0.25,
+                    default    => 0.0,
                 };
+                
+                $wageEarned = round($dailySalary * $wageRatio, 2);
 
                 $overtimeHours = (float) ($att['overtime_hours'] ?? 0);
-                $overtimeWage = ($dailySalary / 8) * $overtimeHours;
+                $overtimeWage = round(($dailySalary / 8) * $overtimeHours, 2);
 
-                EmployeeAttendance::updateOrCreate(
-                    ['tenant_id' => 1, 'employee_id' => $att['employee_id'], 'date' => $date],
-                    [
-                        'status' => $att['status'], 
-                        'wage_earned' => $wageEarned,
-                        'overtime_hours' => $overtimeHours,
-                        'overtime_wage' => $overtimeWage,
-                        'notes' => $att['notes'] ?? null
-                    ]
+                $upsertData[] = [
+                    'tenant_id' => 1,
+                    'employee_id' => $employee->id,
+                    'date' => $date,
+                    'status' => $att['status'],
+                    'wage_earned' => $wageEarned,
+                    'overtime_hours' => $overtimeHours,
+                    'overtime_wage' => $overtimeWage,
+                    'notes' => $att['notes'] ?? null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+
+            if (count($upsertData) > 0) {
+                EmployeeAttendance::upsert(
+                    $upsertData,
+                    ['tenant_id', 'employee_id', 'date'],
+                    ['status', 'wage_earned', 'overtime_hours', 'overtime_wage', 'notes', 'updated_at']
                 );
             }
         });

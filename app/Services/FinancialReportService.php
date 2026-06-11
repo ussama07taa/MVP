@@ -71,7 +71,7 @@ class FinancialReportService
 
         $opex = $otherExpenses + $monthlyWages;
         $netProfit = $grossProfit - $opex;
-        $marginPercent = $netRevenue > 0 ? ($netProfit / $netRevenue) * 100 : 0;
+        $marginPercent = $netRevenue != 0 ? ($netProfit / $netRevenue) * 100 : 0;
 
         $cashCollected = (float) Payment::withoutGlobalScopes()
             ->whereBetween('created_at', [$start, $end])

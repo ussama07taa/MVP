@@ -166,17 +166,18 @@ class WorkshopQueueController extends Controller
      */
     public function toggleService($serviceId)
     {
-        $service = WorkshopQueueService::with('queue')->findOrFail($serviceId);
         $userId  = auth()->id();
 
-        DB::transaction(function () use ($service, $userId) {
+        DB::transaction(function () use ($serviceId, $userId) {
+            $service = WorkshopQueueService::lockForUpdate()->findOrFail($serviceId);
+            
             if ($service->is_done) {
                 $service->update(['is_done' => false, 'done_at' => null, 'done_by' => null]);
             } else {
                 $service->update(['is_done' => true, 'done_at' => now(), 'done_by' => $userId]);
             }
 
-            $queue = $service->queue;
+            $queue = WorkshopQueue::lockForUpdate()->find($service->queue_id);
             $queue->load('services');
             $allDone = $queue->services->every(fn($s) => $s->is_done);
 

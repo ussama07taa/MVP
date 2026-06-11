@@ -32,9 +32,9 @@ class PurchaseController extends Controller
             foreach ($items as $item) {
                 $qtyAdded = (float)($item['data']['quantity'] ?? ($item['data']['total_length_remaining'] ?? 1));
                 $newUnitCost = (float)($item['data']['cost_price'] ?? ($item['data']['cost_price_per_m'] ?? ($item['data']['unit_cost'] ?? 0)));
-                $computedTotal += $qtyAdded * $newUnitCost;
+                $lineTotal = round($qtyAdded * $newUnitCost, 2);
+                $computedTotal += $lineTotal;
             }
-            $computedTotal = round($computedTotal, 2);
             $amountPaid = round(min((float) $request->amount_paid, $computedTotal), 2);
 
             $purchase = Purchase::create([
@@ -64,7 +64,7 @@ class PurchaseController extends Controller
             foreach($items as $item) {
                 $qtyAdded = (float)($item['data']['quantity'] ?? ($item['data']['total_length_remaining'] ?? 1));
                 $newUnitCost = (float)($item['data']['cost_price'] ?? ($item['data']['cost_price_per_m'] ?? ($item['data']['unit_cost'] ?? 0)));
-                $totalLineCost = $qtyAdded * $newUnitCost;
+                $totalLineCost = round($qtyAdded * $newUnitCost, 2);
                 $newSellPrice = (float)($item['data']['base_price_sell'] ?? ($item['data']['base_price_sell_per_m'] ?? 0));
                 
                 $productName = "Article {$item['category']}";
@@ -434,9 +434,9 @@ class PurchaseController extends Controller
             if ($request->filled('purchase_id')) {
                 $purch = Purchase::withoutGlobalScopes()->with('returns')->where('supplier_id', $id)->findOrFail($request->purchase_id);
                 $netAmount = (float)$purch->total_amount - (float)$purch->returns->sum('refund_amount');
-                $reste = $netAmount - (float)$purch->amount_paid;
+                $reste = round($netAmount - (float)$purch->amount_paid, 2);
                 
-                if ($amountToDistribute > $reste + 0.05) {
+                if (bccomp((string)$amountToDistribute, (string)$reste, 2) === 1) {
                     return response()->json(['error' => 'Le montant dépasse le reste à payer de cette facture.'], 400);
                 }
 
@@ -455,8 +455,8 @@ class PurchaseController extends Controller
                 return response()->json(['success' => true]);
             }
 
-            if ($amountToDistribute > $supplier->total_debt + 0.01) {
-                return response()->json(['error' => 'Le montant dépasse la dette du fournisseur.'], 400);
+            if (bccomp((string)$amountToDistribute, (string)$supplier->total_debt, 2) === 1) {
+                return response()->json(['error' => 'Le montant dépasse la dette globale du fournisseur.'], 400);
             }
 
             $unpaidPurchases = Purchase::withoutGlobalScopes()->where('supplier_id', $id)
@@ -464,7 +464,7 @@ class PurchaseController extends Controller
                 ->get()
                 ->filter(function($p) {
                     $net = (float)$p->total_amount - (float)$p->returns->sum('refund_amount');
-                    return (float)$p->amount_paid < ($net - 0.05);
+                    return bccomp((string)$net, (string)$p->amount_paid, 2) === 1;
                 })
                 ->sortBy('created_at');
 

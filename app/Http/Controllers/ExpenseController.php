@@ -37,11 +37,16 @@ class ExpenseController extends Controller {
         $netProfit = $periodStats['net_profit'];
 
         // FIXED CHARGE LOGIC (Grouped)
-        $fixedCategories = ['Charge Fixe (Mensuel)', 'Loyer', 'Salaire', '🏠 Loyer (K-ra)', '👥 Salaires (Kheddama)'];
-        $totalFixed = (clone $thisMonth)->where(function($query) use ($fixedCategories) {
-                $query->whereIn('category', $fixedCategories)
-                      ->orWhere('category', 'LIKE', '%fixe%');
-            })->sum('amount');
+        // We leverage `is_recurring` if the user flagged it as fixed. 
+        // We also provide a fallback text search for safety.
+        $totalFixed = (clone $thisMonth)->where(function($query) {
+            $query->where('is_recurring', true)
+                  ->orWhere('category', 'LIKE', '%fixe%')
+                  ->orWhere('category', 'LIKE', '%loyer%')
+                  ->orWhere('category', 'LIKE', '%k-ra%')
+                  ->orWhere('category', 'LIKE', '%salaire%')
+                  ->orWhere('category', 'LIKE', '%kheddama%');
+        })->sum('amount');
 
         $totalVariable = $totalThisMonth - $totalFixed;
 
