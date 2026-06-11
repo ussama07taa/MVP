@@ -415,4 +415,10 @@ export const commonTextures = [
   { name: 'Cappuccino Crème Mat Uni', code: 'CAP-CREME', hex: '#EDE6D8' },
   { name: 'Cappuccino Beige Mat Uni', code: 'CAP-BEIGE', hex: '#D4C4B0' },
   { name: 'Cappuccino Bois Clair Veiné', code: 'WB-WOOD-CAP', hex: '#C4A882' },
+  { name: 'Cashmere D218 HG', code: 'KS-S383-LD', hex: '#D8CFC0' },
+  { name: 'Krem HG 605', code: 'AG-P208-LD', hex: '#F0E8DC' },
+  { name: 'Teak A353', code: 'KS-A385-VR', hex: '#A07A58' },
+  { name: 'Rihtim 22', code: 'T-A229-LS', hex: '#8B6D55' },
+  { name: 'Sonomo FRZ', code: '080-22-430FZ', hex: '#CBAF87' },
+  { name: 'Gold HG', code: 'WTF001', hex: '#D4AF37' },
 ];
