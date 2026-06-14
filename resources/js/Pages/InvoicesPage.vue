@@ -252,6 +252,9 @@
                 <button @click="addFreeItem" class="text-[10px] font-black text-brand-600 bg-brand-50 px-3 py-1.5 rounded-xl hover:bg-brand-100 transition-colors uppercase tracking-wider flex items-center">
                   <PlusIcon class="w-3 h-3 mr-1" /> Libre
                 </button>
+                <button @click="addClientCollage" class="text-[10px] font-black text-amber-600 bg-amber-50 px-3 py-1.5 rounded-xl hover:bg-amber-100 transition-colors uppercase tracking-wider flex items-center border border-amber-200">
+                  <PlusIcon class="w-3 h-3 border-r border-amber-200 pr-1 mr-1" /> Collage (Fourniture Client)
+                </button>
               </div>
             </div>
 
@@ -267,26 +270,43 @@
             </div>
 
             <!-- Item Rows -->
-            <div v-for="(item, idx) in form.items" :key="idx"
-              class="grid grid-cols-12 gap-2 items-center p-3 rounded-xl border transition-colors"
-              :class="item.item_type ? 'bg-emerald-50/30 border-emerald-100 hover:border-emerald-200' : 'bg-slate-50/50 border-slate-100 hover:border-brand-200'">
-              <div class="col-span-12 md:col-span-4 relative">
-                <input v-model="item.description" placeholder="Description..." class="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" :readonly="!!item.item_type">
-                <span v-if="item.item_type" class="absolute top-0.5 right-1 text-[8px] font-black text-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded">STOCK</span>
+            <div v-for="(item, idx) in form.items" :key="idx" class="relative">
+              <div class="grid grid-cols-12 gap-2 items-center p-3 rounded-xl border transition-colors bg-white relative z-10"
+                :class="item.item_type ? 'border-emerald-100 hover:border-emerald-200' : 'border-slate-100 hover:border-brand-200'">
+                <div class="col-span-12 md:col-span-4 relative">
+                  <input v-model="item.description" placeholder="Description..." class="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" :readonly="!!item.item_type">
+                  <span v-if="item.item_type" class="absolute top-0.5 right-1 text-[8px] font-black text-emerald-500 bg-emerald-50 px-1.5 py-0.5 rounded">STOCK</span>
+                </div>
+                <select v-model="item.category" class="col-span-6 md:col-span-2 p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" :disabled="!!item.item_type">
+                  <option v-for="cat in categories" :key="cat.value" :value="cat.value">{{ cat.label }}</option>
+                </select>
+                <div class="col-span-3 md:col-span-1 relative">
+                  <input type="number" v-model="item.quantity" min="0.01" step="0.01" class="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-center focus:ring-2 focus:ring-brand-500/20">
+                  <span v-if="item.available != null" class="absolute -bottom-3 left-0 text-[8px] font-bold text-slate-400">max: {{ item.available }}</span>
+                </div>
+                <input v-model="item.unit" class="col-span-3 md:col-span-1 p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-center focus:ring-2 focus:ring-brand-500/20" placeholder="u" :readonly="!!item.item_type">
+                <input type="number" v-model="item.unit_price" min="0" step="0.01" class="col-span-6 md:col-span-2 p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-right focus:ring-2 focus:ring-brand-500/20" placeholder="0.00">
+                <div class="col-span-4 md:col-span-1 text-right text-xs font-black text-slate-700">{{ lineTotal(item) }}</div>
+                <button @click="removeItem(idx)" class="col-span-2 md:col-span-1 w-8 h-8 mx-auto bg-rose-50 hover:bg-rose-100 text-rose-400 hover:text-rose-600 rounded-lg flex items-center justify-center transition-colors">
+                  <Trash2Icon class="w-3.5 h-3.5" />
+                </button>
               </div>
-              <select v-model="item.category" class="col-span-6 md:col-span-2 p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500" :disabled="!!item.item_type">
-                <option v-for="cat in categories" :key="cat.value" :value="cat.value">{{ cat.label }}</option>
-              </select>
-              <div class="col-span-3 md:col-span-1 relative">
-                <input type="number" v-model="item.quantity" min="0.01" step="0.01" class="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-center focus:ring-2 focus:ring-brand-500/20">
-                <span v-if="item.available != null" class="absolute -bottom-3 left-0 text-[8px] font-bold text-slate-400">max: {{ item.available }}</span>
+
+              <!-- Canto Service Toggle Drawer -->
+              <div v-if="item.category === 'canto'" class="mx-3 -mt-2 pt-4 pb-2 px-4 bg-amber-50/50 border border-t-0 border-amber-100 rounded-b-xl flex items-center justify-between z-0">
+                <label class="flex items-center gap-2 cursor-pointer group/toggle">
+                  <div class="relative w-8 h-4 bg-slate-200 rounded-full transition-colors group-has-[:checked]:bg-amber-500">
+                    <input type="checkbox" v-model="item.with_canto_service" class="sr-only">
+                    <div class="absolute left-0.5 top-0.5 w-3 h-3 bg-white rounded-full transition-transform group-has-[:checked]:translate-x-4"></div>
+                  </div>
+                  <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Collage de chant</span>
+                </label>
+                <div v-if="item.with_canto_service" class="flex items-center gap-2">
+                  <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Tarif (DH/m)</span>
+                  <input type="number" v-model.number="item.custom_canto_service_price" min="0" step="0.5" placeholder="Ex: 2"
+                    class="w-16 p-1 bg-white border border-slate-200 text-slate-900 font-black text-[11px] focus:ring-2 focus:ring-amber-500/20 text-center rounded-md">
+                </div>
               </div>
-              <input v-model="item.unit" class="col-span-3 md:col-span-1 p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-center focus:ring-2 focus:ring-brand-500/20" placeholder="u" :readonly="!!item.item_type">
-              <input type="number" v-model="item.unit_price" min="0" step="0.01" class="col-span-6 md:col-span-2 p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-right focus:ring-2 focus:ring-brand-500/20" placeholder="0.00">
-              <div class="col-span-4 md:col-span-1 text-right text-xs font-black text-slate-700">{{ lineTotal(item) }}</div>
-              <button @click="removeItem(idx)" class="col-span-2 md:col-span-1 w-8 h-8 mx-auto bg-rose-50 hover:bg-rose-100 text-rose-400 hover:text-rose-600 rounded-lg flex items-center justify-center transition-colors">
-                <Trash2Icon class="w-3.5 h-3.5" />
-              </button>
             </div>
           </div>
 
@@ -465,12 +485,40 @@ const filteredStockItems = computed(() => {
   return items.filter(i => i.description.toLowerCase().includes(q));
 });
 
-const lineTotal = (item) => (Number(item.quantity) * Number(item.unit_price)).toFixed(2);
-const computedSubtotal = computed(() => form.value.items.reduce((s, i) => s + Number(i.quantity) * Number(i.unit_price), 0));
-const computedTax = computed(() => computedSubtotal.value * (Number(form.value.tax_rate) / 100));
+const lineTotal = (item) => {
+  let baseTotal = Number(item.quantity || 0) * Number(item.unit_price || 0);
+  if (item.category === 'canto' && item.with_canto_service) {
+    baseTotal += Number(item.quantity || 0) * Number(item.custom_canto_service_price || 2);
+  }
+  return baseTotal.toFixed(2);
+};
+
+const computedSubtotal = computed(() => {
+  return form.value.items.reduce((s, item) => {
+    let tot = Number(item.quantity || 0) * Number(item.unit_price || 0);
+    if (item.category === 'canto' && item.with_canto_service) {
+      tot += Number(item.quantity || 0) * Number(item.custom_canto_service_price || 2);
+    }
+    return s + tot;
+  }, 0);
+});
+
+const computedTax = computed(() => computedSubtotal.value * (Number(form.value.tax_rate || 0) / 100));
 const computedTotal = computed(() => computedSubtotal.value + computedTax.value);
 
 const addFreeItem = () => form.value.items.push(defaultItem());
+const addClientCollage = () => {
+  form.value.items.push({
+    description: 'Pose de Chant (Fourniture Client)',
+    category: 'service',
+    quantity: 1,
+    unit: 'm',
+    unit_price: 2.00,
+    item_type: null,
+    item_id: null,
+    available: null
+  });
+};
 const removeItem = (idx) => { if (form.value.items.length > 1) form.value.items.splice(idx, 1); };
 
 const addStockItem = (si) => {
@@ -537,11 +585,40 @@ const openEditModal = (inv) => {
 const saveInvoice = async () => {
   if (!form.value.client_id || form.value.items.length === 0) { toast.warning('Veuillez remplir le client et au moins un article.'); return; }
   isSaving.value = true;
+  
+  // Expand items with collage sub-items before sending to server
+  const expandedItems = [];
+  form.value.items.forEach(i => {
+    expandedItems.push({
+      description: i.description,
+      category: i.category,
+      quantity: i.quantity,
+      unit: i.unit,
+      unit_price: i.unit_price,
+      item_type: i.item_type,
+      item_id: i.item_id
+    });
+    
+    if (i.category === 'canto' && i.with_canto_service) {
+      expandedItems.push({
+        description: 'Collage Chant: ' + (i.description || 'Bandchant'),
+        category: 'service',
+        quantity: i.quantity,
+        unit: 'm',
+        unit_price: Number(i.custom_canto_service_price || 2),
+        item_type: null,
+        item_id: null
+      });
+    }
+  });
+  
+  const payload = { ...form.value, items: expandedItems };
+
   try {
     if (editingInvoice.value) {
-      await axios.put(`/api/admin/invoices/${editingInvoice.value.id}`, form.value);
+      await axios.put(`/api/admin/invoices/${editingInvoice.value.id}`, payload);
     } else {
-      await axios.post('/api/admin/invoices', form.value);
+      await axios.post('/api/admin/invoices', payload);
     }
     toast.success(editingInvoice.value ? 'Document mis à jour !' : 'Document créé !');
     showModal.value = false;
