@@ -596,7 +596,7 @@ const fetchData = async () => {
     // Inject the custom 'Pose de chant' service to mimic the POS
     let fetchedStock = resStock.data;
     if (fetchedStock.services) {
-      if (!fetchedStock.services.some(s => s.name.includes('Fourniture Client'))) {
+      if (!fetchedStock.services.some(s => (s.name || '').includes('Fourniture Client'))) {
         fetchedStock.services.push({
           id: 'custom-pose',
           name: 'Pose de Chant (Fourniture Client)',
