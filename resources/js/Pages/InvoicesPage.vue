@@ -252,9 +252,6 @@
                 <button @click="addFreeItem" class="text-[10px] font-black text-brand-600 bg-brand-50 px-3 py-1.5 rounded-xl hover:bg-brand-100 transition-colors uppercase tracking-wider flex items-center">
                   <PlusIcon class="w-3 h-3 mr-1" /> Libre
                 </button>
-                <button @click="addClientCollage" class="text-[10px] font-black text-amber-600 bg-amber-50 px-3 py-1.5 rounded-xl hover:bg-amber-100 transition-colors uppercase tracking-wider flex items-center border border-amber-200">
-                  <PlusIcon class="w-3 h-3 border-r border-amber-200 pr-1 mr-1" /> Collage (Fourniture Client)
-                </button>
               </div>
             </div>
 
@@ -294,17 +291,17 @@
 
               <!-- Canto Service Toggle Drawer -->
               <div v-if="item.category === 'canto'" class="mx-3 -mt-2 pt-4 pb-2 px-4 bg-amber-50/50 border border-t-0 border-amber-100 rounded-b-xl flex items-center justify-between z-0">
-                <label class="flex items-center gap-2 cursor-pointer group/toggle">
-                  <div class="relative w-8 h-4 bg-slate-200 rounded-full transition-colors group-has-[:checked]:bg-amber-500">
+                <label class="flex items-center gap-2 cursor-pointer transition-opacity" :class="item.with_canto_service ? 'opacity-100' : 'opacity-60 hover:opacity-100'">
+                  <div class="relative w-8 h-4 rounded-full transition-colors duration-300" :class="item.with_canto_service ? 'bg-amber-500' : 'bg-slate-300'">
                     <input type="checkbox" v-model="item.with_canto_service" class="sr-only">
-                    <div class="absolute left-0.5 top-0.5 w-3 h-3 bg-white rounded-full transition-transform group-has-[:checked]:translate-x-4"></div>
+                    <div class="absolute left-0.5 top-0.5 w-3 h-3 bg-white rounded-full transition-transform duration-300 shadow-sm" :class="item.with_canto_service ? 'translate-x-4' : ''"></div>
                   </div>
-                  <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Collage de chant</span>
+                  <span class="text-[10px] font-bold text-slate-700 uppercase tracking-widest">Collage de chant</span>
                 </label>
-                <div v-if="item.with_canto_service" class="flex items-center gap-2">
+                <div v-if="item.with_canto_service" class="flex items-center gap-2 animate-fade-in-up">
                   <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Tarif (DH/m)</span>
                   <input type="number" v-model.number="item.custom_canto_service_price" min="0" step="0.5" placeholder="Ex: 2"
-                    class="w-16 p-1 bg-white border border-slate-200 text-slate-900 font-black text-[11px] focus:ring-2 focus:ring-amber-500/20 text-center rounded-md">
+                    class="w-16 p-1 bg-white border border-slate-200 shadow-sm text-slate-900 font-black text-[11px] focus:ring-2 focus:ring-amber-500/20 text-center rounded-md">
                 </div>
               </div>
             </div>
@@ -366,41 +363,53 @@
           <div v-if="filteredStockItems.length === 0" class="text-center py-8 text-sm text-slate-400 font-bold">Aucun article trouvé</div>
           
           <div v-for="si in filteredStockItems" :key="`${si.item_type}-${si.item_id || si.id}`"
-            class="bg-slate-50 rounded-xl border border-slate-100 transition-all hover:border-emerald-200 overflow-hidden">
+            class="rounded-xl border transition-all duration-300 overflow-hidden"
+            :class="[
+              si.showOptions ? 'border-amber-300 shadow-md ring-4 ring-amber-50 bg-white' : 'border-slate-100 hover:border-emerald-200 hover:shadow-sm bg-slate-50',
+              stockTab === 'cantos' && si.with_canto_service ? 'border-amber-400 ring-amber-100' : ''
+            ]">
             
             <!-- Main Content Row -->
-            <div class="flex items-center justify-between p-3 cursor-pointer hover:bg-emerald-50/50" @click="addStockItem(si)">
+            <div class="flex items-center justify-between p-3 cursor-pointer" 
+                 :class="si.showOptions ? '' : 'hover:bg-emerald-50/50'"
+                 @click="addStockItem(si)">
               <div class="flex items-center gap-3">
-                <button v-if="stockTab === 'cantos'" @click.stop="si.showOptions = !si.showOptions" class="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-brand-600 hover:border-brand-200 transition-colors">
+                <button v-if="stockTab === 'cantos'" @click.stop="si.showOptions = !si.showOptions" 
+                        class="w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-all duration-300"
+                        :class="[
+                          si.showOptions ? 'bg-amber-50 border-amber-200 text-amber-600' : 'bg-white border-slate-200 text-slate-400 hover:text-amber-500 hover:border-amber-200',
+                          si.with_canto_service ? 'bg-amber-500 border-amber-500 text-white' : ''
+                        ]">
                   <svg :class="si.showOptions ? 'rotate-180' : ''" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                 </button>
                 <div>
-                  <p class="text-xs font-black text-slate-800">{{ si.description || si.name }}</p>
+                  <p class="text-xs font-black" :class="si.showOptions ? 'text-slate-900' : 'text-slate-700'">{{ si.description || si.name }}</p>
                   <p class="text-[10px] font-bold text-slate-400 mt-0.5">
                     {{ Number(si.unit_price || 0).toFixed(2) }} DH{{ si.unit ? '/' + si.unit : '' }}
-                    <span v-if="si.available != null" class="ml-2 text-emerald-600 border border-emerald-100 bg-emerald-50 px-1 rounded">Stock: {{ si.available }}</span>
+                    <span v-if="si.available != null" class="ml-2 px-1.5 py-0.5 rounded border" :class="si.showOptions ? 'bg-emerald-100 border-emerald-200 text-emerald-700' : 'bg-emerald-50 border-emerald-100 text-emerald-600'">Stock: {{ si.available }}</span>
                   </p>
                 </div>
               </div>
-              <button class="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 transition-colors pointer-events-none">
+              <button class="w-8 h-8 rounded-xl flex items-center justify-center transition-all pointer-events-none"
+                      :class="si.showOptions ? 'bg-emerald-100 text-emerald-600 shadow-sm' : 'bg-slate-100 text-slate-400'">
                 <PlusIcon class="w-5 h-5" />
               </button>
             </div>
 
             <!-- Canto Options Accordion -->
-            <div v-if="stockTab === 'cantos' && si.showOptions" class="px-4 py-3 bg-amber-50/30 border-t border-amber-100 flex items-center justify-between">
-              <label class="flex items-center gap-2 cursor-pointer group/toggle" @click.stop>
-                <div class="relative w-8 h-4 bg-slate-200 rounded-full transition-colors group-has-[:checked]:bg-amber-500">
+            <div v-if="stockTab === 'cantos' && si.showOptions" class="px-4 py-3 border-t flex items-center justify-between transition-colors duration-300" :class="si.with_canto_service ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-100'">
+              <label class="flex items-center gap-2 cursor-pointer transition-opacity" :class="si.with_canto_service ? 'opacity-100' : 'opacity-60 hover:opacity-100'" @click.stop>
+                <div class="relative w-8 h-4 rounded-full transition-colors duration-300" :class="si.with_canto_service ? 'bg-amber-500 shadow-inner' : 'bg-slate-300'">
                   <input type="checkbox" v-model="si.with_canto_service" class="sr-only">
-                  <div class="absolute left-0.5 top-0.5 w-3 h-3 bg-white rounded-full transition-transform group-has-[:checked]:translate-x-4"></div>
+                  <div class="absolute left-0.5 top-0.5 w-3 h-3 bg-white rounded-full transition-transform duration-300 shadow-sm" :class="si.with_canto_service ? 'translate-x-4' : ''"></div>
                 </div>
-                <span class="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Ajouter Collage</span>
+                <span class="text-[10px] font-bold uppercase tracking-widest" :class="si.with_canto_service ? 'text-amber-700' : 'text-slate-600'">Ajouter Collage</span>
               </label>
               
-              <div v-if="si.with_canto_service" class="flex items-center gap-2" @click.stop>
-                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Tarif (DH)</span>
+              <div v-if="si.with_canto_service" class="flex items-center gap-2 animate-fade-in-up" @click.stop>
+                <span class="text-[9px] font-bold text-amber-600/70 uppercase tracking-widest">Tarif (DH)</span>
                 <input type="number" v-model.number="si.custom_price" min="0" step="0.5" placeholder="Ex: 2"
-                  class="w-16 p-1 bg-white border border-slate-200 text-slate-900 font-black text-[11px] focus:ring-2 focus:ring-amber-500/20 text-center rounded-md">
+                  class="w-16 p-1 bg-white border border-amber-300 text-amber-900 shadow-inner font-black text-[11px] focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 text-center rounded-md outline-none transition-all">
               </div>
             </div>
           </div>
@@ -535,18 +544,6 @@ const computedTax = computed(() => computedSubtotal.value * (Number(form.value.t
 const computedTotal = computed(() => computedSubtotal.value + computedTax.value);
 
 const addFreeItem = () => form.value.items.push(defaultItem());
-const addClientCollage = () => {
-  form.value.items.push({
-    description: 'Pose de Chant (Fourniture Client)',
-    category: 'service',
-    quantity: 1,
-    unit: 'm',
-    unit_price: 2.00,
-    item_type: null,
-    item_id: null,
-    available: null
-  });
-};
 const removeItem = (idx) => { if (form.value.items.length > 1) form.value.items.splice(idx, 1); };
 
 const addStockItem = (si) => {
