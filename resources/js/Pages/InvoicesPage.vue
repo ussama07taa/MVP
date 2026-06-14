@@ -362,19 +362,47 @@
         </div>
 
         <!-- Stock List -->
-        <div class="p-4 max-h-[50vh] overflow-y-auto space-y-2">
+        <div class="p-4 max-h-[50vh] overflow-y-auto space-y-3">
           <div v-if="filteredStockItems.length === 0" class="text-center py-8 text-sm text-slate-400 font-bold">Aucun article trouvé</div>
-          <div v-for="si in filteredStockItems" :key="`${si.item_type}-${si.item_id}`"
-            @click="addStockItem(si)"
-            class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/50 cursor-pointer transition-all">
-            <div>
-              <p class="text-xs font-black text-slate-800">{{ si.description }}</p>
-              <p class="text-[10px] font-bold text-slate-400 mt-0.5">
-                {{ si.unit_price.toFixed(2) }} DH/{{ si.unit }}
-                <span v-if="si.available != null" class="ml-2 text-emerald-600">Stock: {{ si.available }}</span>
-              </p>
+          
+          <div v-for="si in filteredStockItems" :key="`${si.item_type}-${si.item_id || si.id}`"
+            class="bg-slate-50 rounded-xl border border-slate-100 transition-all hover:border-emerald-200 overflow-hidden">
+            
+            <!-- Main Content Row -->
+            <div class="flex items-center justify-between p-3 cursor-pointer hover:bg-emerald-50/50" @click="addStockItem(si)">
+              <div class="flex items-center gap-3">
+                <button v-if="stockTab === 'cantos'" @click.stop="si.showOptions = !si.showOptions" class="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-brand-600 hover:border-brand-200 transition-colors">
+                  <svg :class="si.showOptions ? 'rotate-180' : ''" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div>
+                  <p class="text-xs font-black text-slate-800">{{ si.description || si.name }}</p>
+                  <p class="text-[10px] font-bold text-slate-400 mt-0.5">
+                    {{ Number(si.unit_price || 0).toFixed(2) }} DH{{ si.unit ? '/' + si.unit : '' }}
+                    <span v-if="si.available != null" class="ml-2 text-emerald-600 border border-emerald-100 bg-emerald-50 px-1 rounded">Stock: {{ si.available }}</span>
+                  </p>
+                </div>
+              </div>
+              <button class="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 transition-colors pointer-events-none">
+                <PlusIcon class="w-5 h-5" />
+              </button>
             </div>
-            <PlusIcon class="w-5 h-5 text-emerald-500" />
+
+            <!-- Canto Options Accordion -->
+            <div v-if="stockTab === 'cantos' && si.showOptions" class="px-4 py-3 bg-amber-50/30 border-t border-amber-100 flex items-center justify-between">
+              <label class="flex items-center gap-2 cursor-pointer group/toggle" @click.stop>
+                <div class="relative w-8 h-4 bg-slate-200 rounded-full transition-colors group-has-[:checked]:bg-amber-500">
+                  <input type="checkbox" v-model="si.with_canto_service" class="sr-only">
+                  <div class="absolute left-0.5 top-0.5 w-3 h-3 bg-white rounded-full transition-transform group-has-[:checked]:translate-x-4"></div>
+                </div>
+                <span class="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Ajouter Collage</span>
+              </label>
+              
+              <div v-if="si.with_canto_service" class="flex items-center gap-2" @click.stop>
+                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Tarif (DH)</span>
+                <input type="number" v-model.number="si.custom_price" min="0" step="0.5" placeholder="Ex: 2"
+                  class="w-16 p-1 bg-white border border-slate-200 text-slate-900 font-black text-[11px] focus:ring-2 focus:ring-amber-500/20 text-center rounded-md">
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -523,14 +551,16 @@ const removeItem = (idx) => { if (form.value.items.length > 1) form.value.items.
 
 const addStockItem = (si) => {
   form.value.items.push({
-    description: si.description,
-    category: si.category,
+    description: si.description || si.name,
+    category: si.category || (si.item_type === 'stock_canto' ? 'canto' : (stockTab.value === 'services' ? 'service' : 'other')),
     quantity: 1,
-    unit: si.unit,
+    unit: si.unit || 'u',
     unit_price: si.unit_price,
-    item_type: si.item_type,
-    item_id: si.item_id,
+    item_type: si.item_type || null,
+    item_id: si.item_id || si.id,
     available: si.available,
+    with_canto_service: si.with_canto_service || false,
+    custom_canto_service_price: si.custom_price || 2.00
   });
   showStockPicker.value = false;
   stockSearch.value = '';
@@ -562,7 +592,33 @@ const fetchData = async () => {
     invoices.value = resInv.data;
     clients.value = resCl.data;
     summary.value = resSum.data;
-    stockItems.value = resStock.data;
+    
+    // Inject the custom 'Pose de chant' service to mimic the POS
+    let fetchedStock = resStock.data;
+    if (fetchedStock.services) {
+      if (!fetchedStock.services.some(s => s.name.includes('Fourniture Client'))) {
+        fetchedStock.services.push({
+          id: 'custom-pose',
+          name: 'Pose de Chant (Fourniture Client)',
+          description: 'Pose de Chant (Fourniture Client)',
+          category: 'service',
+          unit_price: 2.00,
+          unit: 'm',
+          item_type: null,
+          item_id: null
+        });
+      }
+    }
+    
+    // Auto-initialize cantos with default custom price
+    if (fetchedStock.cantos) {
+      fetchedStock.cantos.forEach(c => {
+        c.with_canto_service = false;
+        c.custom_price = 2.00;
+      });
+    }
+    
+    stockItems.value = fetchedStock;
   } catch (e) { console.error('Fetch error', e); } finally { isLoading.value = false; }
 };
 
