@@ -22,7 +22,6 @@ class PricingService
     {
         $service = Service::where('name', 'like', '%collage%')
             ->orWhere('name', 'like', '%chant%')
-            ->orWhere('name', 'like', '%coupe%')
             ->first();
 
         return $service ? round((float) $service->unit_price, 2) : 2.00;
@@ -30,6 +29,11 @@ class PricingService
 
     public function resolveInvoiceUnitSell(array $item): float
     {
+        // Prioritize custom price typed by the user in the Invoice screen
+        if (isset($item['unit_price']) && is_numeric($item['unit_price'])) {
+            return round(max(0, (float) $item['unit_price']), 2);
+        }
+
         $type = $item['item_type'] ?? null;
         $id = $item['item_id'] ?? null;
 

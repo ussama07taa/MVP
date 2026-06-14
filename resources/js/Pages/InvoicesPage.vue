@@ -132,9 +132,9 @@
             <div class="flex flex-col md:flex-row md:items-center gap-6">
               <div class="text-right">
                 <span class="text-xs font-black text-slate-400 uppercase tracking-[0.2em] block mb-0.5">Total TTC</span>
-                <span class="text-2xl font-black text-slate-900 tracking-tight">{{ (inv.total || 0).toFixed(2) }}</span>
+                <span class="text-2xl font-black text-slate-900 tracking-tight">{{ Number(inv.total || 0).toFixed(2) }}</span>
                 <span class="text-[10px] font-bold text-slate-400 ml-1">DH</span>
-                <div v-if="inv.remaining > 0" class="text-[10px] font-black text-rose-500 uppercase tracking-widest mt-1 bg-rose-50 w-max ml-auto px-2 py-0.5 rounded-md">Reste: {{ (inv.remaining || 0).toFixed(2) }} DH</div>
+                <div v-if="Number(inv.remaining) > 0" class="text-[10px] font-black text-rose-500 uppercase tracking-widest mt-1 bg-rose-50 w-max ml-auto px-2 py-0.5 rounded-md">Reste: {{ Number(inv.remaining || 0).toFixed(2) }} DH</div>
               </div>
               
               <!-- Quick Actions Slide-in -->
@@ -145,7 +145,7 @@
                   <ShieldCheckIcon class="w-5 h-5" />
                 </button>
                 <!-- Pay invoice (validated + remaining > 0) -->
-                <button v-if="inv.type === 'invoice' && inv.validated_at && inv.remaining > 0" @click.stop="openPayModal(inv)" title="Encaisser"
+                <button v-if="inv.type === 'invoice' && inv.validated_at && Number(inv.remaining) > 0" @click.stop="openPayModal(inv)" title="Encaisser"
                   class="w-10 h-10 bg-emerald-50 hover:bg-emerald-500 text-emerald-600 hover:text-white rounded-[1rem] flex items-center justify-center transition-all shadow-sm hover:shadow-emerald-200">
                   <BanknoteIcon class="w-5 h-5" />
                 </button>
@@ -552,7 +552,7 @@ const saveInvoice = async () => {
 };
 
 const validateInvoice = async (inv) => {
-  if (!confirm(`Valider la facture ${inv.invoice_number} ?\n\nCela va :\n• Déduire le stock des articles liés\n• Ajouter ${inv.total.toFixed(2)} DH comme dette au client`)) return;
+  if (!confirm(`Valider la facture ${inv.invoice_number} ?\n\nCela va :\n• Déduire le stock des articles liés\n• Ajouter ${Number(inv.total).toFixed(2)} DH comme dette au client`)) return;
   try {
     await axios.post(`/api/admin/invoices/${inv.id}/validate`);
     toast.success('Facture validée ! Stock déduit et dette ajoutée.');
@@ -562,7 +562,7 @@ const validateInvoice = async (inv) => {
 
 const openPayModal = (inv) => {
   payingInvoice.value = inv;
-  payRemaining.value = (inv.total || 0) - (inv.amount_paid || 0);
+  payRemaining.value = Number(inv.total || 0) - Number(inv.amount_paid || 0);
   payAmount.value = payRemaining.value;
   showPayModal.value = true;
 };

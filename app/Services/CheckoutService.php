@@ -25,7 +25,6 @@ class CheckoutService
         if ($this->memoizedCollageServiceId === null) {
             $service = \App\Models\Service::where('name', 'like', '%collage%')
                 ->orWhere('name', 'like', '%chant%')
-                ->orWhere('name', 'like', '%coupe%')
                 ->first();
             $this->memoizedCollageServiceId = $service ? $service->id : false;
         }
@@ -217,7 +216,11 @@ class CheckoutService
                     if ($has_splitting) {
                         // Line 1: Canto Material (Fourniture)
                         $base_price = (float) $canto->base_price_sell_per_m;
-                        $collage_price = $this->pricing->resolveCantoCollagePrice();
+                        
+                        $collage_price = isset($item['custom_canto_service_price']) && is_numeric($item['custom_canto_service_price']) 
+                            ? (float) $item['custom_canto_service_price'] 
+                            : $this->pricing->resolveCantoCollagePrice();
+                            
                         $lines[] = [
                             'type' => $item_type,
                             'id' => $item_id,
