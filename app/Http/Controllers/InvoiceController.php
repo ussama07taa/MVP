@@ -202,6 +202,10 @@ class InvoiceController extends Controller
                 'invoice_number' => $invoiceNumber,
             ], 201);
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            \Log::error('Validation Error Details: ' . json_encode($e->errors()));
+            throw $e;
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Invoice Creation Error: ' . $e->getMessage());

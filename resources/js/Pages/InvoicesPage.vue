@@ -557,7 +557,7 @@ const addStockItem = (si) => {
     unit: si.unit || 'u',
     unit_price: si.unit_price,
     item_type: si.item_type || null,
-    item_id: si.item_id || si.id,
+    item_id: (si.item_id || si.id) === 'custom-pose' ? null : (si.item_id || si.id),
     available: si.available,
     with_canto_service: si.with_canto_service || false,
     custom_canto_service_price: si.custom_price || 2.00
